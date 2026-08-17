@@ -1,0 +1,31 @@
+{
+  "name": "@denovo/canvas-monorepo",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.10.0",
+  "scripts": {
+    "build": "turbo run build",
+    "clean": "turbo run clean",
+    "dev": "turbo run dev --parallel",
+    "typecheck": "turbo run typecheck",
+    "verify:browser-rendering": "node scripts/verify-browser-rendering.mjs",
+    "verify:browser-rendering-adapters": "node scripts/verify-browser-rendering-adapters.mjs",
+    "verify:bim-rendering": "pnpm --filter @denovo/canvas-bim-example copy:wasm && ADAPTER_ONLY=Bim node scripts/verify-browser-rendering-adapters.mjs",
+    "verify:diagram-rendering": "ADAPTER_ONLY=Diagram node scripts/verify-browser-rendering-adapters.mjs",
+    "verify:document-schema": "node scripts/verify-document-schema.mjs",
+    "verify:editor-core": "node scripts/verify-editor-core.mjs",
+    "verify:hit-testing": "node scripts/verify-hit-testing.mjs",
+    "verify:public-api": "node scripts/verify-public-api.mjs",
+    "verify:performance": "node scripts/verify-performance.mjs",
+    "verify:server": "node scripts/verify-server.mjs"
+  },
+  "devDependencies": {
+    "@tanstack/react-query": "^5.101.3",
+    "@types/node": "^26.1.1",
+    "playwright": "^1.61.1",
+    "tsup": "^8.5.1",
+    "turbo": "^2.10.4",
+    "typescript": "^7.0.2"
+  }
+}

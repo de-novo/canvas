@@ -1,0 +1,35 @@
+{
+  "name": "@denovo/canvas-core",
+  "version": "0.0.0",
+  "description": "Headless scene schema and shared types for Denovo Canvas.",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./effect": {
+      "types": "./dist/effect.d.ts",
+      "import": "./dist/effect.js",
+      "require": "./dist/effect.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup src/index.ts src/effect.ts --format esm,cjs --clean --external effect --external zod --external zustand && tsc --emitDeclarationOnly",
+    "clean": "rm -rf dist .turbo",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "effect": "3.21.4",
+    "zod": "^4.4.3",
+    "zustand": "^5.0.14"
+  }
+}

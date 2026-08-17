@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Denovo Canvas Diagram Example</title>
+  </head>
+  <body>
+    <main class="shell">
+      <section class="viewport">
+        <div
+          id="stage"
+          class="stage"
+          aria-label="Diagram canvas"
+          tabindex="0"
+        ></div>
+      </section>
+      <aside class="panel">
+        <p class="eyebrow">Diagram</p>
+        <h1>Node-edge graph</h1>
+        <p>
+          Two shape nodes connected by an edge, with a label — rendered as first-class
+          <code>mesh</code>/<code>edge</code>/<code>text</code> scene nodes.
+        </p>
+        <div class="controls">
+          <button id="move-source" type="button">Move source node</button>
+          <button id="fit" type="button">Fit view</button>
+          <button id="fly" type="button">Fly to node</button>
+          <button id="connect" type="button">Connect tool</button>
+          <button id="align-top" type="button">Align top</button>
+          <button id="custom-layout" type="button">Custom stack layout</button>
+        </div>
+        <p class="status">
+          Status: <output id="status">idle</output>
+        </p>
+      </aside>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

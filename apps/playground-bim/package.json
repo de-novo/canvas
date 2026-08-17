@@ -1,0 +1,23 @@
+{
+  "name": "@denovo/canvas-bim-example",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "pnpm copy:wasm && vite build",
+    "copy:wasm": "mkdir -p public/wasm && cp node_modules/web-ifc/web-ifc.wasm public/wasm/ && (cp node_modules/web-ifc/web-ifc-node.wasm public/wasm/ 2>/dev/null || true)",
+    "clean": "rm -rf dist .turbo public/wasm",
+    "dev": "pnpm copy:wasm && vite --host 127.0.0.1 --port 5178",
+    "preview": "vite preview --host 127.0.0.1",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@denovo/canvas": "workspace:*",
+    "@denovo/canvas-bim": "workspace:*",
+    "web-ifc": "^0.0.77"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2",
+    "vite": "^8.1.3"
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "name": "@denovo/react-canvas",
+  "version": "0.0.0",
+  "description": "React adapter for Denovo Canvas.",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": ["dist"],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup src/index.tsx --format esm,cjs --clean --external react --external react/jsx-runtime --external three --external @react-three/fiber --external @react-three/drei --external @denovo/canvas-core --external @denovo/canvas-web && tsc --emitDeclarationOnly",
+    "clean": "rm -rf dist .turbo",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "@denovo/canvas-core": "workspace:*",
+    "@denovo/canvas-web": "workspace:*",
+    "@react-three/drei": ">=10.0.0",
+    "@react-three/fiber": ">=9.0.0",
+    "react": ">=18.3.0 <20",
+    "three": ">=0.185.1"
+  },
+  "devDependencies": {
+    "@denovo/canvas-core": "workspace:*",
+    "@denovo/canvas-web": "workspace:*",
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.6.1",
+    "@types/react": "^19.2.17",
+    "@types/three": "^0.185.0",
+    "react": "^19.2.7",
+    "three": "^0.185.1"
+  }
+}

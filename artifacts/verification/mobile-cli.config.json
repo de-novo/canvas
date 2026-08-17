@@ -1,0 +1,22 @@
+{
+  "browser": {
+    "browserName": "chromium",
+    "launchOptions": {
+      "channel": "chrome"
+    },
+    "contextOptions": {
+      "deviceScaleFactor": 3,
+      "hasTouch": true,
+      "isMobile": true,
+      "screen": {
+        "height": 844,
+        "width": 390
+      },
+      "viewport": {
+        "height": 780,
+        "width": 390
+      }
+    },
+    "isolated": true
+  }
+}

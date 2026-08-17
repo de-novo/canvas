@@ -1,0 +1,34 @@
+{
+  "name": "@denovo/solid-canvas",
+  "version": "0.0.0",
+  "description": "Solid adapter for Denovo Canvas.",
+  "type": "module",
+  "main": "./src/index.tsx",
+  "module": "./src/index.tsx",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "solid": "./src/index.tsx",
+      "import": "./src/index.tsx",
+      "require": "./src/index.tsx"
+    }
+  },
+  "files": ["src", "dist"],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsc --emitDeclarationOnly",
+    "clean": "rm -rf dist .turbo",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "@denovo/canvas-core": "workspace:*",
+    "@denovo/canvas-web": "workspace:*",
+    "solid-js": ">=1.8.0"
+  },
+  "devDependencies": {
+    "@denovo/canvas-core": "workspace:*",
+    "@denovo/canvas-web": "workspace:*",
+    "solid-js": "^1.9.3"
+  }
+}

@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Denovo Canvas Vanilla Example</title>
+  </head>
+  <body>
+    <main class="shell">
+      <section class="viewport">
+        <div
+          id="stage"
+          class="stage"
+          aria-label="Canvas stage"
+          tabindex="0"
+        ></div>
+      </section>
+      <aside class="panel">
+        <div>
+          <p class="eyebrow">Vanilla Web</p>
+          <h1>Framework-free canvas runtime</h1>
+          <p>
+            This example uses the <code>@denovo/canvas</code> facade for
+            renderer-independent scenes, hit testing, and editor selection. The
+            same contract works from Astro, Vue, Svelte, Solid, React, or plain
+            browser code.
+          </p>
+          <p class="selection-readout">
+            Selected node:
+            <output
+              id="selection-status"
+              aria-label="Selected canvas node"
+              role="status"
+            >none</output>
+          </p>
+          <p class="tool-readout">
+            Active tool:
+            <output id="tool-status" aria-label="Active canvas tool" role="status"
+              >none</output
+            >
+          </p>
+        </div>
+        <div class="actions">
+          <div class="control-section">
+            <p class="control-label">Canvas tools</p>
+            <div class="tool-actions" role="group" aria-label="Canvas tools">
+              <button id="select-tool" type="button" aria-pressed="false">
+                Select
+              </button>
+              <button id="transform-tool" type="button" aria-pressed="false">
+                Move
+              </button>
+              <button id="rotate-tool" type="button" aria-pressed="false">
+                Rotate
+              </button>
+              <button id="scale-tool" type="button" aria-pressed="false">
+                Scale
+              </button>
+              <button id="pan-orbit-tool" type="button" aria-pressed="false">
+                Navigate
+              </button>
+              <button id="inspect-tool" type="button" aria-pressed="false">
+                Inspect
+              </button>
+            </div>
+          </div>
+          <div class="control-section">
+            <p class="control-label">Authoring tools</p>
+            <div
+              class="tool-actions authoring-tools"
+              role="group"
+              aria-label="Authoring tools"
+            >
+              <button id="create-rect-2d" type="button" aria-pressed="false">
+                2D Rect
+              </button>
+              <button id="create-circle-2d" type="button" aria-pressed="false">
+                2D Circle
+              </button>
+              <button id="create-box-3d" type="button" aria-pressed="false">
+                3D Box
+              </button>
+              <button id="stack-box-3d" type="button" aria-pressed="false">
+                Stack Box
+              </button>
+              <button id="create-sphere-3d" type="button" aria-pressed="false">
+                3D Sphere
+              </button>
+              <button id="measure-distance-2d" type="button" aria-pressed="false">
+                2D Distance
+              </button>
+              <button id="measure-distance-3d" type="button" aria-pressed="false">
+                3D Distance
+              </button>
+              <button id="annotate-2d" type="button" aria-pressed="false">
+                2D Annotation
+              </button>
+              <button id="annotate-3d" type="button" aria-pressed="false">
+                3D Annotation
+              </button>
+            </div>
+            <label class="field-label" for="annotation-text">
+              Annotation text
+              <input id="annotation-text" type="text" autocomplete="off" />
+            </label>
+          </div>
+          <div class="control-section">
+            <p class="control-label">Document actions</p>
+            <div class="action-grid" role="group" aria-label="Document actions">
+              <button id="edit-last-node" type="button">Edit Last</button>
+              <button id="group-last-two" type="button">Group Last Two</button>
+              <button id="ungroup-current" type="button">Ungroup</button>
+              <button id="add-layer" type="button">Add Layer</button>
+              <button id="reorder-layer" type="button">Reorder Layer</button>
+              <button id="toggle-layer-visible" type="button">
+                Toggle Layer Visibility
+              </button>
+              <button id="toggle-layer-locked" type="button">
+                Toggle Layer Lock
+              </button>
+              <button id="undo" type="button">Undo</button>
+              <button id="redo" type="button">Redo</button>
+              <button id="reload-document-json" type="button">
+                Reload Document JSON
+              </button>
+            </div>
+          </div>
+          <div class="action-grid scene-actions" role="group" aria-label="Scene actions">
+            <button id="reset-view" type="button">Reset View</button>
+            <button id="swap-scene" type="button">Swap Scene</button>
+          </div>
+        </div>
+      </aside>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

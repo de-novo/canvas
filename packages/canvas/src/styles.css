@@ -1,0 +1,119 @@
+.denovo-canvas {
+  --_dc-background: var(
+    --dc-background,
+    var(--color-background, var(--background, #0f172a))
+  );
+  --_dc-foreground: var(
+    --dc-foreground,
+    var(--color-foreground, var(--foreground, #f8fafc))
+  );
+  --_dc-selection: var(
+    --dc-selection-color,
+    var(--color-primary, var(--primary, #38bdf8))
+  );
+  --_dc-grid: var(
+    --dc-grid-color,
+    color-mix(
+      in oklch,
+      var(--color-border, var(--border, #94a3b8)) 38%,
+      transparent
+    )
+  );
+  --_dc-handle: var(--dc-handle-color, var(--_dc-foreground));
+  --_dc-handle-x: var(
+    --dc-handle-x-color,
+    var(--dc-handle-color, var(--color-destructive, var(--destructive, #ef4444)))
+  );
+  --_dc-handle-y: var(
+    --dc-handle-y-color,
+    var(--dc-handle-color, var(--color-chart-2, var(--chart-2, #22c55e)))
+  );
+  --_dc-handle-z: var(
+    --dc-handle-z-color,
+    var(--dc-handle-color, var(--color-primary, var(--primary, #3b82f6)))
+  );
+  --_dc-handle-xy: var(
+    --dc-handle-xy-color,
+    var(--dc-handle-color, var(--color-chart-4, var(--chart-4, #facc15)))
+  );
+  --_dc-handle-xz: var(
+    --dc-handle-xz-color,
+    var(--dc-handle-color, var(--color-chart-5, var(--chart-5, #f472b6)))
+  );
+  --_dc-handle-yz: var(
+    --dc-handle-yz-color,
+    var(--dc-handle-color, var(--color-chart-3, var(--chart-3, #22d3ee)))
+  );
+  --_dc-overlay: var(
+    --dc-overlay-color,
+    color-mix(in oklch, var(--_dc-background) 72%, transparent)
+  );
+  --_dc-border: var(
+    --dc-border-color,
+    var(--color-border, var(--border, #27272a))
+  );
+  --_dc-ring: var(
+    --dc-focus-ring-color,
+    var(--color-ring, var(--ring, var(--_dc-selection)))
+  );
+  --_dc-font-family: var(
+    --dc-font-family,
+    var(
+      --font-sans,
+      Inter,
+      ui-sans-serif,
+      system-ui,
+      -apple-system,
+      BlinkMacSystemFont,
+      "Segoe UI",
+      sans-serif
+    )
+  );
+  --_dc-radius: var(--dc-radius, var(--radius, 0.625rem));
+  --_dc-grid-size: var(--dc-grid-size, 1.5rem);
+
+  position: relative;
+  border-radius: var(--_dc-radius);
+  background: var(--_dc-background);
+  color: var(--_dc-foreground);
+  font-family: var(--_dc-font-family);
+}
+
+.denovo-canvas[data-denovo-theme="light"] {
+  --_dc-background: var(
+    --dc-background,
+    var(--color-background, var(--background, #f8fafc))
+  );
+  --_dc-foreground: var(
+    --dc-foreground,
+    var(--color-foreground, var(--foreground, #0f172a))
+  );
+  --_dc-selection: var(
+    --dc-selection-color,
+    var(--color-primary, var(--primary, #2563eb))
+  );
+}
+
+.denovo-canvas:focus-visible {
+  outline: 2px solid var(--_dc-ring);
+  outline-offset: 2px;
+}
+
+.denovo-canvas > canvas,
+canvas.denovo-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.denovo-canvas[data-denovo-editable="true"] {
+  cursor: default;
+}
+
+.denovo-canvas[data-denovo-mode="2d"] {
+  background-image:
+    linear-gradient(var(--_dc-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--_dc-grid) 1px, transparent 1px);
+  background-size: var(--_dc-grid-size) var(--_dc-grid-size);
+}

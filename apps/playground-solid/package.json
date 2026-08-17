@@ -1,0 +1,24 @@
+{
+  "name": "@denovo/canvas-solid-example",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "clean": "rm -rf dist .turbo",
+    "dev": "vite --host 127.0.0.1 --port 5177",
+    "preview": "vite preview --host 127.0.0.1",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@denovo/canvas-core": "workspace:*",
+    "@denovo/canvas-web": "workspace:*",
+    "@denovo/solid-canvas": "workspace:*",
+    "solid-js": "^1.9.3"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2",
+    "vite": "^8.1.3",
+    "vite-plugin-solid": "^2.11.0"
+  }
+}

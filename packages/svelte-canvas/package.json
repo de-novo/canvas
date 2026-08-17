@@ -1,0 +1,34 @@
+{
+  "name": "@denovo/svelte-canvas",
+  "version": "0.0.0",
+  "description": "Svelte adapter for Denovo Canvas.",
+  "type": "module",
+  "main": "./src/index.ts",
+  "module": "./src/index.ts",
+  "types": "./dist/index.d.ts",
+  "svelte": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "svelte": "./src/index.ts",
+      "import": "./src/index.ts"
+    }
+  },
+  "files": ["src", "dist"],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsc --emitDeclarationOnly",
+    "clean": "rm -rf dist .turbo",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "@denovo/canvas-core": "workspace:*",
+    "@denovo/canvas-web": "workspace:*",
+    "svelte": ">=4.0.0"
+  },
+  "devDependencies": {
+    "@denovo/canvas-core": "workspace:*",
+    "@denovo/canvas-web": "workspace:*",
+    "svelte": "^5.19.0"
+  }
+}

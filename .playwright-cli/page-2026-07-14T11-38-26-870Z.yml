@@ -1,0 +1,23 @@
+- main [ref=e2]:
+  - generic "Canvas stage" [ref=e4]
+  - complementary [ref=e6]:
+    - generic [ref=e7]:
+      - paragraph [ref=e8]: Vanilla Web
+      - heading "Framework-free canvas runtime" [level=1] [ref=e9]
+      - paragraph [ref=e10]:
+        - text: This example uses the
+        - code [ref=e11]: "@denovo/canvas"
+        - text: facade for renderer-independent scenes, hit testing, and editor selection. The same contract works from Astro, Vue, Svelte, Solid, React, or plain browser code.
+      - paragraph [ref=e12]:
+        - text: "Selected node:"
+        - status "Selected canvas node" [ref=e13]: none
+      - paragraph [ref=e14]:
+        - text: "Active tool:"
+        - status "Active canvas tool" [ref=e15]: transform
+    - generic [ref=e16]:
+      - group "Canvas tools" [ref=e17]:
+        - button "Select" [ref=e18] [cursor=pointer]
+        - button "Move" [pressed] [ref=e19] [cursor=pointer]
+        - button "Navigate" [ref=e20] [cursor=pointer]
+        - button "Inspect" [ref=e21] [cursor=pointer]
+      - button "Swap Scene" [ref=e22] [cursor=pointer]

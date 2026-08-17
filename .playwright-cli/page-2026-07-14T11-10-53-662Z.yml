@@ -1,0 +1,24 @@
+- generic [active] [ref=e1]:
+  - main [ref=e2]:
+    - complementary [ref=e8]:
+      - generic [ref=e9]:
+        - paragraph [ref=e10]: Denovo Canvas
+        - heading "Next ready canvas runtime" [level=1] [ref=e11]
+        - paragraph [ref=e12]: This example uses Next.js, React, Zustand, TanStack Query, React Three Fiber, shadcn, and the shared scene schema.
+      - generic [ref=e13]:
+        - generic [ref=e14]:
+          - paragraph [ref=e15]: Scene mode
+          - group "Scene mode" [ref=e16]:
+            - button "Show 3D scene" [pressed] [ref=e17]:
+              - img
+              - text: 3D
+            - button "Show 2D scene" [ref=e18]:
+              - img
+              - text: 2D
+        - button "Refresh scene stats" [ref=e19]:
+          - img
+          - text: Refresh scene stats
+      - generic [ref=e20]:
+        - strong [ref=e21]: Server state cache
+        - text: 2026-07-14T11:10:53.626Z
+  - alert [ref=e22]

@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Denovo Canvas BIM Example</title>
+  </head>
+  <body>
+    <main class="shell">
+      <section class="viewport">
+        <div
+          id="stage"
+          class="stage"
+          aria-label="BIM canvas stage"
+          tabindex="0"
+        ></div>
+      </section>
+      <aside class="panel">
+        <p class="eyebrow">BIM · web-ifc</p>
+        <h1>IFC viewer</h1>
+        <p>
+          Loads an IFC file through <code>@denovo/canvas-bim/web-ifc</code>,
+          converts each element to a <code>mesh</code> scene node, and renders
+          it with the Denovo editor.
+        </p>
+        <div class="controls">
+          <button id="reload" type="button">Reload sample</button>
+        </div>
+        <p class="status">
+          Status: <output id="status">idle</output>
+        </p>
+        <p class="count">
+          Elements: <output id="element-count">—</output>
+        </p>
+      </aside>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

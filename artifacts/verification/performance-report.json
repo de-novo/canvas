@@ -1,0 +1,70 @@
+{
+  "workloads": [
+    {
+      "label": "100-boxes",
+      "nodeCount": 100,
+      "sceneNodeCount": 100,
+      "threeChildCount": 6,
+      "contextLostCount": 0,
+      "frameTimeMs": {
+        "p50": 8.600000000000023,
+        "p95": 18.200000000000045,
+        "p99": 249.5,
+        "min": 6.400000000000091,
+        "max": 249.5,
+        "sampleCount": 29
+      },
+      "renderStats": {
+        "drawCalls": 1,
+        "triangles": 1200,
+        "geometries": 1,
+        "textures": 1,
+        "programs": 1
+      }
+    },
+    {
+      "label": "1k-boxes",
+      "nodeCount": 1000,
+      "sceneNodeCount": 1000,
+      "threeChildCount": 6,
+      "contextLostCount": 0,
+      "frameTimeMs": {
+        "p50": 48.59999999999991,
+        "p95": 83.29999999999995,
+        "p99": 325.50000000000006,
+        "min": 40.200000000000045,
+        "max": 325.50000000000006,
+        "sampleCount": 29
+      },
+      "renderStats": {
+        "drawCalls": 1,
+        "triangles": 12000,
+        "geometries": 1,
+        "textures": 1,
+        "programs": 1
+      }
+    },
+    {
+      "label": "10k-boxes",
+      "nodeCount": 10000,
+      "sceneNodeCount": 10000,
+      "threeChildCount": 6,
+      "contextLostCount": 0,
+      "frameTimeMs": {
+        "p50": 91.70000000000027,
+        "p95": 192,
+        "p99": 531.644,
+        "min": 74.89999999999964,
+        "max": 531.644,
+        "sampleCount": 29
+      },
+      "renderStats": {
+        "drawCalls": 1,
+        "triangles": 120000,
+        "geometries": 1,
+        "textures": 1,
+        "programs": 1
+      }
+    }
+  ]
+}
