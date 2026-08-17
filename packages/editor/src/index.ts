@@ -237,6 +237,7 @@ export type {
   CanvasLayoutInput,
   CanvasLayoutResult
 } from "./layout/adapters.js";
+export { applyCommandsToDocument } from "./commands/apply-document.js";
 export {
   createEditor,
   connectEditorToRuntime,
@@ -925,15 +926,50 @@ async function selectNodesInBounds(
 }
 
 async function deleteSelectedNodes(context: CanvasToolContext): Promise<void> {
-  const ids = context.getSelection().ids;
+  const selected = new Set(context.getSelection().ids);
 
-  for (const nodeId of ids) {
-    await context.dispatch({
-      label: "Delete node",
-      nodeId,
-      type: "node.remove"
-    });
+  if (selected.size === 0) {
+    return;
   }
+
+  const nodes = context.getDocument().scene.nodes;
+  const removeIds = new Set(selected);
+
+  for (const node of nodes) {
+    if (
+      node.type === "edge" &&
+      (selected.has(node.sourceId) || selected.has(node.targetId))
+    ) {
+      removeIds.add(node.id);
+    }
+  }
+
+  const ordered = [
+    ...nodes.filter((node) => removeIds.has(node.id) && node.type === "edge"),
+    ...nodes.filter((node) => removeIds.has(node.id) && node.type !== "edge")
+  ];
+
+  if (ordered.length === 0) {
+    return;
+  }
+
+  const commands = ordered.map((node) => ({
+    label: "Delete node",
+    nodeId: node.id,
+    type: "node.remove" as const
+  }));
+
+  const onlyCommand = commands[0];
+  if (commands.length === 1 && onlyCommand) {
+    await context.dispatch(onlyCommand);
+    return;
+  }
+
+  await context.dispatch({
+    commands,
+    label: "Delete",
+    type: "transaction"
+  });
 }
 
 function requireToolHitTest(
@@ -1236,9 +1272,12 @@ function create2DUngroupPatch(
         anchor: transformPoint2(group, child.anchor),
         parentId: group.parentId
       };
-    case "edge":
     case "text":
-    case "html":
+    case "html": {
+      const transform = compose2DTransforms(group, child);
+      return { ...transform, parentId: group.parentId };
+    }
+    case "edge":
       return {
         parentId: group.parentId
       };

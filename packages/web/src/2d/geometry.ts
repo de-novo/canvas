@@ -200,7 +200,8 @@ export function resolveCanvas2DNodeWorldTransform(
     node.type === "rect" ||
     node.type === "circle" ||
     node.type === "group" ||
-    node.type === "text"
+    node.type === "text" ||
+    node.type === "html"
   ) {
     return multiplyCanvas2DMatrices(
       parentWorld,

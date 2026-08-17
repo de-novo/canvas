@@ -116,8 +116,8 @@ export type CreateCanvasOptions = {
     frame: CanvasFrame,
     runtime: WebCanvasRuntime<CanvasMode>
   ) => void;
-  /** When set, `html` nodes are rendered via this callback (returns a DOM element
-   * or HTML string). Lets consumers control node design (Tailwind/shadcn/custom).
+  /** When set, `html` nodes are rendered via this callback. A string is treated
+   * as text (`textContent`), not markup. Return an `HTMLElement` to mount HTML.
    * Only the 2D runtime honors this. */
   renderNode?: Canvas2DRenderNode;
 };

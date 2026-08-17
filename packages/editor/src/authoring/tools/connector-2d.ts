@@ -1,6 +1,6 @@
 import {
   CANVAS_NODE_PORT_SIDES,
-  Canvas2DEdgeNodeSchema,
+  define2DEdge,
   type CanvasAuthoringPreviewForMode,
   type CanvasCreateId,
   type CanvasDocument,
@@ -35,6 +35,8 @@ type ConnectorSession = {
   readonly strokeWidth: number;
   readonly lineStyle: "solid" | "dashed" | "dotted";
   readonly targetArrow: boolean;
+  readonly curve: "straight" | "curved";
+  readonly curveOffset: number;
 };
 
 export function createConnectorTool<const TId extends string>(
@@ -60,6 +62,8 @@ export function createConnectorTool(
   const strokeWidth = options.strokeWidth ?? 2;
   const lineStyle = options.lineStyle ?? "solid";
   const targetArrow = options.targetArrow ?? true;
+  const curve = options.curve ?? "straight";
+  const curveOffset = options.curveOffset ?? 0;
 
   return {
     connectionHandles: true,
@@ -120,7 +124,9 @@ export function createConnectorTool(
           stroke,
           strokeWidth,
           lineStyle,
-          targetArrow
+          targetArrow,
+          curve,
+          curveOffset
         });
         return;
       }
@@ -163,18 +169,22 @@ export function createConnectorTool(
             const targetHandle = parseConnectorHandleSide(targetHit.subTarget);
             // The grabbed sides become the edge's ports, so the committed edge
             // attaches exactly where the user picked it up and dropped it.
-            const edge = Canvas2DEdgeNodeSchema.parse({
+            const edge = define2DEdge({
               id: createAuthoringNodeId(
                 session.createId,
                 session.document,
                 "2d",
                 "edge"
               ),
+              type: "edge",
               layerId: session.layerId,
               sourceId: session.sourceId,
               targetId: targetHit.nodeId,
               sourcePort: session.sourceHandle,
               targetPort: targetHandle,
+              routing: "straight",
+              curve: session.curve,
+              curveOffset: session.curveOffset,
               stroke: session.stroke,
               strokeWidth: session.strokeWidth,
               lineStyle: session.lineStyle,

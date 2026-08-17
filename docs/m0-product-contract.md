@@ -128,9 +128,20 @@ M0 established this initial built-in scene vocabulary:
 - shared guarantees: stable id, transform data, serializable JSON shape.
 
 The canonical `0.2.0` schema extends both mode-specific unions with `group`,
-`measurement`, and `annotation`. Every scene has at least one ordered layer,
-and every node has one `layerId` plus explicit `visible`, `locked`, `metadata`,
-and nullable `parentId` fields. These additions remain renderer-independent.
+`measurement`, and `annotation`. The same version also includes the later
+built-ins that shipped without a version bump and are now frozen in place:
+
+- 2D: `edge`, `text`, `html` — see [M8 Diagram Contract](./m8-diagram-contract.md);
+- 3D: `mesh` (inline positions/indices; large IFC/glTF geometry still belongs
+  on `AssetRef`).
+
+`0.2.0` is not getting a `0.3.0` successor for those kinds. New built-in
+node kinds after this freeze require a schema migration or a namespaced
+plugin node.
+
+Every scene has at least one ordered layer, and every node has one `layerId`
+plus explicit `visible`, `locked`, `metadata`, and nullable `parentId`
+fields. These additions remain renderer-independent.
 
 Scene dimension is strict at public parse boundaries:
 

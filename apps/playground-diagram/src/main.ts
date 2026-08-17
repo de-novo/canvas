@@ -7,6 +7,7 @@ import {
   createEditor,
   createSelectTool,
   defineDocument,
+  type Canvas2DNode,
   type CanvasSceneInput
 } from "@denovo/canvas";
 import {
@@ -95,13 +96,28 @@ const scene: CanvasSceneInput = {
       html: `<div class="card"><strong>HTML Card</strong><span>node-b</span></div>`,
       width: 120,
       height: 48
+    },
+    {
+      id: "text-probe",
+      layerId: "main",
+      type: "html",
+      position: [40, 340],
+      html: "plain-text-card",
+      width: 140,
+      height: 24
     }
   ]
 };
 
-const renderNode = (node: any, _context: Canvas2DRenderNodeContext): HTMLElement | string => {
+const renderNode = (
+  node: Canvas2DNode,
+  _context: Canvas2DRenderNodeContext
+): HTMLElement | string => {
   if (node.type !== "html") {
     return "";
+  }
+  if (node.id === "text-probe") {
+    return node.html;
   }
   const el = document.createElement("div");
   el.innerHTML = node.html;
@@ -190,11 +206,14 @@ if (statusOutput) {
 moveButton?.addEventListener("click", () => {
   const nextScene: CanvasSceneInput = {
     ...scene,
-    nodes: (scene.nodes ?? []).map((node: any) =>
-      node.id === "node-a"
-        ? { ...node, position: [node.position[0] + 24, node.position[1] + 12] }
-        : node
-    )
+    nodes: (scene.nodes ?? []).map((node) => {
+      if (node.id !== "node-a" || !("position" in node) || !node.position) {
+        return node;
+      }
+      const x = node.position[0] ?? 0;
+      const y = node.position[1] ?? 0;
+      return { ...node, position: [x + 24, y + 12] as [number, number] };
+    })
   };
   runtime.update(nextScene);
   if (statusOutput) {

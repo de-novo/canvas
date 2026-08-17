@@ -229,6 +229,279 @@ for (const object of [near, far, side, instanceMesh]) {
 
 // Reaching here means every assertion above held; a failure throws and the
 // non-zero exit code reports it.
+const web = await import(
+  pathToFileURL(path.join(root, "packages/web/dist/index.js")).href
+);
+
+{
+  const scene = core.defineScene({
+    id: "edge-path-scene",
+    layers: [{ id: "main", name: "Main" }],
+    mode: "2d",
+    nodes: [
+      { id: "a", layerId: "main", position: [0, 0], size: [40, 40], type: "rect" },
+      { id: "b", layerId: "main", position: [120, 0], size: [40, 40], type: "rect" },
+      {
+        id: "orthogonal",
+        layerId: "main",
+        routing: "orthogonal",
+        sourceId: "a",
+        sourcePort: "right",
+        targetId: "b",
+        targetPort: "left",
+        type: "edge"
+      },
+      {
+        id: "quadratic",
+        curve: "curved",
+        curveOffset: 20,
+        layerId: "main",
+        routing: "straight",
+        sourceId: "a",
+        targetId: "b",
+        type: "edge"
+      },
+      {
+        id: "legacy-curved-routing",
+        layerId: "main",
+        routing: "curved",
+        sourceId: "a",
+        targetId: "b",
+        type: "edge"
+      }
+    ]
+  });
+  const graph = web.createCanvas2DSceneGraph(scene);
+  const orthogonal = web.resolveCanvas2DEdgeGeometry(
+    scene.nodes.find((node) => node.id === "orthogonal"),
+    graph
+  );
+  assert.ok(orthogonal.waypoints.length > 0, "orthogonal routing must emit waypoints");
+  const quadratic = web.resolveCanvas2DEdgeGeometry(
+    scene.nodes.find((node) => node.id === "quadratic"),
+    graph
+  );
+  assert.ok(quadratic.control, "curve + curveOffset must produce a quadratic control");
+  const ignored = web.resolveCanvas2DEdgeGeometry(
+    scene.nodes.find((node) => node.id === "legacy-curved-routing"),
+    graph
+  );
+  assert.equal(ignored.control, null);
+  assert.deepEqual(ignored.waypoints, []);
+}
+
+{
+  const scene = core.defineScene({
+    id: "html-transform-scene",
+    layers: [{ id: "main", name: "Main" }],
+    mode: "2d",
+    nodes: [
+      {
+        height: 48,
+        html: "card",
+        id: "card",
+        layerId: "main",
+        position: [200, 260],
+        type: "html",
+        width: 120
+      }
+    ]
+  });
+  const graph = web.createCanvas2DSceneGraph(scene);
+  const card = scene.nodes.find((node) => node.id === "card");
+  const center = web.resolveCanvas2DNodeWorldCenter(card, graph);
+  assert.deepEqual(center, [200, 260]);
+}
+
+{
+  const classify = web.classifyCanvas2DWheelIntent;
+  const limits = {
+    enablePan: true,
+    enableZoom: true,
+    maxZoom: 16,
+    minZoom: 0.1,
+    wheelZoomSensitivity: 0.0015
+  };
+  const view = { offset: [0, 0], zoom: 1 };
+
+  assert.equal(
+    classify({
+      ctrlKey: true,
+      metaKey: false,
+      shiftKey: false,
+      deltaX: 12,
+      deltaY: -40,
+      deltaMode: 0
+    }),
+    "zoom",
+    "pinch (ctrl+wheel) must zoom even when deltaX is non-zero"
+  );
+  assert.equal(
+    classify({
+      ctrlKey: false,
+      metaKey: true,
+      shiftKey: false,
+      deltaX: 0,
+      deltaY: 20,
+      deltaMode: 0
+    }),
+    "zoom",
+    "meta+wheel must zoom"
+  );
+  assert.equal(
+    classify({
+      ctrlKey: false,
+      metaKey: false,
+      shiftKey: true,
+      deltaX: 0,
+      deltaY: 30,
+      deltaMode: 0
+    }),
+    "pan",
+    "shift+wheel must pan"
+  );
+  assert.equal(
+    classify({
+      ctrlKey: false,
+      metaKey: false,
+      shiftKey: false,
+      deltaX: 0,
+      deltaY: 3,
+      deltaMode: 1
+    }),
+    "zoom",
+    "line-mode mouse wheel must zoom"
+  );
+  assert.equal(
+    classify({
+      ctrlKey: false,
+      metaKey: false,
+      shiftKey: false,
+      deltaX: 4,
+      deltaY: 18,
+      deltaMode: 0
+    }),
+    "pan",
+    "pixel-mode event with X is a trackpad pan"
+  );
+  assert.equal(
+    classify({
+      ctrlKey: false,
+      metaKey: false,
+      shiftKey: false,
+      deltaX: 0,
+      deltaY: 12,
+      deltaMode: 0
+    }),
+    "pan",
+    "small vertical pixel ticks are a trackpad pan, not zoom"
+  );
+  assert.equal(
+    classify({
+      ctrlKey: false,
+      metaKey: false,
+      shiftKey: false,
+      deltaX: 0,
+      deltaY: 120,
+      deltaMode: 0
+    }),
+    "zoom",
+    "large discrete vertical pixel jumps are a mouse-wheel zoom"
+  );
+
+  const gesture = new web.Canvas2DWheelGesture();
+  assert.equal(
+    gesture.classify({
+      ctrlKey: false,
+      metaKey: false,
+      shiftKey: false,
+      deltaX: 0,
+      deltaY: 8,
+      deltaMode: 0,
+      timeStamp: 1000
+    }),
+    "pan"
+  );
+  assert.equal(
+    gesture.classify({
+      ctrlKey: false,
+      metaKey: false,
+      shiftKey: false,
+      deltaX: 0,
+      deltaY: 80,
+      deltaMode: 0,
+      timeStamp: 1040
+    }),
+    "pan",
+    "a trackpad flick must stay pan once the burst started as pan"
+  );
+  assert.equal(
+    gesture.classify({
+      ctrlKey: true,
+      metaKey: false,
+      shiftKey: false,
+      deltaX: 6,
+      deltaY: -30,
+      deltaMode: 0,
+      timeStamp: 1050
+    }),
+    "zoom",
+    "pinch must break a pan lock"
+  );
+
+  const pinched = web.applyCanvas2DWheelNavigation(
+    view,
+    {
+      ctrlKey: true,
+      metaKey: false,
+      shiftKey: false,
+      deltaX: 8,
+      deltaY: -40,
+      deltaMode: 0
+    },
+    "zoom",
+    limits,
+    [100, 80]
+  );
+  assert.equal(pinched.consumed, true);
+  assert.ok(pinched.view.zoom > view.zoom, "ctrl+wheel must change zoom");
+
+  const panned = web.applyCanvas2DWheelNavigation(
+    view,
+    {
+      ctrlKey: false,
+      metaKey: false,
+      shiftKey: false,
+      deltaX: 10,
+      deltaY: 4,
+      deltaMode: 0
+    },
+    "pan",
+    limits,
+    [0, 0]
+  );
+  assert.equal(panned.consumed, true);
+  assert.deepEqual(panned.view.zoom, 1);
+  assert.ok(panned.view.offset[0] !== 0 || panned.view.offset[1] !== 0);
+
+  const blocked = web.applyCanvas2DWheelNavigation(
+    view,
+    {
+      ctrlKey: false,
+      metaKey: false,
+      shiftKey: false,
+      deltaX: 10,
+      deltaY: 0,
+      deltaMode: 0
+    },
+    "pan",
+    { ...limits, enablePan: false },
+    [0, 0]
+  );
+  assert.equal(blocked.consumed, false);
+  assert.deepEqual(blocked.view, view);
+}
+
 check("hit-testing-suite", () => {});
 
 report();

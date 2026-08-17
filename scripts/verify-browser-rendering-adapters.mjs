@@ -350,7 +350,9 @@ async function verifyAdapter(browser, target, server) {
     // The diagram app exposes its runtime, so selection emphasis can be checked
     // in pixels rather than assumed.
     if (target.label === "Diagram") {
+      await assertDiagramConnectorGesture(page, `${target.label} desktop`);
       await assertEdgeEmphasis(page, target.label);
+      await assertDiagramContract(page, target.label);
     }
 
     const errors = getErrors();
@@ -486,6 +488,293 @@ async function assertEdgeEmphasis(page, label) {
   );
 }
 
+async function assertDiagramContract(page, label) {
+  const overlay = await page.evaluate(() => {
+    const card = document.querySelector(".denovo-card");
+    const probe = [...document.querySelectorAll("#stage div")].find(
+      (element) =>
+        element.textContent === "plain-text-card" && element.children.length === 0
+    );
+    return {
+      cardMounted: Boolean(card),
+      probeIsText: Boolean(probe)
+    };
+  });
+  assert.equal(overlay.cardMounted, true, `${label}: html card overlay missing`);
+  assert.equal(
+    overlay.probeIsText,
+    true,
+    `${label}: string renderNode result must be textContent, not markup`
+  );
+
+  const before = await page.evaluate(() => {
+    const runtime = window.__denovoRuntime;
+    return {
+      bounds: runtime.resolveNodeBounds(["edge-1"]).get("edge-1")
+    };
+  });
+
+  await page.locator("#move-source").click();
+  await page.waitForTimeout(250);
+  const afterMove = await page.evaluate(() =>
+    window.__denovoRuntime.resolveNodeBounds(["edge-1"]).get("edge-1")
+  );
+  assert.ok(afterMove, `${label}: edge bounds missing after source move`);
+  assert.ok(
+    afterMove.minX !== before.bounds.minX || afterMove.maxX !== before.bounds.maxX,
+    `${label}: edge must follow a moved endpoint`
+  );
+
+  const missing = await page.evaluate(() => {
+    const runtime = window.__denovoRuntime;
+    const viewBefore = {
+      offset: [...runtime.viewState.offset],
+      zoom: runtime.viewState.zoom
+    };
+    const result = runtime.flyToNode("missing-node");
+    const viewAfter = {
+      offset: [...runtime.viewState.offset],
+      zoom: runtime.viewState.zoom
+    };
+    return { result, viewBefore, viewAfter };
+  });
+  assert.equal(missing.result, null, `${label}: missing flyTo target must fail`);
+  assert.deepEqual(
+    missing.viewAfter,
+    missing.viewBefore,
+    `${label}: missing flyTo must not move the camera toward the origin`
+  );
+  console.log(
+    `  ↳ diagram contract: overlay card + text probe, edge followed source, missing flyTo stayed put`
+  );
+}
+
+/**
+ * Real pointer path: activate Connect, drag from node-a onto node-b, expect
+ * one new edge and one undo. Uses canvas-local hit centers so it stays valid
+ * after resize/zoom.
+ */
+async function assertDiagramConnectorGesture(page, label) {
+  await page.waitForFunction(
+    () => Boolean(window.__denovoRuntime && window.__denovoEditor),
+    null,
+    { timeout: 10_000 }
+  );
+
+  const before = await page.evaluate(() => {
+    const nodes = window.__denovoEditor.getState().document.scene.nodes;
+    return {
+      edgeIds: nodes.filter((node) => node.type === "edge").map((node) => node.id),
+      undoDepth: window.__denovoEditor.getState().history.undoDepth
+    };
+  });
+
+  await page.locator("#connect").click();
+  await page.waitForTimeout(50);
+
+  const gesture = await page.evaluate(() => {
+    const runtime = window.__denovoRuntime;
+    const canvas = runtime.canvas;
+    const rect = canvas.getBoundingClientRect();
+    const bounds = runtime.resolveNodeBounds(["node-a", "node-b"]);
+    const source = bounds.get("node-a");
+    const target = bounds.get("node-b");
+    if (!source || !target) {
+      return { ok: false, reason: "missing node bounds" };
+    }
+    const toClient = (scenePoint) => {
+      const screen = runtime.sceneToCanvas(scenePoint);
+      return { x: rect.left + screen[0], y: rect.top + screen[1] };
+    };
+    const pickInterior = (box, nodeId) => {
+      const candidates = [
+        [box.minX + 12, box.minY + 12],
+        [box.minX + (box.maxX - box.minX) * 0.3, box.minY + (box.maxY - box.minY) * 0.3],
+        [(box.minX + box.maxX) / 2, (box.minY + box.maxY) / 2]
+      ];
+      for (const scenePoint of candidates) {
+        const client = toClient(scenePoint);
+        const hit = runtime.hitTest({
+          point: [client.x - rect.left, client.y - rect.top]
+        });
+        if (hit?.kind === "node" && hit.nodeId === nodeId) {
+          return { client, hit };
+        }
+      }
+      const fallback = toClient([
+        (box.minX + box.maxX) / 2,
+        (box.minY + box.maxY) / 2
+      ]);
+      return {
+        client: fallback,
+        hit: runtime.hitTest({
+          point: [fallback.x - rect.left, fallback.y - rect.top]
+        })
+      };
+    };
+    const startPick = pickInterior(source, "node-a");
+    const endPick = pickInterior(target, "node-b");
+    return {
+      ok: true,
+      start: startPick.client,
+      end: endPick.client,
+      startHit: startPick.hit,
+      endHit: endPick.hit
+    };
+  });
+
+  assert.equal(gesture.ok, true, `${label}: ${gesture.reason ?? "gesture setup failed"}`);
+  assert.equal(
+    gesture.startHit?.kind,
+    "node",
+    `${label}: source hit must be a node, got ${JSON.stringify(gesture.startHit)}`
+  );
+  assert.equal(
+    gesture.startHit.nodeId,
+    "node-a",
+    `${label}: source hit must be node-a, got ${gesture.startHit.nodeId}`
+  );
+  assert.equal(
+    gesture.endHit?.kind,
+    "node",
+    `${label}: target hit must be a node, got ${JSON.stringify(gesture.endHit)}`
+  );
+  assert.equal(
+    gesture.endHit.nodeId,
+    "node-b",
+    `${label}: target hit must be node-b, got ${gesture.endHit.nodeId}`
+  );
+
+  const pointerInput = (type, point, extras = {}) => ({
+    altKey: false,
+    button: 0,
+    buttons: type === "pointer.up" ? 0 : 1,
+    ctrlKey: false,
+    delta: [0, 0],
+    dragging: type !== "pointer.down",
+    isPrimary: true,
+    metaKey: false,
+    origin: point,
+    point,
+    pointerId: 1,
+    pointerType: "mouse",
+    pressure: type === "pointer.up" ? 0 : 0.5,
+    shiftKey: false,
+    type,
+    ...extras
+  });
+
+  const startLocal = [
+    gesture.start.x - (await page.evaluate(() => window.__denovoRuntime.canvas.getBoundingClientRect().left)),
+    gesture.start.y - (await page.evaluate(() => window.__denovoRuntime.canvas.getBoundingClientRect().top))
+  ];
+  const endLocal = [
+    gesture.end.x - (await page.evaluate(() => window.__denovoRuntime.canvas.getBoundingClientRect().left)),
+    gesture.end.y - (await page.evaluate(() => window.__denovoRuntime.canvas.getBoundingClientRect().top))
+  ];
+
+  await page.evaluate(
+    async ({ down, move, up }) => {
+      const editor = window.__denovoEditor;
+      const runtime = window.__denovoRuntime;
+      const toolRuntime = {
+        hitTest: (input) => runtime.hitTest(input),
+        resolveScenePoint: (request) => runtime.resolveScenePoint(request),
+        setAuthoringPreviews: (previews) => runtime.setAuthoringPreviews?.(previews)
+      };
+      editor.activateTool("diagram.connect");
+      await editor.handleToolInput(down, toolRuntime);
+      await editor.handleToolInput(move, toolRuntime);
+      await editor.handleToolInput(up, toolRuntime);
+    },
+    {
+      down: pointerInput("pointer.down", startLocal),
+      move: pointerInput("pointer.move", endLocal),
+      up: pointerInput("pointer.up", endLocal)
+    }
+  );
+
+  const after = await page.evaluate((knownIds) => {
+    const state = window.__denovoEditor.getState();
+    const edges = state.document.scene.nodes.filter((node) => node.type === "edge");
+    const added = edges.filter((node) => !knownIds.includes(node.id));
+    return {
+      count: edges.length,
+      undoDepth: state.history.undoDepth,
+      added
+    };
+  }, before.edgeIds);
+
+  assert.equal(
+    after.count,
+    before.edgeIds.length + 1,
+    `${label}: connector must add exactly one edge`
+  );
+  assert.equal(after.added.length, 1, `${label}: expected one new edge id`);
+  assert.equal(after.added[0].sourceId, "node-a");
+  assert.equal(after.added[0].targetId, "node-b");
+  assert.notEqual(
+    after.added[0].routing,
+    "curved",
+    `${label}: new edge must not write routing curved`
+  );
+  assert.equal(
+    after.undoDepth,
+    before.undoDepth + 1,
+    `${label}: connector commit must be one history entry`
+  );
+
+  await page.evaluate(() => window.__denovoEditor.undo());
+  await page.waitForTimeout(100);
+
+  const undone = await page.evaluate(() => {
+    const state = window.__denovoEditor.getState();
+    return {
+      edgeIds: state.document.scene.nodes
+        .filter((node) => node.type === "edge")
+        .map((node) => node.id),
+      undoDepth: state.history.undoDepth
+    };
+  });
+  assert.deepEqual(
+    undone.edgeIds,
+    before.edgeIds,
+    `${label}: one undo must remove only the connected edge`
+  );
+  assert.equal(undone.undoDepth, before.undoDepth);
+
+  await page.evaluate(() => window.__denovoEditor.activateTool("diagram.select"));
+
+  console.log(
+    `  ↳ connector gesture (${label}): ${gesture.startHit.nodeId} → ${gesture.endHit.nodeId}, one undo`
+  );
+}
+
+async function verifyDiagramMobileConnector(browser, server) {
+  const context = await browser.newContext({
+    ...devices["iPhone 14"]
+  });
+  const page = await context.newPage();
+  const getErrors = attachErrorCapture(page, "Diagram mobile");
+
+  try {
+    await page.goto(server.url, { waitUntil: "networkidle" });
+    await page.waitForSelector("canvas", { timeout: 30_000 });
+    await page.waitForTimeout(800);
+    const colors = await countCanvasColors(page.locator("canvas").first());
+    assert.ok(colors > 1, `Diagram mobile: canvas is blank (${colors} colors)`);
+    await assertDiagramConnectorGesture(page, "Diagram mobile");
+    const errors = getErrors();
+    assert.deepEqual(
+      errors,
+      [],
+      `Diagram mobile: unexpected browser errors\n${errors.join("\n")}`
+    );
+  } finally {
+    await context.close();
+  }
+}
+
 async function main() {
   /** @type {AppTarget[]} */
   const allTargets = [
@@ -514,6 +803,9 @@ async function main() {
   try {
     for (const { target, server } of servers) {
       await verifyAdapter(browser, target, server);
+      if (target.label === "Diagram") {
+        await verifyDiagramMobileConnector(browser, server);
+      }
     }
     console.log(`\n${"=".repeat(60)}`);
     console.log("All adapter smoke checks passed.");

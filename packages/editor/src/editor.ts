@@ -2,6 +2,7 @@ import {
   CanvasToolInputSchema,
   type CanvasCommand,
   type CanvasStorageAdapter,
+  type CanvasSaveResult,
   type CanvasCommandResult,
   type CanvasCreateId,
   type CanvasDocument,
@@ -1082,46 +1083,37 @@ export function createEditor(options: CreateCanvasEditorOptions): CanvasEditor {
       return [];
     }
 
-    const clipboardIds = new Set(clipboard.map((node) => node.id));
-    const added: NodeId[] = [];
+    const idMap = new Map<NodeId, NodeId>();
+    let documentForIds = snapshot.document;
 
     for (const node of clipboard) {
       const nextId = createId({
-        document: snapshot.document,
-        mode: snapshot.document.scene.mode,
+        document: documentForIds,
+        mode: documentForIds.scene.mode,
         type: node.type
       } as Parameters<CanvasCreateId>[0]);
-
-      // Only nodes whose referenced peers are also being pasted can be
-      // remapped safely; anything else keeps pointing at the original.
-      const pasted = {
-        ...node,
-        id: nextId,
-        ...("position" in node && Array.isArray(node.position)
-          ? {
-              position: [
-                node.position[0] + offset[0],
-                node.position[1] + offset[1]
-              ]
-            }
-          : {}),
-        ...(node.parentId !== null && clipboardIds.has(node.parentId)
-          ? {}
-          : node.parentId === null
-            ? {}
-            : { parentId: null })
-      };
-
-      await dispatch({
-        label: "Paste",
-        node: pasted,
-        type: "node.add"
-      } as CanvasCommand);
-      added.push(nextId);
+      idMap.set(node.id, nextId);
+      documentForIds = {
+        ...documentForIds,
+        scene: {
+          ...documentForIds.scene,
+          nodes: [...documentForIds.scene.nodes, { ...node, id: nextId }]
+        }
+      } as CanvasDocument;
     }
 
+    const remapped = orderNodesForPaste(clipboard).map((node) =>
+      remapPastedNode(node, idMap, offset)
+    );
+    const added = remapped.map((node) => node.id);
+    const commands: CanvasCommand[] = remapped.map((node) => ({
+      label: "Paste",
+      node,
+      type: "node.add"
+    }));
+
     if (added.length > 0) {
-      await dispatch({
+      commands.push({
         label: "Paste",
         selection: {
           ids: added,
@@ -1129,6 +1121,16 @@ export function createEditor(options: CreateCanvasEditorOptions): CanvasEditor {
           hoveredId: snapshot.selection.hoveredId
         },
         type: "selection.set"
+      });
+    }
+
+    if (commands.length === 1) {
+      await dispatch(commands[0]!);
+    } else if (commands.length > 1) {
+      await dispatch({
+        commands,
+        label: "Paste",
+        type: "transaction"
       });
     }
 
@@ -1278,14 +1280,19 @@ export function connectEditorToRuntime(
 
 export type ConnectEditorToStorageOptions = {
   readonly debounceMs?: number;
+  /**
+   * Called when `saveDocument` reports an optimistic-concurrency conflict.
+   * The bridge does not rebase `baseRevision` or overwrite the server document.
+   */
+  readonly onConflict?: (result: Extract<CanvasSaveResult, { ok: false; reason: "conflict" }>) => void;
 };
 
 /**
  * Connects an editor to a `CanvasStorageAdapter`. Listens for
  * `transaction.committed` persistence events and saves the document (debounced)
- * via `adapter.saveDocument`, using the editor's `baseRevision` for
- * optimistic-concurrency conflict detection. On a server conflict, the editor's
- * `baseRevision` is reconciled to the server's revision.
+ * via `adapter.saveDocument`, using the last acknowledged server revision as
+ * `baseRevision`. On conflict the local document is left unchanged and
+ * `onConflict` runs; the next save still uses the acknowledged revision.
  *
  * Returns a disconnect function. Pending saves are cancelled (not flushed) on
  * disconnect; callers that need a final flush should call `adapter.saveDocument`
@@ -1299,7 +1306,7 @@ export function connectEditorToStorage(
   const debounceMs = options.debounceMs ?? 0;
   let pending: ReturnType<typeof setTimeout> | null = null;
   let latestDocument = editor.getState().document;
-  let latestBaseRevision = editor.getBaseRevision();
+  let acknowledgedRevision = editor.getBaseRevision();
   let disconnected = false;
 
   const flush = async () => {
@@ -1308,7 +1315,7 @@ export function connectEditorToStorage(
     }
 
     const result = await adapter.saveDocument(latestDocument, {
-      baseRevision: latestBaseRevision
+      baseRevision: acknowledgedRevision
     });
 
     if (disconnected) {
@@ -1316,9 +1323,13 @@ export function connectEditorToStorage(
     }
 
     if (result.ok) {
+      acknowledgedRevision = result.revision;
       editor.setBaseRevision(result.revision);
-    } else if (result.reason === "conflict") {
-      editor.setBaseRevision(result.serverRevision);
+      return;
+    }
+
+    if (result.reason === "conflict") {
+      options.onConflict?.(result);
     }
   };
 
@@ -1332,7 +1343,6 @@ export function connectEditorToStorage(
     }
 
     latestDocument = editor.getState().document;
-    latestBaseRevision = editor.getBaseRevision();
 
     if (pending) {
       clearTimeout(pending);
@@ -1358,6 +1368,107 @@ export function connectEditorToStorage(
       pending = null;
     }
   };
+}
+
+function orderNodesForPaste(nodes: readonly CanvasNode[]): CanvasNode[] {
+  const remaining = new Map(nodes.map((node) => [node.id, node]));
+  const ordered: CanvasNode[] = [];
+
+  while (remaining.size > 0) {
+    const ready = [...remaining.values()].filter((node) => {
+      if (node.type === "edge") {
+        return !remaining.has(node.sourceId) && !remaining.has(node.targetId);
+      }
+
+      return node.parentId === null || !remaining.has(node.parentId);
+    });
+
+    if (ready.length === 0) {
+      ordered.push(...remaining.values());
+      break;
+    }
+
+    for (const node of ready) {
+      remaining.delete(node.id);
+      ordered.push(node);
+    }
+  }
+
+  return ordered;
+}
+
+function remapPastedNode(
+  node: CanvasNode,
+  idMap: ReadonlyMap<NodeId, NodeId>,
+  offset: readonly [number, number]
+): CanvasNode {
+  const nextId = idMap.get(node.id);
+
+  if (nextId === undefined) {
+    throw new CanvasEditorError(
+      "invalid-command",
+      `Paste is missing a remapped id for ${node.id}.`
+    );
+  }
+
+  const parentId =
+    node.parentId === null ? null : (idMap.get(node.parentId) ?? null);
+
+  if (node.type === "edge") {
+    return {
+      ...node,
+      id: nextId,
+      parentId,
+      sourceId: idMap.get(node.sourceId) ?? node.sourceId,
+      targetId: idMap.get(node.targetId) ?? node.targetId
+    };
+  }
+
+  if (node.type === "annotation") {
+    return {
+      ...node,
+      id: nextId,
+      parentId,
+      targetId:
+        node.targetId === null ? null : (idMap.get(node.targetId) ?? node.targetId),
+      anchor: offsetPoint(node.anchor, offset)
+    } as CanvasNode;
+  }
+
+  if (node.type === "measurement") {
+    return {
+      ...node,
+      id: nextId,
+      parentId,
+      start: offsetPoint(node.start, offset),
+      end: offsetPoint(node.end, offset)
+    } as CanvasNode;
+  }
+
+  if ("position" in node && Array.isArray(node.position)) {
+    return {
+      ...node,
+      id: nextId,
+      parentId,
+      position: offsetPoint(node.position, offset)
+    } as CanvasNode;
+  }
+
+  return {
+    ...node,
+    id: nextId,
+    parentId
+  };
+}
+
+function offsetPoint(
+  value: readonly number[],
+  offset: readonly [number, number]
+): number[] {
+  const next = [...value];
+  next[0] = (next[0] ?? 0) + offset[0];
+  next[1] = (next[1] ?? 0) + offset[1];
+  return next;
 }
 
 

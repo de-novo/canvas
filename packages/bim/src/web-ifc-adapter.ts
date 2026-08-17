@@ -9,11 +9,12 @@
  * @module @denovo/canvas-bim/web-ifc
  */
 
-import type {
-  Canvas3DNode,
-  CanvasLayer,
-  CanvasScene,
-  JsonValue
+import {
+  defineScene,
+  type Canvas3DNode,
+  type CanvasLayer,
+  type CanvasScene,
+  type JsonValue
 } from "@denovo/canvas-core";
 import { IfcAPI } from "web-ifc";
 
@@ -96,6 +97,14 @@ export class WebIfcBimAdapter implements BimAdapter {
     }
 
     const api = await getIfcApi(this.wasm);
+    if (this.staged) {
+      try {
+        api.CloseModel(this.staged.modelID);
+      } catch {
+        // Best-effort: a failed close must not block loading the next model.
+      }
+      this.staged = null;
+    }
     const modelID = api.OpenModel(new Uint8Array(source.data), {
       COORDINATE_TO_ORIGIN: true
     });
@@ -152,26 +161,20 @@ export class WebIfcBimAdapter implements BimAdapter {
       });
     }
 
-    const scene = {
+    return defineScene({
       id: source.name ?? "ifc-scene",
-      mode: "3d" as const,
+      mode: "3d",
       background: "#0f172a",
       layers: Array.from(layers.values()),
       nodes,
       render: {
-        loop: "demand" as const,
+        loop: "demand",
         dpr: 1.5,
         frustumCulling: true,
         batch: false
       },
-      camera: {
-        position: [0, 0, 0] as [number, number, number],
-        target: [0, 0, 0] as [number, number, number],
-        fov: 50
-      }
-    };
-
-    return scene as unknown as CanvasScene;
+      camera: frameCameraForMeshes(nodes)
+    });
   }
 
   async dispose(): Promise<void> {
@@ -361,9 +364,9 @@ function transformPoint(
   z: number
 ): [number, number, number] {
   return [
-    at(flat, 0) * x + at(flat, 1) * y + at(flat, 2) * z + at(flat, 3),
-    at(flat, 4) * x + at(flat, 5) * y + at(flat, 6) * z + at(flat, 7),
-    at(flat, 8) * x + at(flat, 9) * y + at(flat, 10) * z + at(flat, 11)
+    at(flat, 0) * x + at(flat, 4) * y + at(flat, 8) * z + at(flat, 12),
+    at(flat, 1) * x + at(flat, 5) * y + at(flat, 9) * z + at(flat, 13),
+    at(flat, 2) * x + at(flat, 6) * y + at(flat, 10) * z + at(flat, 14)
   ];
 }
 
@@ -373,11 +376,68 @@ function transformNormal(
   y: number,
   z: number
 ): [number, number, number] {
-  // Approximate: apply rotation columns, then normalize. Good enough for
+  // Approximate: apply the linear 3x3, then normalize. Good enough for
   // shading without computing the inverse-transpose.
-  const nx = at(flat, 0) * x + at(flat, 1) * y + at(flat, 2) * z;
-  const ny = at(flat, 4) * x + at(flat, 5) * y + at(flat, 6) * z;
-  const nz = at(flat, 8) * x + at(flat, 9) * y + at(flat, 10) * z;
+  const nx = at(flat, 0) * x + at(flat, 4) * y + at(flat, 8) * z;
+  const ny = at(flat, 1) * x + at(flat, 5) * y + at(flat, 9) * z;
+  const nz = at(flat, 2) * x + at(flat, 6) * y + at(flat, 10) * z;
   const length = Math.hypot(nx, ny, nz) || 1;
   return [nx / length, ny / length, nz / length];
+}
+
+function frameCameraForMeshes(
+  nodes: readonly Canvas3DNode[]
+): {
+  position: [number, number, number];
+  target: [number, number, number];
+  fov: number;
+} {
+  let minX = Infinity;
+  let minY = Infinity;
+  let minZ = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  let maxZ = -Infinity;
+  let found = false;
+
+  for (const node of nodes) {
+    if (node.type !== "mesh") {
+      continue;
+    }
+
+    for (let index = 0; index + 2 < node.positions.length; index += 3) {
+      const x = node.positions[index] ?? 0;
+      const y = node.positions[index + 1] ?? 0;
+      const z = node.positions[index + 2] ?? 0;
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      minZ = Math.min(minZ, z);
+      maxX = Math.max(maxX, x);
+      maxY = Math.max(maxY, y);
+      maxZ = Math.max(maxZ, z);
+      found = true;
+    }
+  }
+
+  if (!found) {
+    return { position: [3, 2, 6], target: [0, 0, 0], fov: 50 };
+  }
+
+  const target: [number, number, number] = [
+    (minX + maxX) / 2,
+    (minY + maxY) / 2,
+    (minZ + maxZ) / 2
+  ];
+  const radius = Math.max(maxX - minX, maxY - minY, maxZ - minZ, 1) / 2;
+  const distance = (radius / Math.tan(((50 * Math.PI) / 180) / 2)) * 1.25;
+
+  return {
+    position: [
+      target[0] + distance * 0.6,
+      target[1] + distance * 0.45,
+      target[2] + distance
+    ],
+    target,
+    fov: 50
+  };
 }

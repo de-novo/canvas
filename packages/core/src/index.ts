@@ -117,10 +117,15 @@ export const MeshNodeSchema = NodeTransformSchema.extend({
   ...CanvasNodeCommonSchemaShape,
   type: z.literal("mesh"),
   color: z.string().min(1).default("#9ca3af"),
-  positions: z.array(z.number()).min(6),
+  positions: z
+    .array(z.number().finite())
+    .min(6)
+    .refine((values) => values.length % 3 === 0, {
+      message: "mesh positions length must be a multiple of 3"
+    }),
   indices: z.array(z.number().int().nonnegative()).min(3),
-  normals: z.array(z.number()).optional(),
-  uvs: z.array(z.number()).optional(),
+  normals: z.array(z.number().finite()).optional(),
+  uvs: z.array(z.number().finite()).optional(),
   wireframe: z.boolean().default(false)
 }).strict();
 
@@ -228,6 +233,25 @@ export const Canvas2DEdgeNodeSchema = z
     targetArrow: z.boolean().default(true)
   })
   .strict();
+
+/**
+ * Write-side routing. `routing: "curved"` remains readable on stored `0.2.0`
+ * documents but is not a third path algorithm; new edges must not write it.
+ */
+export const Canvas2DEdgeRoutingWriteSchema = z.enum([
+  "straight",
+  "orthogonal"
+]);
+export type Canvas2DEdgeRoutingWrite = z.infer<
+  typeof Canvas2DEdgeRoutingWriteSchema
+>;
+
+export type Canvas2DEdgeWriteInput = Omit<
+  z.input<typeof Canvas2DEdgeNodeSchema>,
+  "routing"
+> & {
+  routing?: Canvas2DEdgeRoutingWrite;
+};
 
 export const Canvas2DTextNodeSchema = Node2DTransformSchema.extend({
   ...CanvasNodeCommonSchemaShape,
@@ -1331,6 +1355,9 @@ export type Canvas2DAnnotationNode = z.output<
 export type Canvas3DAnnotationNode = z.output<
   typeof Canvas3DAnnotationNodeSchema
 >;
+export type Canvas2DEdgeNode = z.output<typeof Canvas2DEdgeNodeSchema>;
+export type Canvas2DTextNode = z.output<typeof Canvas2DTextNodeSchema>;
+export type Canvas2DHtmlNode = z.output<typeof Canvas2DHtmlNodeSchema>;
 export type Canvas2DNode = z.output<typeof Canvas2DNodeSchema>;
 export type Canvas3DNode = z.output<typeof Canvas3DNodeSchema>;
 export type CanvasNode = z.output<typeof CanvasNodeSchema>;
@@ -1660,6 +1687,7 @@ type CanonicalNodeSchema =
   | typeof BoxNodeSchema
   | typeof SphereNodeSchema
   | typeof InstancesNodeSchema
+  | typeof MeshNodeSchema
   | typeof Canvas2DGroupNodeSchema
   | typeof Canvas3DGroupNodeSchema
   | typeof Canvas2DMeasurementNodeSchema
@@ -1723,6 +1751,7 @@ const BoxNodePatchSchema = createCanonicalNodePatchSchema(BoxNodeSchema);
 const SphereNodePatchSchema = createCanonicalNodePatchSchema(SphereNodeSchema);
 const InstancesNodePatchSchema =
   createCanonicalNodePatchSchema(InstancesNodeSchema);
+const MeshNodePatchSchema = createCanonicalNodePatchSchema(MeshNodeSchema);
 const Canvas2DGroupNodePatchSchema = createCanonicalNodePatchSchema(
   Canvas2DGroupNodeSchema
 );
@@ -1757,6 +1786,7 @@ export const CanvasNodePatchSchema: z.ZodType<CanvasNodePatch> = z.union([
   BoxNodePatchSchema,
   SphereNodePatchSchema,
   InstancesNodePatchSchema,
+  MeshNodePatchSchema,
   Canvas2DGroupNodePatchSchema,
   Canvas3DGroupNodePatchSchema,
   Canvas2DMeasurementNodePatchSchema,
@@ -1857,6 +1887,7 @@ const CanvasNodeUpdateCommandSchema: z.ZodType<CanvasNodeUpdateCommand> =
       "instances",
       InstancesNodePatchSchema
     ),
+    createNodeUpdateCommandSchema("3d", "mesh", MeshNodePatchSchema),
     createNodeUpdateCommandSchema(
       "3d",
       "group",
@@ -2261,6 +2292,14 @@ export type CanvasPlugin = {
 
 export function defineScene(scene: CanvasSceneInput): CanvasScene {
   return CanvasSceneSchema.parse(scene);
+}
+
+/**
+ * Constructs a canonical `edge` for new writes. Accepts `routing: "straight" |
+ * "orthogonal"` only. Quadratic bends use `curve: "curved"` and `curveOffset`.
+ */
+export function define2DEdge(input: Canvas2DEdgeWriteInput): Canvas2DEdgeNode {
+  return Canvas2DEdgeNodeSchema.parse(input);
 }
 
 export function defineCommand(command: CanvasCommand): CanvasCommand {

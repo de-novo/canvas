@@ -319,6 +319,20 @@ function createRuntime(
 export { createCanvas2D } from "./2d";
 export { createCanvas3D } from "./3d";
 export {
+  resolveCanvas2DEdgeGeometry,
+  resolveCanvas2DNodeWorldCenter
+} from "./2d/geometry";
+export { createCanvas2DSceneGraph } from "./2d/scene-graph";
+export {
+  Canvas2DWheelGesture,
+  classifyCanvas2DWheelIntent,
+  applyCanvas2DWheelNavigation,
+  normalizeWheelDelta,
+  WHEEL_AXIS_EPS,
+  WHEEL_GESTURE_LOCK_MS,
+  WHEEL_MOUSE_PIXEL_NOTCH
+} from "./2d/wheel-navigation";
+export {
   canvasToScenePoint,
   defineCanvas2DViewState,
   fitCanvas2DView,

@@ -21,6 +21,11 @@ The north-star goal is a single infinite-canvas SDK reusable across as many of
 these surfaces as possible — 2D, 3D, BIM, and relational diagrams sharing one
 document model, editor, and persistence layer rather than four parallel stacks.
 
+v1 ships that shared engine, not four products. The first supported surface is
+the embedded 2D/3D editor. BIM and diagram vocabularies are optional packages
+on the same document/editor/persistence spine. They must not redefine the
+public identity or grow core without an M3-style contract.
+
 The product should also make the existing web 3D ecosystem easier to use. A
 developer should not need to solve renderer setup, resize, picking, selection,
 editing commands, undo/redo, storage, and worker plumbing from scratch for every

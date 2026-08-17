@@ -365,10 +365,12 @@ for (const exportName of [
   "connectCanvasToolInput",
   "connectEditorToCanvas",
   "connectEditorToRuntime",
+  "applyCommandsToDocument",
   "create2DShapeTool",
   "create3DPrimitiveTool",
   "create3DSurfacePlacementTool",
   "createAnnotationTool",
+  "createConnectorTool",
   "createCanvas",
   "createCanvas2D",
   "createCanvas3D",
@@ -383,6 +385,7 @@ for (const exportName of [
   "defineCanvasConfig",
   "defineCanvasPlugin",
   "definePluginCommand",
+  "define2DEdge",
   "defineDocument",
   "defineHitResult",
   "defineHitTestInput",
@@ -1944,8 +1947,10 @@ writeFileSync(
   create3DPrimitiveTool,
   create3DSurfacePlacementTool,
   createAnnotationTool,
+  createConnectorTool,
   createDistanceMeasurementTool,
   createEditor,
+  applyCommandsToDocument,
   createGroupNodesCommand,
   createNodeUpdateCommand,
   CanvasPluginError,
@@ -1955,6 +1960,7 @@ writeFileSync(
   defineCanvasConfig,
   defineCanvasPlugin,
   definePluginCommand,
+  define2DEdge,
   defineDocument,
   defineHitResult,
   defineHitTestInput,
@@ -2112,6 +2118,51 @@ const preciseRectMode: "2d" = preciseRectUpdate.nodeMode;
 const preciseRectType: "rect" = preciseRectUpdate.nodeType;
 // @ts-expect-error rect updates cannot use circle-only properties.
 createNodeUpdateCommand(typedRect, { radius: 10 });
+const typedMesh: CanvasNodeByType<"3d", "mesh"> = {
+  color: "#9ca3af",
+  id: "typed-mesh",
+  indices: [0, 1, 2],
+  layerId: "main",
+  locked: false,
+  metadata: {},
+  parentId: null,
+  position: [0, 0, 0],
+  positions: [0, 0, 0, 1, 0, 0, 0, 1, 0],
+  rotation: [0, 0, 0],
+  scale: [1, 1, 1],
+  type: "mesh",
+  visible: true,
+  wireframe: false
+};
+const preciseMeshUpdate = createNodeUpdateCommand(typedMesh, {
+  position: [2, 3, 4]
+});
+const preciseMeshType: "mesh" = preciseMeshUpdate.nodeType;
+void applyCommandsToDocument;
+void preciseMeshType;
+// @ts-expect-error mesh updates cannot use 2D-only size patches.
+createNodeUpdateCommand(typedMesh, { size: [10, 10] });
+const writtenEdge = define2DEdge({
+  id: "typed-edge",
+  layerId: "main",
+  sourceId: "typed-rect",
+  targetId: "typed-rect",
+  routing: "orthogonal",
+  type: "edge"
+});
+const writtenRouting: "straight" | "orthogonal" = writtenEdge.routing === "curved"
+  ? "straight"
+  : writtenEdge.routing;
+void writtenRouting;
+define2DEdge({
+  id: "bad-edge",
+  layerId: "main",
+  // @ts-expect-error new edge writes cannot use routing curved.
+  routing: "curved",
+  sourceId: "typed-rect",
+  targetId: "typed-rect",
+  type: "edge"
+});
 // @ts-expect-error update identities correlate node mode and type.
 const invalidNodeIdentity: CanvasNodeIdentity = { nodeMode: "2d", nodeType: "box" };
 

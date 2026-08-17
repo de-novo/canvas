@@ -422,6 +422,9 @@ importers:
       '@denovo/canvas-core':
         specifier: workspace:*
         version: link:../core
+      '@denovo/canvas-editor':
+        specifier: workspace:*
+        version: link:../editor
       '@denovo/canvas-three':
         specifier: workspace:*
         version: link:../three

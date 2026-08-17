@@ -218,6 +218,88 @@ const checks = [];
   disconnect();
 }
 
+// 5b. Conflict does not rebase the editor onto the server document.
+{
+  const adapter = createMemoryDocumentAdapter();
+  const seeded = await adapter.saveDocument(baseDocument);
+  assert.equal(seeded.ok, true);
+
+  const editor = createEditor({
+    document: seeded.ok ? seeded.document : baseDocument,
+    baseRevision: seeded.ok ? seeded.revision : 0
+  });
+  const conflicts = [];
+  const disconnect = connectEditorToStorage(editor, adapter, {
+    onConflict(result) {
+      conflicts.push(result.serverRevision);
+    }
+  });
+
+  const external = await adapter.saveDocument(
+    {
+      ...baseDocument,
+      scene: {
+        ...baseDocument.scene,
+        nodes: [
+          ...baseDocument.scene.nodes,
+          {
+            id: "external-box",
+            layerId: "default",
+            type: "box",
+            color: "#111827",
+            position: [9, 0, 0],
+            rotation: [0, 0, 0],
+            scale: [1, 1, 1],
+            visible: true,
+            locked: false,
+            metadata: {},
+            parentId: null
+          }
+        ]
+      }
+    },
+    { baseRevision: seeded.ok ? seeded.revision : 0 }
+  );
+  assert.equal(external.ok, true);
+
+  await editor.dispatch({
+    type: "node.add",
+    node: {
+      id: "local-box",
+      layerId: "default",
+      type: "box",
+      color: "#f97316",
+      position: [3, 0, 0],
+      rotation: [0, 0, 0],
+      scale: [1, 1, 1],
+      visible: true,
+      locked: false,
+      metadata: {},
+      parentId: null
+    }
+  });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  assert.ok(conflicts.length >= 1, "stale local save should report a conflict");
+  const stored = await adapter.loadDocument("doc-1");
+  assert.ok(stored);
+  assert.ok(
+    stored.scene.nodes.some((node) => node.id === "external-box"),
+    "server document must keep the external write"
+  );
+  assert.ok(
+    !stored.scene.nodes.some((node) => node.id === "local-box"),
+    "conflict must not overwrite the server with the local document"
+  );
+  assert.ok(
+    editor.getState().document.scene.nodes.some((node) => node.id === "local-box"),
+    "local editor document stays on the local edit"
+  );
+  checks.push("connectEditorToStorage conflict does not overwrite the server");
+
+  disconnect();
+}
+
 // 6. Filesystem adapter round-trips through real JSON files.
 {
   const directory = await mkdtemp(join(tmpdir(), "denovo-fs-"));

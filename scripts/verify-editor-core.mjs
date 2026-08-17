@@ -36,6 +36,8 @@ assert.equal(typeof facade.connectEditorToCanvas, "function");
 assert.equal(typeof facade.createPanOrbitTool, "function");
 assert.equal(typeof facade.createSelectTool, "function");
 assert.equal(typeof facade.createTransformTool, "function");
+assert.equal(typeof editorCore.applyCommandsToDocument, "function");
+assert.equal(typeof facade.applyCommandsToDocument, "function");
 
 const boxUpdateIdentity = { nodeMode: "3d", nodeType: "box" };
 const rectUpdateIdentity = { nodeMode: "2d", nodeType: "rect" };
@@ -1847,6 +1849,285 @@ assertVectorClose(ungroupedRect.position, [2, 26]);
 assertVectorClose(ungroupedRect.scale, [2, 2]);
 assert.ok(Math.abs(ungroupedRect.rotation - Math.PI / 2) <= 1e-9);
 assert.equal(groupingEditor.getState().history.undoDepth, 3);
+
+const textGroupEditor = editorCore.createEditor({
+  document: {
+    id: "text-group-document",
+    scene: {
+      id: "text-group-scene",
+      layers: [{ id: "main", name: "Main" }],
+      mode: "2d",
+      nodes: [
+        {
+          id: "text-group",
+          layerId: "main",
+          position: [10, 20],
+          rotation: 0,
+          scale: [2, 2],
+          type: "group"
+        },
+        {
+          id: "grouped-text",
+          layerId: "main",
+          parentId: "text-group",
+          position: [5, 5],
+          text: "label",
+          type: "text"
+        }
+      ]
+    }
+  }
+});
+await textGroupEditor.dispatch(
+  editorCore.createUngroupNodesCommand(
+    textGroupEditor.getState().document,
+    "text-group"
+  )
+);
+const ungroupedText = textGroupEditor
+  .getState()
+  .document.scene.nodes.find((node) => node.id === "grouped-text");
+assertVectorClose(ungroupedText.position, [20, 30]);
+assertVectorClose(ungroupedText.scale, [2, 2]);
+
+const meshEditor = editorCore.createEditor({
+  document: {
+    id: "mesh-update-document",
+    scene: {
+      id: "mesh-update-scene",
+      layers: [{ id: "main", name: "Main" }],
+      mode: "3d",
+      nodes: [
+        {
+          id: "mesh-1",
+          indices: [0, 1, 2],
+          layerId: "main",
+          positions: [0, 0, 0, 1, 0, 0, 0, 1, 0],
+          type: "mesh"
+        }
+      ]
+    }
+  }
+});
+const meshNode = meshEditor.getState().document.scene.nodes[0];
+await meshEditor.dispatch(
+  editorCore.createNodeUpdateCommand(meshNode, {
+    position: [4, 5, 6]
+  })
+);
+assert.deepEqual(
+  meshEditor.getState().document.scene.nodes[0].position,
+  [4, 5, 6]
+);
+
+const pasteEditor = editorCore.createEditor({
+  document: {
+    id: "paste-document",
+    scene: {
+      id: "paste-scene",
+      layers: [{ id: "main", name: "Main" }],
+      mode: "2d",
+      nodes: [
+        {
+          id: "paste-group",
+          layerId: "main",
+          position: [0, 0],
+          type: "group"
+        },
+        {
+          id: "paste-rect",
+          layerId: "main",
+          parentId: "paste-group",
+          position: [8, 8],
+          type: "rect"
+        },
+        {
+          fill: "#38bdf8",
+          id: "paste-circle",
+          layerId: "main",
+          position: [40, 8],
+          type: "circle"
+        },
+        {
+          id: "paste-edge",
+          layerId: "main",
+          sourceId: "paste-rect",
+          targetId: "paste-circle",
+          type: "edge"
+        }
+      ]
+    }
+  }
+});
+await pasteEditor.dispatch({
+  selection: {
+    hoveredId: null,
+    ids: ["paste-group", "paste-rect", "paste-circle", "paste-edge"],
+    primaryId: "paste-group"
+  },
+  type: "selection.set"
+});
+pasteEditor.copySelection();
+let pasteSerial = 0;
+const pastedIds = await pasteEditor.pasteClipboard(
+  ({ type }) => `pasted-${type}-${pasteSerial++}`
+);
+assert.equal(pasteEditor.getState().history.undoDepth, 1);
+const pasted = pasteEditor
+  .getState()
+  .document.scene.nodes.filter((node) => pastedIds.includes(node.id));
+const pastedGroup = pasted.find((node) => node.type === "group");
+const pastedRect = pasted.find((node) => node.type === "rect");
+const pastedCircle = pasted.find((node) => node.type === "circle");
+const pastedEdge = pasted.find((node) => node.type === "edge");
+assert.equal(pastedRect.parentId, pastedGroup.id);
+assert.equal(pastedEdge.sourceId, pastedRect.id);
+assert.equal(pastedEdge.targetId, pastedCircle.id);
+await pasteEditor.undo();
+assert.equal(pasteEditor.getState().document.scene.nodes.length, 4);
+
+const deleteEditor = editorCore.createEditor({
+  document: {
+    id: "delete-document",
+    scene: {
+      id: "delete-scene",
+      layers: [{ id: "main", name: "Main" }],
+      mode: "2d",
+      nodes: [
+        {
+          id: "keep-rect",
+          layerId: "main",
+          position: [0, 0],
+          type: "rect"
+        },
+        {
+          id: "drop-rect",
+          layerId: "main",
+          position: [80, 0],
+          type: "rect"
+        },
+        {
+          id: "drop-edge",
+          layerId: "main",
+          sourceId: "keep-rect",
+          targetId: "drop-rect",
+          type: "edge"
+        }
+      ]
+    }
+  },
+  tools: [editorCore.createSelectTool()]
+});
+deleteEditor.activateTool("select");
+await deleteEditor.dispatch({
+  selection: {
+    hoveredId: null,
+    ids: ["drop-rect"],
+    primaryId: "drop-rect"
+  },
+  type: "selection.set"
+});
+assert.equal(
+  await deleteEditor.handleToolInput(keyInput("key.down", "Delete")),
+  true
+);
+assert.deepEqual(
+  deleteEditor.getState().document.scene.nodes.map((node) => node.id),
+  ["keep-rect"]
+);
+assert.equal(deleteEditor.getState().history.undoDepth, 1);
+await deleteEditor.undo();
+assert.equal(deleteEditor.getState().document.scene.nodes.length, 3);
+
+const connectorTool = editorCore.createConnectorTool({
+  createId: () => "connected-edge",
+  layerId: "main",
+  mode: "2d"
+});
+const connectorEditor = editorCore.createEditor({
+  activeToolId: connectorTool.id,
+  document: {
+    id: "connector-document",
+    scene: {
+      id: "connector-scene",
+      layers: [{ id: "main", name: "Main" }],
+      mode: "2d",
+      nodes: [
+        { id: "source-rect", layerId: "main", position: [0, 0], type: "rect" },
+        { id: "target-rect", layerId: "main", position: [80, 0], type: "rect" }
+      ]
+    }
+  },
+  tools: [connectorTool]
+});
+const connectorRuntime = {
+  resolveScenePoint(request) {
+    return { mode: "2d", position: request.viewportPoint };
+  },
+  async hitTest(input) {
+    if (input.point[0] < 40) {
+      return {
+        kind: "node",
+        nodeId: "source-rect",
+        renderer: "test",
+        subTarget: "handle.right"
+      };
+    }
+    return {
+      kind: "node",
+      nodeId: "target-rect",
+      renderer: "test",
+      subTarget: "handle.left"
+    };
+  },
+  setAuthoringPreviews() {}
+};
+await connectorEditor.handleToolInput(
+  pointerInput("pointer.down", { buttons: 1, point: [10, 10] }),
+  connectorRuntime
+);
+await connectorEditor.handleToolInput(
+  pointerInput("pointer.move", { buttons: 1, dragging: true, point: [90, 10] }),
+  connectorRuntime
+);
+await connectorEditor.handleToolInput(
+  pointerInput("pointer.up", { dragging: true, point: [90, 10] }),
+  connectorRuntime
+);
+const connected = connectorEditor
+  .getState()
+  .document.scene.nodes.find((node) => node.type === "edge");
+assert.equal(connected.id, "connected-edge");
+assert.equal(connected.sourceId, "source-rect");
+assert.equal(connected.targetId, "target-rect");
+assert.equal(connected.sourcePort, "right");
+assert.equal(connected.targetPort, "left");
+assert.equal(connected.routing, "straight");
+assert.notEqual(connected.routing, "curved");
+assert.equal(connectorEditor.getState().history.undoDepth, 1);
+await connectorEditor.undo();
+assert.equal(
+  connectorEditor.getState().document.scene.nodes.filter((node) => node.type === "edge")
+    .length,
+  0
+);
+
+const appliedDocument = await editorCore.applyCommandsToDocument(
+  meshEditor.getState().document,
+  [
+    {
+      nodeId: "mesh-1",
+      nodeMode: "3d",
+      nodeType: "mesh",
+      patch: { color: "#ff0000" },
+      type: "node.update"
+    }
+  ]
+);
+assert.equal(
+  appliedDocument.scene.nodes.find((node) => node.id === "mesh-1").color,
+  "#ff0000"
+);
 
 const group3DEditor = editorCore.createEditor({
   document: {

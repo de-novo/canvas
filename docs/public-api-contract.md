@@ -32,12 +32,14 @@ The default package must expose:
 - `definePluginCommand`
 - `defineScene`
 - `defineDocument`
+- `define2DEdge`
 - `defineCommand`
 - `parseDocument`
 - `parseDocumentJson`
 - `createCanvas2D`
 - `createCanvas3D`
 - `createEditor`
+- `applyCommandsToDocument`
 - `connectEditorToRuntime`
 - `connectEditorToCanvas`
 - `connectCanvasSelection`
@@ -49,6 +51,10 @@ The default package must expose:
 - `create3DPrimitiveTool`
 - `createDistanceMeasurementTool`
 - `createAnnotationTool`
+- `createConnectorTool`
+- `fitCanvas2DView`
+- `flyCanvas2DViewTo`
+- `getCanvas2DVisibleBounds`
 - `createNodeUpdateCommand`
 - `createGroupNodesCommand`
 - `createUngroupNodesCommand`

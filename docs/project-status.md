@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: 2026-07-21.
+Last updated: 2026-08-17.
 
 This is the canonical project status index. Keep milestone definitions in
 [Vision and Milestones](./vision-and-milestones.md); keep chronological evidence
@@ -9,33 +9,31 @@ under [History](./history/README.md).
 ## Current Phase
 
 M0–M3.1 are verified (product contract, view runtime, editor core, authoring
-tools, surface placement). Beyond the verified baseline, four later-milestone
-slices have landed and are tracked under **Active** below:
+tools, surface placement). Later slices have landed but are **not milestone-
+verified** in the M0–M3.1 sense:
 
-- **M4 Performance Layer (Phases A–B):** measurement infrastructure
-  (`verify:performance`, `CanvasRenderStats`, `getRenderStats`) with locked
-  baselines, plus four optimizations — geometry/material caching, BVH picking
-  activation, diff-based `applyScene`, and opt-in draw-call batching
-  (`render.batch`). 1k boxes: 158 ms → 48.60 ms (−69%), draw calls O(nodes) →
-  O(material-groups).
-- **M5 Framework Adapters:** `@denovo/react-canvas` (React), `@denovo/vue-canvas`
-  (Vue 3), `@denovo/svelte-canvas` (Svelte 5), and `@denovo/solid-canvas` (Solid)
-  implemented, type/build verified, and runtime-verified in a browser
-  (`verify:browser-rendering-adapters` smoke suite, all four adapters render a
-  non-blank canvas through initial render, resize, and a 3d→2d scene swap).
-- **M6 Persistence (Phases A–D):** `revision`/`DocumentPatchRecord`/
-  discriminated `CanvasSaveResult` data model; editor `subscribePersistence` +
-  `connectEditorToStorage` bridge; in-memory, filesystem, and IndexedDB adapters
-  (`createFileSystemDocumentAdapter`); facade `storage` option wired through
-  `connectEditorToCanvas`; IndexedDB `applyCommands`/`uploadAsset` implementations
-  with DocumentPatchRecord audit logging and binary asset storage;
-  `inverseCommand` → `DocumentPatchRecord` serialization (command → JSON-Patch
-  serializer in core, consumed by adapters). **M6 deliverables complete.**
+- **M4 Performance Layer (Phases A–B):** measurement, caching, BVH picking,
+  diff-based `applyScene`, opt-in box batching. 1k boxes 158 ms → 48.60 ms.
+  Remaining vision deliverables (LOD, chunks, workers, 16 ms target) are not
+  accepted.
+- **M5 Framework Adapters:** React, Vue, Svelte, and Solid view wrappers exist
+  and have adapter smoke coverage. They mount `@denovo/canvas-web`, not the
+  full facade/editor.
+- **M6 Persistence:** snapshot OCC, memory/filesystem/IndexedDB adapters, and
+  the editor storage bridge exist. IndexedDB `applyCommands` now applies
+  commands; conflict handling no longer rebases onto the server. Not a
+  verified milestone.
+- **M7 BIM:** optional `web-ifc` importer produces `mesh` nodes. View-scale
+  sample only (5000-element cap, no workers/section planes).
+- **M8 Diagram:** `edge`/`text`/`html`, connector, routing, layout adapters,
+  and 2D UX slices have landed. The
+  [M8 Diagram Contract](./m8-diagram-contract.md) now freezes that
+  vocabulary in `0.2.0`. The milestone is not verified until the
+  contract's acceptance criteria run.
 
-M4–M6 are **landed but not yet "verified" milestones** in the M0–M3.1 sense:
-they have type/build/`verify:*` evidence but no milestone-acceptance pass. The
-only outstanding milestone deliverable is the Svelte/Solid framework adapters
-(M5); all M6 persistence work is delivered.
+v1 focus is the framework-agnostic 2D/3D editor engine. Diagram and BIM stay
+optional packages, not a second product identity. See
+[2026-08-17 review-hardening](./history/2026-08-17-review-hardening.md).
 
 ## Complete
 
@@ -222,97 +220,28 @@ only outstanding milestone deliverable is the Svelte/Solid framework adapters
 
 ## Active
 
-- M4 Phase B (optimization) is in progress. Phase A baselines are locked in
-  [M4 Performance Thresholds](./m4-performance-thresholds.md) (1k boxes = 1000
-  draw calls / 158 ms baseline). Geometry/material caching, BVH picking
-  activation, and diff-based `applyScene` are all done (see thresholds doc for
-  numbers). Opt-in draw-call batching is now implemented: `render.batch: true`
-  collapses same-color top-level box nodes into one `InstancedMesh` per color,
-  with per-instance node-id mapping so `createThreeHitTester` still resolves
-  hits to document nodes. With batching on, the benchmark draws 1k/10k boxes in
-  a single draw call each, cutting 1k from 158 ms → 48.60 ms (−69%) and 10k from
-  250 ms → 91.70 ms (−63%) end-to-end vs the Phase A baseline. Default
-  `batch: false` preserves existing per-object behavior; `verify:editor-core`,
-  `verify:hit-testing`, `verify:document-schema`, and `verify:browser-rendering`
-  stay green. Remaining frame time is now instance/CPU overhead rather than
-  draw-call count.
-- M5 Framework Adapters started: `@denovo/vue-canvas` (Vue 3) is implemented
-  and verified. It mirrors the React `CanvasView` pattern — a `DenovoCanvas`
-  component that mounts the `@denovo/canvas-web` runtime, syncs a reactive
-  `scene` prop via `watch`, emits `runtimeChange`, and destroys on unmount — so
-  the M4 performance stack is inherited automatically. `verify:public-api`
-  passes (the Vue `DefineComponent` `any` in generated `.d.ts` is a documented
-  exemption). Svelte and Solid adapters remain.
-- M6 Persistence started (Phase A): the data model hard blockers are landed.
-  `CanvasDocumentSchema` carries a monotonic `revision`;
-  `DocumentPatchRecord`/`DocumentPatch` are schema-validated; `CanvasSaveResult`
-  is a discriminated union (`ok`/`conflict`/`validation`/...);
-  `CanvasStorageAdapter` options use `baseRevision`. `@denovo/canvas-server`
-  was rewritten around `CanvasStorageAdapter` with a real in-memory adapter
-  (`createMemoryDocumentAdapter`) that does optimistic-concurrency conflict
-  detection, plus `createCanvasServer`. New `verify:server` exercises
-  round-trip, conflict, and migration. Phase B (editor persistence events) is
-  also done: `CanvasEditor` now exposes `subscribePersistence`,
-  `getDocumentId`, `getBaseRevision`, `setBaseRevision`; `dispatch` emits
-  `transaction.committed` with monotonic revision and `inverseCommand`; and
-  `connectEditorToStorage(editor, adapter, { debounceMs })` bridges editor
-  edits to `adapter.saveDocument` with conflict reconciliation.
-  `verify:server` now exercises the editor↔adapter bridge end-to-end (11
-  checks). Phase C (filesystem adapter) is done:
-  `createFileSystemDocumentAdapter({ directory })` stores each document as JSON
-  on disk with the same conflict-detection contract; published under
-  `@denovo/canvas-server/filesystem` to keep browser bundles clean;
-  `verify:server` now has 14 checks including 3 filesystem ones. IndexedDB
-  adapter, `applyCommands`, `uploadAsset` remain. Phase D (facade wiring) is
-  done: `connectEditorToCanvas` accepts `storage`/`storageDebounceMs` and calls
-  `connectEditorToStorage` end-to-end, so a host app gets durable, debounced,
-  conflict-aware auto-save via one option, exercised end-to-end in the vanilla
-  example (auto-saves to IndexedDB). Remaining: `applyCommands`/`uploadAsset`.
+- Review hardening landed on 2026-08-17. See
+  [2026-08-17 review-hardening](./history/2026-08-17-review-hardening.md).
+- Canonical schema stays `0.2.0`. `mesh` / `edge` / `text` / `html` are
+  frozen as current `0.2.0` built-ins (no `0.3.0` bump). LICENSE is
+  deferred to the public-release pass.
+- [M8 Diagram Contract](./m8-diagram-contract.md) acceptance checks ran
+  on 2026-08-17, including a live-playground connector gesture on
+  desktop and iPhone 14. M8 is contract-accepted, not a second product.
+  Residual: the full vanilla M3 desktop/mobile suite was not re-run in
+  this pass.
+- M4–M8 remain landed-but-unverified.
 
 ## Next
 
-1. **Open-source governance (gating):** add LICENSE (MIT or Apache-2.0),
-   CONTRIBUTING, CODE_OF_CONDUCT, SECURITY, CLA; fill `license`/`repository`/
-   `homepage`/`bugs` in all package.json files. No public release is legal
-   without this.
-2. **M6 polish — complete:** `applyCommands`/`uploadAsset` and `inverseCommand`
-   → `DocumentPatchRecord` serialization are all delivered (see
-   `docs/history/2026-07-21-m6-*.md`). No M6 work remains.
-3. **`dpr` wiring — complete:** `lod` and `chunkSize` were removed from
-   `RenderOptionsSchema` (2026-07-21). The 3D renderer now reads
-   `currentScene.render.dpr` (matching the 2D renderer) instead of falling
-   back to `window.devicePixelRatio`, so `dpr` is wired uniformly into both
-   renderers. See `docs/history/2026-07-21-dpr-wiring-3d-renderer.md`.
-4. **Adapter runtime verification — complete:** all four framework adapters
-   (React, Vue, Svelte, Solid) have browser-rendering smoke coverage via
-   `pnpm verify:browser-rendering-adapters` (non-blank canvas on initial render,
-   after resize, and after a 3d→2d scene swap; no page/console errors). Example
-   apps `apps/playground-{react,vue,svelte,solid}` mount each adapter. See
-   `docs/history/2026-07-22-svelte-solid-adapters.md`.
-5. **M5 Framework Adapters — complete:** Svelte (`@denovo/svelte-canvas`) and
-   Solid (`@denovo/solid-canvas`) adapters join React and Vue; all four are
-   type/build/runtime-verified. M5 is delivered.
-6. **M7 BIM Extension — web-ifc-first slice landed:** a first-class `mesh` node
-   type now exists in core (flat `positions`/`indices` geometry, BVH-picked),
-   rendered across the three.js and react-three-fiber runtimes.
-   `@denovo/canvas-bim/web-ifc` adds a `WebIfcBimAdapter` that parses an IFC
-   `ArrayBuffer` into a `CanvasScene` of `mesh` nodes (one per element, grouped
-   by IFC-type layer, provenance in `node.metadata`). The `apps/playground-bim`
-   example loads a sample IFC end-to-end and is covered by
-   `pnpm verify:bim-rendering` (non-blank render). web-ifc is MPL-2.0 and stays
-   behind the opt-in `./web-ifc` subpath; core and the `.` contract entry never
-   import it. **Deferred:** worker-based parsing, section planes, eager
-   property-set loading, and lifting the 5000-element cap. xeokit (AGPL) is not
-   pulled in. See `docs/history/2026-07-22-m7-web-ifc-bim.md`.
-7. **M8 Diagram Layer (north-star, next):** the 2D surface becomes an
-   infinite-canvas relational-diagram engine — `edge`/`connector` nodes
-   (solid/dashed/dotted, straight/curved, arrowheads), an HTML/DOM overlay node
-   (foreignObject) for rich cards, a body `text` node, and diagram camera
-   helpers (`fitView`, `flyToNode`, `getVisibleBounds`). Same extension pattern
-   as the M7 `mesh` node. Unlocks diagram/whiteboard/ticket-map use cases
-   (haru is the first candidate consumer) and is the direct route to the
-   "reusable across 2D/3D/BIM/diagram" north-star goal. See
-   `docs/vision-and-milestones.md` § M8.
+1. **v1 persistence:** memory/filesystem `applyCommands` parity with
+   IndexedDB, and undo/redo visible to the storage bridge.
+2. **Geometry store:** IFC/glTF tessellation belongs on `AssetRef`, not as
+   unbounded `number[]` on every `mesh` node.
+3. **WebGPU language:** keep WebGL2/Canvas2D as the implemented backends;
+   treat WebGPU as a future adapter milestone, not a current `auto` result.
+4. **Open-source governance (deferred to release):** LICENSE, CONTRIBUTING,
+   CODE_OF_CONDUCT, SECURITY. Explicitly last, not next.
 
 ## Blocked
 
@@ -320,31 +249,27 @@ only outstanding milestone deliverable is the Svelte/Solid framework adapters
 
 ## Evidence
 
-- `pnpm typecheck`: passed on 2026-07-20 for all tasks (now includes
-  `@denovo/vue-canvas`).
-- `pnpm build`: passed on 2026-07-20 for all packages/apps (12 packages
-  including `@denovo/vue-canvas`).
-- `pnpm verify:editor-core`: passed on 2026-07-20, including hover/touch,
-  X/Y/Z support offsets, final requery, single commit/ID allocation, typed
-  miss, invalid target/normal rejection, runtime replacement, and stale async
-  cleanup.
-- `pnpm verify:hit-testing`: passed on 2026-07-20, including canonical unit-box
-  analytic surfaces, parent rotation, non-uniform/negative scale, and invalid
-  transform rejection.
-- `pnpm verify:browser-rendering`: passed on 2026-07-20 in fresh desktop mouse
-  and mobile touch contexts, including the full M3 authoring/transform/handle
-  regression baseline.
-- `pnpm verify:document-schema`: passed on 2026-07-20 (34 checks), including
-  the discriminated `CanvasSaveResult` shape.
-- `pnpm verify:public-api`: passed on 2026-07-20, including the Vue
-  `DefineComponent` `any` exemption.
-- `pnpm verify:performance`: passed on 2026-07-20. Baselines locked in
-  [M4 Performance Thresholds](./m4-performance-thresholds.md); with
-  `render.batch: true`, 1k boxes render at 48.60 ms / 1 draw call and 10k at
-  91.70 ms / 1 draw call. Not a pass/fail gate.
-- `pnpm verify:server`: passed on 2026-07-20 (14 checks), including save/load
-  round-trip, optimistic-concurrency conflict detection, the filesystem
-  adapter, and the editor↔adapter persistence bridge.
+- `pnpm typecheck`: passed on 2026-08-17 (30/30 tasks).
+- `pnpm build`: passed on 2026-08-17 (20/20 packages and apps).
+- `pnpm verify:document-schema`: passed on 2026-08-17 (36 named checks),
+  including mesh `node.update`.
+- `pnpm verify:editor-core`: passed on 2026-08-17, including mesh update,
+  paste id remapping + single undo, delete of incident edges + single undo,
+  text ungroup world transform, and `applyCommandsToDocument`.
+- `pnpm verify:server`: passed on 2026-08-17 (15 assertions), including
+  conflict-does-not-overwrite.
+- `pnpm verify:public-api`: passed on 2026-08-17, including
+  `applyCommandsToDocument` and mesh update fixtures.
+- `pnpm verify:hit-testing`: passed on 2026-08-17, including M8 edge path
+  resolution (`orthogonal` waypoints, quadratic control, ignored
+  `routing: "curved"`).
+- `pnpm verify:diagram-rendering`: passed on 2026-08-17 (desktop + iPhone
+  14), including overlay card, textContent probe, edge-follows-source,
+  and missing `flyToNode`.
+- `pnpm verify:browser-rendering` / `verify:performance`: last recorded
+  2026-07-20; not re-run in this pass.
+- `doc-governance-*.py`: not run on 2026-08-17 — scripts are not present at
+  `~/.agents/skills/doc-governance/scripts/`.
 - Generated declaration `any` audit and positive/negative TypeScript consumer
   fixtures: passed on 2026-07-20; zero explicit `any` occurrences across public
   declaration files (the Vue adapter is exempt — Vue's `DefineComponent` emits
@@ -379,3 +304,10 @@ only outstanding milestone deliverable is the Svelte/Solid framework adapters
 - [M3 authoring contract implementation](./history/2026-07-15-m3-authoring-tools.md)
 - [M3 authoring tools verification](./history/2026-07-16-m3-authoring-verified.md)
 - [M3.1 surface placement and stacking verification](./history/2026-07-16-m3-1-surface-placement.md)
+- [2026-08-17 review hardening](./history/2026-08-17-review-hardening.md)
+- [2026-08-17 M8 contract and 0.2.0 freeze](./history/2026-08-17-m8-contract-0.2.0-freeze.md)
+- [2026-08-17 M8 contract verification](./history/2026-08-17-m8-contract-verification.md)
+- [2026-08-17 M8 in-browser connector](./history/2026-08-17-m8-connector-browser.md)
+- [2026-08-17 ego-browser html overlay](./history/2026-08-17-ego-browser-html-overlay.md)
+- [2026-08-17 trackpad wheel boundary](./history/2026-08-17-trackpad-wheel-boundary.md)
+

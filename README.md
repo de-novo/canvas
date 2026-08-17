@@ -30,9 +30,11 @@ generation/migration support.
   and explicit delegation to `@denovo/canvas-web` for dynamic 2D/3D scenes.
 - `@denovo/vue-canvas`: optional Vue 3 adapter that mounts the same
   `@denovo/canvas-web` runtime behind a reactive `DenovoCanvas` component.
+- `@denovo/svelte-canvas`: optional Svelte adapter for the same web runtime.
+- `@denovo/solid-canvas`: optional Solid adapter for the same web runtime.
 - `@denovo/canvas-server`: server-side scene storage and validation utilities.
 - `@denovo/canvas-worker`: Web Worker and OffscreenCanvas helpers.
-- `@denovo/canvas-bim`: optional BIM adapter contracts for xeokit/web-ifc.
+- `@denovo/canvas-bim`: optional BIM adapter contracts and `./web-ifc` importer.
 
 This follows the TanStack-style split: keep the core portable, keep the web
 runtime framework-agnostic, then publish small adapters for each ecosystem.
@@ -93,4 +95,3 @@ pnpm dev --filter @denovo/canvas-next-playground
 - [Developer Experience](./docs/developer-experience.md)
 - [Dependency Strategy](./docs/dependency-strategy.md)
 - [Better Auth Style Architecture](./docs/better-auth-style-architecture.md)
-# canvas

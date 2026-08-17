@@ -43,10 +43,11 @@ This remains an in-memory runtime contract. Storage adapter I/O, revisions,
 remote loading, and a generalized migration registry remain later persistence
 milestones.
 
-`CanvasStorageAdapter` defines that later transport boundary, but the current
-facade does not expose storage presets or accept a storage config it would only
-record and ignore. M6 must connect an adapter end to end before adding it to
-`createCanvas()` configuration.
+`CanvasStorageAdapter` is the transport boundary. `connectEditorToCanvas`
+accepts `storage` / `storageDebounceMs` / `storageOnConflict` and saves
+snapshots through that adapter. `applyCommands` is optional per adapter;
+IndexedDB applies the command list to the stored document before bumping
+revision. Conflict must not rebase the editor onto the server document.
 
 ### Asset Store
 

@@ -30,6 +30,8 @@ import {
   CanvasScenePointRequestSchema,
   CanvasScenePointResultSchema,
   CanvasWorkPlaneSchema,
+  Canvas2DEdgeNodeSchema,
+  define2DEdge,
   defineCommand,
   defineDocument,
   defineHitResult,
@@ -590,6 +592,84 @@ check("scene-schema-validates-edge-ports", () => {
   const edge = centred.data.nodes.find((node) => node.id === "edge-1");
   assert.equal(edge.sourcePort, null);
   assert.equal(edge.targetPort, null);
+});
+
+check("define2DEdge-writes-straight-or-orthogonal-and-parses-legacy-curved", () => {
+  const written = define2DEdge({
+    id: "edge-write",
+    layerId: "layer-2d",
+    sourceId: "rect-1",
+    targetId: "circle-1",
+    routing: "orthogonal",
+    type: "edge"
+  });
+  assert.equal(written.routing, "orthogonal");
+  assert.equal(written.curve, "straight");
+
+  const quadratic = define2DEdge({
+    id: "edge-quadratic",
+    layerId: "layer-2d",
+    sourceId: "rect-1",
+    targetId: "circle-1",
+    curve: "curved",
+    curveOffset: 24,
+    routing: "straight",
+    type: "edge"
+  });
+  assert.equal(quadratic.routing, "straight");
+  assert.equal(quadratic.curve, "curved");
+  assert.equal(quadratic.curveOffset, 24);
+
+  const legacy = Canvas2DEdgeNodeSchema.parse({
+    id: "edge-legacy-curved",
+    layerId: "layer-2d",
+    sourceId: "rect-1",
+    targetId: "circle-1",
+    routing: "curved",
+    type: "edge"
+  });
+  assert.equal(legacy.routing, "curved");
+
+  const missingEndpoint = safeDefineScene({
+    id: "missing-edge-target",
+    layers: [{ id: "layer-main", name: "Main" }],
+    mode: "2d",
+    nodes: [
+      { id: "edge-1", layerId: "layer-main", sourceId: "rect-1", targetId: "gone", type: "edge" },
+      { id: "rect-1", layerId: "layer-main", type: "rect", size: [10, 10] }
+    ]
+  });
+  assertParseFails(missingEndpoint, /Missing edge target: gone/);
+});
+
+check("m8-node-update-roundtrips-edge-text-html", () => {
+  const edgeUpdate = defineCommand({
+    nodeId: "edge-1",
+    nodeMode: "2d",
+    nodeType: "edge",
+    patch: { stroke: "#ef4444", sourcePort: "right" },
+    type: "node.update"
+  });
+  assert.equal(edgeUpdate.nodeType, "edge");
+  assert.equal(edgeUpdate.patch.stroke, "#ef4444");
+
+  const textUpdate = defineCommand({
+    nodeId: "text-1",
+    nodeMode: "2d",
+    nodeType: "text",
+    patch: { text: "updated" },
+    type: "node.update"
+  });
+  assert.equal(textUpdate.patch.text, "updated");
+
+  const htmlUpdate = defineCommand({
+    nodeId: "html-1",
+    nodeMode: "2d",
+    nodeType: "html",
+    patch: { html: "plain" },
+    type: "node.update"
+  });
+  assert.equal(htmlUpdate.patch.html, "plain");
 });
 
 check("defineDocument-validates-document-shape", () => {
@@ -1611,6 +1691,7 @@ check("node-update-identity-schema-is-correlated-strict-and-roundtrips", () => {
     { nodeMode: "2d", nodeType: "measurement" },
     { nodeMode: "2d", nodeType: "annotation" },
     { nodeMode: "3d", nodeType: "box" },
+    { nodeMode: "3d", nodeType: "mesh" },
     { nodeMode: "3d", nodeType: "group" },
     { nodeMode: "3d", nodeType: "measurement" },
     { nodeMode: "3d", nodeType: "annotation" }
@@ -1640,6 +1721,16 @@ check("node-update-identity-schema-is-correlated-strict-and-roundtrips", () => {
   assert.deepEqual(roundtrip, command);
   assert.equal(roundtrip.nodeMode, "3d");
   assert.equal(roundtrip.nodeType, "box");
+
+  const meshUpdate = defineCommand({
+    nodeId: "mesh-1",
+    nodeMode: "3d",
+    nodeType: "mesh",
+    patch: { position: [1, 2, 3] },
+    type: "node.update"
+  });
+  assert.equal(meshUpdate.nodeType, "mesh");
+  assert.deepEqual(meshUpdate.patch, { position: [1, 2, 3] });
 });
 
 check("layer-command-schema-is-explicit-strict-and-invertible", () => {

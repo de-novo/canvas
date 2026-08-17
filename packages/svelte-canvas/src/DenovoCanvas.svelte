@@ -35,8 +35,8 @@
     runtime.update(scene);
   }
 
-  const styleString = $hostStyle
-    ? Object.entries($hostStyle)
+  $: styleString = hostStyle
+    ? Object.entries(hostStyle)
         .map(([key, value]) => `${key}: ${value}`)
         .join("; ")
     : undefined;

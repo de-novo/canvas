@@ -36,7 +36,8 @@
   This is owned by the framework-free `@denovo/canvas-editor` package and is
   re-exported explicitly through the facade.
 - Web runtime: DOM, native 2D Canvas, and Three.js. Usable from plain HTML,
-  Astro, Vue, Svelte, Solid, React, or any web framework.
+  Astro, Vue, Svelte, Solid, React, or any web framework. The IndexedDB
+  adapter applies stored commands through `@denovo/canvas-editor`.
 - 3D primitives: Three.js plus `three-mesh-bvh` acceleration helpers.
 - Framework adapters: React/R3F first, then Vue/Svelte/Solid adapters can be
   added without changing core contracts.

@@ -10,6 +10,7 @@ import {
   type AssetRef,
   type JsonValue
 } from "@denovo/canvas-core";
+import { applyCommandsToDocument } from "@denovo/canvas-editor";
 
 const DEFAULT_DB_NAME = "denovo-canvas";
 const DEFAULT_STORE_NAME = "documents";
@@ -243,29 +244,43 @@ export function createIndexedDbDocumentAdapter(
         ...(commandType === undefined ? {} : { commandType })
       });
 
-      // Save patch record and update document
+      let appliedDocument: CanvasDocument;
+      try {
+        appliedDocument = await applyCommandsToDocument(
+          existing.document,
+          commands
+        );
+      } catch (cause) {
+        return {
+          ok: false,
+          reason: "validation",
+          message:
+            cause instanceof Error ? cause.message : "Command application failed."
+        };
+      }
+
+      const nextRevision = currentRevision + 1;
+      const updatedDocument = {
+        ...appliedDocument,
+        revision: nextRevision,
+        updatedAt: new Date().toISOString()
+      };
+
       await new Promise<void>((resolve, reject) => {
         const tx = db.transaction([storeName, PATCHES_STORE_NAME], "readwrite");
 
-        // Store patch for audit log
         const patchesStore = tx.objectStore(PATCHES_STORE_NAME);
         const patchRequest = patchesStore.put(patchRecord);
         patchRequest.onerror = () => reject(patchRequest.error);
 
-        // Update document with new revision
-        const nextRevision = currentRevision + 1;
         const updatedEntry: StoredEntry = {
           id: existing.document.id,
-          document: {
-            ...existing.document,
-            revision: nextRevision,
-            updatedAt: new Date().toISOString()
-          },
+          document: updatedDocument,
           revision: nextRevision
         };
 
         const docsStore = tx.objectStore(storeName);
-        const docRequest = docsStore.put(updatedEntry);
+        docsStore.put(updatedEntry);
 
         tx.onerror = () => reject(tx.error);
         tx.oncomplete = () => resolve();
@@ -273,8 +288,8 @@ export function createIndexedDbDocumentAdapter(
 
       return {
         ok: true,
-        document: existing.document,
-        revision: currentRevision + 1
+        document: updatedDocument,
+        revision: nextRevision
       };
     },
 

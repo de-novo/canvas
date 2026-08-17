@@ -21,6 +21,9 @@ Canvas.
 - [M3.1 Surface Placement and Stacking Contract](./m3-1-surface-placement-contract.md):
   exact world-aligned box-on-box surface placement, transient ghost, strict
   surface-query capability, lifecycle, no-fallback, and verification contract.
+- [M8 Diagram Contract](./m8-diagram-contract.md): 2D `edge` / `text` / `html`
+  vocabulary frozen in `0.2.0`, port and path-style rules, graph paste/delete,
+  overlay HTML (not `innerHTML`), connector tool, and explicit non-goals.
 - [Public API Contract](./public-api-contract.md): facade exports, rename
   policy, default import shape, backend config, and smoke verification.
 - [Architecture](./architecture.md): package layers and runtime boundaries.

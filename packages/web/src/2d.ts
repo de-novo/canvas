@@ -66,6 +66,10 @@ import {
   resolveParentWorldTransform
 } from "./2d/geometry";
 import {
+  applyCanvas2DWheelNavigation,
+  Canvas2DWheelGesture
+} from "./2d/wheel-navigation";
+import {
   CANVAS_2D_HANDLE_LENGTH,
   CANVAS_2D_MINIMAP_PADDING
 } from "./2d/constants";
@@ -195,6 +199,7 @@ export function createCanvas2D(
   // Tools with `navigation: "allow-pan"` suppress zoom while keeping pan, so a
   // drag-to-create gesture can reach an off-screen target without rescaling.
   let navigationZoomEnabled = true;
+  const wheelGesture = new Canvas2DWheelGesture();
   // Connection handles are drawn (and hit-tested) only while a connect-capable
   // tool is active, so the default canvas stays visually clean.
   let connectionHandlesVisible = false;
@@ -861,6 +866,7 @@ export function createCanvas2D(
     },
     flyToNode(nodeId, zoom, animate = false) {
       const node = currentScene.nodes.find((candidate) => candidate.id === nodeId);
+      // Missing ids fail closed: do not fly toward the origin.
       if (!node) {
         return null;
       }
@@ -1195,53 +1201,32 @@ export function createCanvas2D(
   }
 
   function handleNavigationWheel(event: WheelEvent) {
-    if (!navigationInputEnabled) {
+    if (!navigationInputEnabled || !navigationOptions) {
       return;
     }
 
-    const pan =
-      Math.abs(event.deltaX) > 0 || (event.shiftKey && !event.ctrlKey);
+    const intent = wheelGesture.classify(event);
+    const applied = applyCanvas2DWheelNavigation(
+      viewState,
+      event,
+      intent,
+      {
+        enablePan: navigationOptions.enablePan,
+        enableZoom: navigationOptions.enableZoom && navigationZoomEnabled,
+        maxZoom: navigationOptions.maxZoom,
+        minZoom: navigationOptions.minZoom,
+        wheelZoomSensitivity: navigationOptions.wheelZoomSensitivity
+      },
+      getNavigationPoint(event)
+    );
 
-    if (pan) {
-      if (!navigationOptions?.enablePan) {
-        return;
-      }
-      event.preventDefault();
-      const dx = normalizeWheelDelta(event.deltaX, event.deltaMode);
-      const dy = normalizeWheelDelta(event.deltaY, event.deltaMode);
-      // Shift+wheel maps the vertical axis to horizontal panning, matching the
-      // Figma/Photoshop convention; otherwise both axes pan directly.
-      viewState = event.shiftKey && dx === 0
-        ? panCanvas2DView(viewState, [-dy, 0])
-        : panCanvas2DView(viewState, [-dx, -dy]);
-      render();
-      return;
-    }
-
-    if (!navigationOptions?.enableZoom || !navigationZoomEnabled) {
+    if (!applied.consumed) {
       return;
     }
 
     event.preventDefault();
-    const requestedZoom =
-      viewState.zoom *
-      Math.exp(-normalizeWheelDelta(event.deltaY, event.deltaMode) * navigationOptions.wheelZoomSensitivity);
-    viewState = zoomCanvas2DViewAt(
-      viewState,
-      constrainNavigationZoom(requestedZoom, navigationOptions),
-      getNavigationPoint(event)
-    );
+    viewState = applied.view;
     render();
-  }
-
-  function normalizeWheelDelta(delta: number, mode: number): number {
-    if (mode === 1) {
-      return delta * 8;
-    }
-    if (mode === 2) {
-      return delta * 24;
-    }
-    return delta;
   }
 
   function clearNavigationPointers() {
@@ -1590,8 +1575,12 @@ function rebuildObjects(
           overlayElements.set(node.id, element);
           overlayParent.appendChild(element);
         }
-        element.innerHTML = rendered;
+        // Strings are text, not markup. Hosts that need HTML return an Element.
+        element.textContent = rendered;
       } else if (element !== rendered) {
+        rendered.style.position = "absolute";
+        rendered.style.left = "0";
+        rendered.style.top = "0";
         if (element) {
           element.replaceWith(rendered);
         } else {

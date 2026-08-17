@@ -117,6 +117,9 @@ defines process, status, documentation, verification, and history management.
 - MUST use capability detection for backend selection.
 - MUST verify browser-facing rendering with Playwright screenshots or canvas
   pixel checks before marking rendering work complete.
+- SHOULD also exercise changed playgrounds and visual surfaces in ego-browser
+  (click, drag, overlay, camera) and treat a real-use screenshot as required
+  evidence, not optional decoration.
 - SHOULD use demand-based render loops where static scenes do not require
   continuous frames.
 - SHOULD prefer instancing, direct buffer geometry, batching, LOD, frustum

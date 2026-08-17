@@ -39,7 +39,8 @@ import {
   connectEditorToRuntime as connectEditorRuntime,
   connectEditorToStorage,
   type CanvasEditor,
-  type CanvasEditorRuntimeTarget
+  type CanvasEditorRuntimeTarget,
+  type ConnectEditorToStorageOptions
 } from "@denovo/canvas-editor";
 import {
   connectCanvasSelection,
@@ -63,10 +64,12 @@ export * from "@denovo/canvas-core";
 export * from "./react-query";
 export {
   CanvasEditorError,
+  applyCommandsToDocument,
   create2DShapeTool,
   create3DPrimitiveTool,
   create3DSurfacePlacementTool,
   createAnnotationTool,
+  createConnectorTool,
   createDistanceMeasurementTool,
   createEditor,
   createGroupNodesCommand,
@@ -90,6 +93,7 @@ export type {
   CanvasAnnotationDraftProvider,
   CanvasAnnotationDraftResult,
   CanvasAnnotationToolOptions,
+  CanvasConnectorToolOptions,
   CanvasDistanceMeasurementToolOptions,
   CanvasEditor,
   CanvasEditorChange,
@@ -101,6 +105,7 @@ export type {
   CanvasEditorRuntimeTarget,
   CanvasEditorState,
   CanvasEditorToolRuntimeContext,
+  ConnectEditorToStorageOptions,
   CanvasEffectiveNodeState,
   CanvasGroupNodesOptions,
   CanvasPanOrbitToolOptions,
@@ -401,6 +406,7 @@ export type DenovoCanvasRuntime = DenovoCanvasRuntimeBase &
 export type ConnectEditorToCanvasOptions = CanvasPointerSelectionOptions & {
   storage?: CanvasStorageAdapter;
   storageDebounceMs?: number;
+  storageOnConflict?: ConnectEditorToStorageOptions["onConflict"];
   syncDocument?: boolean;
 };
 
@@ -510,7 +516,10 @@ export function connectEditorToCanvas(
       disconnectStorage = connectEditorToStorage(editor, options.storage, {
         ...(options.storageDebounceMs === undefined
           ? {}
-          : { debounceMs: options.storageDebounceMs })
+          : { debounceMs: options.storageDebounceMs }),
+        ...(options.storageOnConflict === undefined
+          ? {}
+          : { onConflict: options.storageOnConflict })
       });
     }
   } catch (cause) {
