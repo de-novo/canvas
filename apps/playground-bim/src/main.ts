@@ -4,7 +4,6 @@ import {
   createEditor,
   createPanOrbitTool,
   createSelectTool,
-  defineDocument,
   type CanvasDocument
 } from "@denovo/canvas";
 import "@denovo/canvas/styles.css";
@@ -53,17 +52,17 @@ async function loadSample(): Promise<void> {
     });
     elementCountOutput.textContent = String(metadata.elementCount ?? "—");
 
-    statusOutput.textContent = "building scene…";
-    const scene = await adapter.toScene();
+    statusOutput.textContent = "building document…";
+    const imported = await adapter.toDocument();
+    const document: CanvasDocument = imported.document;
 
     statusOutput.textContent = "rendering…";
 
-    const document: CanvasDocument = defineDocument({
-      id: "bim-document",
-      scene
+    const runtime = createCanvas(stage, {
+      document,
+      editable: true,
+      geometryStore: imported.geometryStore
     });
-
-    const runtime = createCanvas(stage, { document, editable: true });
     const editor = createEditor({ document });
 
     const disconnect = connectEditorToCanvas(editor, runtime);

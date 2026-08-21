@@ -1,12 +1,12 @@
 # Rendering Backend Strategy
 
-Last reviewed: 2026-07-15.
+Last reviewed: 2026-08-17.
 
-Denovo Canvas should be WebGPU-first, not WebGPU-only.
-
-WebGPU is the modern direction for high-performance web graphics and GPU
-compute. WebGL2 remains the compatibility baseline. The product contract must
-support both without leaking either backend into persisted documents.
+Implemented built-in backends are Canvas2D (2D) and WebGL2 (3D). WebGPU is
+reserved public vocabulary and a future adapter milestone. The product
+contract must keep that name in the backend union without leaking any GPU API
+into persisted documents, and without letting `auto` report WebGPU as the
+current result.
 
 ## Decision
 
@@ -31,9 +31,8 @@ The current built-in resolver applies these rules:
 4. `custom` requires an explicit adapter whose declared modes include the
    scene mode.
 
-WebGPU remains the preferred future direction, but `auto` must not report or
-select it until a compatible WebGPU runtime is actually implemented. Presence
-of `navigator.gpu` alone is not an implementation.
+`navigator.gpu` is capability detection only. `auto` must not report or
+select WebGPU until a compatible runtime is actually implemented.
 
 Every non-`auto` request is strict. An unavailable or mode-incompatible
 `canvas2d` or `webgl2` request fails. The currently unimplemented `webgpu` and
@@ -44,7 +43,7 @@ changes to another backend.
 The scene/document model must not store `webgpu`, `webgl2`, or `three` as
 semantic requirements. Those are runtime adapter choices.
 
-## Why WebGPU-First
+## Why WebGPU Stays In The Vocabulary
 
 WebGPU is the successor path to WebGL. It maps better to modern native GPU APIs,
 supports general-purpose GPU compute, reduces CPU-side overhead for many
@@ -234,7 +233,7 @@ Medium term:
 - add backend capability reporting;
 - add explicit backend-resolution and capability events if consumers need
   asynchronous observability beyond the existing error boundary;
-- add examples for WebGPU-first and WebGL2-forced usage.
+- add examples for an explicit WebGPU adapter and WebGL2-forced usage.
 
 Long term:
 

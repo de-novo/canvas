@@ -45,9 +45,11 @@ milestones.
 
 `CanvasStorageAdapter` is the transport boundary. `connectEditorToCanvas`
 accepts `storage` / `storageDebounceMs` / `storageOnConflict` and saves
-snapshots through that adapter. `applyCommands` is optional per adapter;
-IndexedDB applies the command list to the stored document before bumping
-revision. Conflict must not rebase the editor onto the server document.
+snapshots through that adapter. `applyCommands` is optional per adapter.
+Memory, filesystem, and IndexedDB all apply the command list through
+`applyCommandsToStoredDocument` before bumping revision. Conflict must not
+rebase the editor onto the server document. Undo and redo emit
+`history.changed` so `connectEditorToStorage` persists the restored snapshot.
 
 ### Asset Store
 
@@ -66,7 +68,7 @@ Use assets for:
 ```ts
 type AssetRef = {
   id: string;
-  type: "image" | "gltf" | "glb" | "ifc" | "xkt" | "binary" | "json" | "other";
+  type: "image" | "gltf" | "glb" | "ifc" | "xkt" | "geometry" | "binary" | "json" | "other";
   uri?: string;
   byteLength?: number;
   mimeType?: string;
@@ -75,7 +77,12 @@ type AssetRef = {
 };
 ```
 
-Document nodes reference assets by `assetId`, never by embedding large payloads.
+Document nodes reference assets by `assetId` or `geometryAssetId`, never by
+embedding large payloads. Mesh tessellation uses `AssetRef.type: "geometry"`.
+`persistCanvasGeometryStore` writes `denovo.mesh-geometry.v1` bytes through
+`uploadAsset`; `hydrateCanvasGeometryStore` reloads them through `loadAsset`
+into a session `CanvasGeometryStore`. The document snapshot keeps the ref and
+bounds metadata, not the `number[]` buffers.
 
 M1 retains and exposes asset references when a document is loaded or its scene
 is updated. It does not yet fetch or decode referenced payloads. Asset loaders
@@ -260,19 +267,29 @@ Core should expose enough events for adapters:
 
 ```ts
 editor.subscribePersistence((event) => {
-  if (event.type === "transaction.committed") {
-    savePatchMutation.mutate(event.patchRecord);
+  if (
+    event.type === "transaction.committed" ||
+    event.type === "history.changed"
+  ) {
+    saveSnapshotMutation.mutate(editor.getState().document);
   }
 });
 ```
 
 ## Persistence Events
 
-Editor core should emit:
+Editor core currently emits:
+
+- `transaction.committed` after a persistent command;
+- `history.changed` after undo or redo restores a snapshot;
+- `revision.changed` when the acknowledged `baseRevision` updates.
+
+`connectEditorToStorage` flushes on the first two and ignores
+`revision.changed` so a successful save cannot loop.
+
+Later host-facing events can still include:
 
 - document loaded;
-- command applied;
-- transaction committed;
 - dirty state changed;
 - asset referenced;
 - asset uploaded;

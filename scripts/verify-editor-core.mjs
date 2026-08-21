@@ -38,6 +38,11 @@ assert.equal(typeof facade.createSelectTool, "function");
 assert.equal(typeof facade.createTransformTool, "function");
 assert.equal(typeof editorCore.applyCommandsToDocument, "function");
 assert.equal(typeof facade.applyCommandsToDocument, "function");
+assert.equal(typeof editorCore.applyCommandsToStoredDocument, "function");
+assert.equal(typeof facade.applyCommandsToStoredDocument, "function");
+assert.equal(typeof facade.createMemoryGeometryStore, "function");
+assert.equal(typeof facade.defineMeshGeometry, "function");
+assert.equal(typeof facade.resolveCanvasMeshGeometry, "function");
 
 const boxUpdateIdentity = { nodeMode: "3d", nodeType: "box" };
 const rectUpdateIdentity = { nodeMode: "2d", nodeType: "rect" };
@@ -2128,6 +2133,79 @@ assert.equal(
   appliedDocument.scene.nodes.find((node) => node.id === "mesh-1").color,
   "#ff0000"
 );
+
+const storedApplied = await editorCore.applyCommandsToStoredDocument(
+  {
+    document: meshEditor.getState().document,
+    revision: 4
+  },
+  meshEditor.getState().document.id,
+  [
+    {
+      nodeId: "mesh-1",
+      nodeMode: "3d",
+      nodeType: "mesh",
+      patch: { color: "#00ff00" },
+      type: "node.update"
+    }
+  ],
+  { baseRevision: 4 }
+);
+assert.equal(storedApplied.ok, true);
+if (storedApplied.ok) {
+  assert.equal(storedApplied.revision, 5);
+  assert.equal(
+    storedApplied.document.scene.nodes.find((node) => node.id === "mesh-1").color,
+    "#00ff00"
+  );
+}
+
+const storedMissing = await editorCore.applyCommandsToStoredDocument(
+  null,
+  "missing-document",
+  []
+);
+assert.equal(storedMissing.ok, false);
+if (!storedMissing.ok) {
+  assert.equal(storedMissing.reason, "unknown");
+}
+
+const storedConflict = await editorCore.applyCommandsToStoredDocument(
+  {
+    document: meshEditor.getState().document,
+    revision: 4
+  },
+  meshEditor.getState().document.id,
+  [],
+  { baseRevision: 3 }
+);
+assert.equal(storedConflict.ok, false);
+if (!storedConflict.ok) {
+  assert.equal(storedConflict.reason, "conflict");
+  assert.equal(storedConflict.serverRevision, 4);
+}
+
+const storedInvalid = await editorCore.applyCommandsToStoredDocument(
+  {
+    document: meshEditor.getState().document,
+    revision: 4
+  },
+  meshEditor.getState().document.id,
+  [
+    {
+      nodeId: "missing-mesh",
+      nodeMode: "3d",
+      nodeType: "mesh",
+      patch: { color: "#000000" },
+      type: "node.update"
+    }
+  ],
+  { baseRevision: 4 }
+);
+assert.equal(storedInvalid.ok, false);
+if (!storedInvalid.ok) {
+  assert.equal(storedInvalid.reason, "validation");
+}
 
 const group3DEditor = editorCore.createEditor({
   document: {

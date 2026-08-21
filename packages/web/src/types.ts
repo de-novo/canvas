@@ -2,6 +2,7 @@ import type {
   CanvasAuthoringPreviewRuntime,
   Canvas3DSurfacePointRuntime,
   CanvasCommandResult,
+  CanvasGeometryStore,
   CanvasHitResult,
   CanvasHitTestInput,
   CanvasMode,
@@ -112,6 +113,11 @@ export type CreateCanvasOptions = {
   canvas2d?: Canvas2DOptions;
   controls?: CanvasCameraControlsInput;
   devicePixelRatio?: number;
+  /**
+   * Session geometry buffers for `mesh.geometryAssetId`. Tessellation stays
+   * out of the document JSON; the runtime looks up buffers here.
+   */
+  geometryStore?: CanvasGeometryStore;
   onFrame?: (
     frame: CanvasFrame,
     runtime: WebCanvasRuntime<CanvasMode>

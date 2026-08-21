@@ -21,10 +21,10 @@ domain extensions.
 
 ### Rendering Engines
 
-- Three.js for general 3D rendering.
-- WebGPU as the modern high-performance backend direction.
-- WebGL2 as the required 3D compatibility backend.
-- Native Canvas2D for lightweight 2D rendering.
+- Three.js for general 3D rendering (WebGL2 today).
+- WebGL2 as the implemented 3D backend.
+- Native Canvas2D as the implemented 2D backend.
+- WebGPU as a reserved future adapter, not a current dependency.
 - React Three Fiber for React-specific 3D composition.
 - Limited Drei helpers for common React 3D controls and convenience.
 - xeokit and web-ifc as optional BIM engines.
@@ -96,8 +96,12 @@ Base packages may depend on widely useful libraries:
   and typed failure workflows.
 - `@denovo/canvas`: Effect for staged plugin setup, atomic editor registry
   installation, rollback, and lifecycle failure translation.
-- `@denovo/canvas-web`: DOM, Canvas2D, Three.js runtime.
+- `@denovo/canvas-web`: DOM, Canvas2D, Three.js runtime. IndexedDB
+  `applyCommands` uses `@denovo/canvas-editor`.
 - `@denovo/canvas-three`: Three.js and performance primitives.
+- `@denovo/canvas-server`: memory and filesystem adapters depend on
+  `@denovo/canvas-editor` for `applyCommandsToStoredDocument`. The package
+  stays framework-neutral; it does not depend on DOM or renderer packages.
 
 Specialized packages should be optional:
 
@@ -111,10 +115,10 @@ Specialized packages should be optional:
 Rendering backend choice should use progressive enhancement without silent
 substitution:
 
-- WebGPU first after a compatible WebGPU runtime is implemented and supported;
-- WebGL2 for broad 3D compatibility;
-- Canvas2D for lightweight 2D and simple authoring flows;
-- custom adapters for BIM, domain renderers, and future WebGPU-native 2D.
+- WebGL2 for implemented 3D;
+- Canvas2D for implemented 2D;
+- WebGPU as a future adapter, never a current `auto` result;
+- custom adapters for BIM, domain renderers, and a future WebGPU-native 2D.
 
 An explicit `webgpu`, `webgl2`, `canvas2d`, `offscreen-canvas2d`, or `custom`
 request either creates that backend or fails with a backend-resolution error.

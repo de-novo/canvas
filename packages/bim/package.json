@@ -1,6 +1,7 @@
 {
   "name": "@denovo/canvas-bim",
   "version": "0.0.0",
+  "license": "Apache-2.0",
   "description": "Optional BIM adapter contracts and web-ifc integration for Denovo Canvas.",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -18,7 +19,9 @@
       "require": "./dist/web-ifc-adapter.cjs"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "sideEffects": false,
   "scripts": {
     "build": "tsup src/index.ts src/web-ifc-adapter.ts --format esm,cjs --clean --external @denovo/canvas-core --external web-ifc && tsc --emitDeclarationOnly",

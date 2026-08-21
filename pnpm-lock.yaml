@@ -360,6 +360,9 @@ importers:
       '@denovo/canvas-core':
         specifier: workspace:*
         version: link:../core
+      '@denovo/canvas-editor':
+        specifier: workspace:*
+        version: link:../editor
     devDependencies:
       '@types/node':
         specifier: ^26.1.1

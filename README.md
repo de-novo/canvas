@@ -69,6 +69,15 @@ const runtime = createCanvas("#stage", {
 runtime.start();
 ```
 
+## License And Governance
+
+Denovo Canvas is licensed under the [Apache License 2.0](./LICENSE).
+See [NOTICE](./NOTICE) for copyright and third-party notes.
+
+- [Contributing](./CONTRIBUTING.md)
+- [Code of Conduct](./CODE_OF_CONDUCT.md)
+- [Security policy](./SECURITY.md)
+
 ## Development
 
 ```sh

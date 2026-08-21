@@ -10,7 +10,9 @@ import {
   CanvasScenePointResultSchema,
   createCanvasStore,
   defineScene,
+  resolveCanvasMeshGeometry,
   type CanvasAuthoringPreviewForMode,
+  type CanvasGeometryStore,
   type Canvas3DNode,
   type Canvas3DScene,
   type Canvas3DSceneInput,
@@ -318,7 +320,8 @@ export function createCanvas3D(
       hitTestObjects,
       nodeStates,
       contentColors,
-      prevNodesById
+      prevNodesById,
+      options.geometryStore
     );
     store.getState().setScene(nextScene);
     currentScene = nextScene;
@@ -1350,7 +1353,8 @@ export function createCanvas3D(
       nextPreviews,
       currentScene,
       objects,
-      contentColors
+      contentColors,
+      options.geometryStore
     );
     disposeGroup(authoringPreviewRoot);
 
@@ -1520,7 +1524,8 @@ export function createCanvas3D(
     hitTestObjects,
     nodeStates,
     contentColors,
-    prevNodesById
+    prevNodesById,
+    options.geometryStore
   );
   syncCameraControls(controls, currentScene);
   runtime.resize();
@@ -1618,7 +1623,8 @@ function applyScene(
   hitTestObjects: Object3D[],
   nodeStates: Map<NodeId, Canvas3DNodeState>,
   colors: Canvas3DContentColors,
-  prevNodesById: Map<string, Canvas3DNode>
+  prevNodesById: Map<string, Canvas3DNode>,
+  geometryStore?: CanvasGeometryStore
 ) {
   const nextContent = new Group();
   const nextObjects = new Map<string, Object3D>();
@@ -1684,7 +1690,7 @@ function applyScene(
         prevNode && canvas3DNodeEqual(prevNode, node)
           ? objects.get(node.id)
           : undefined;
-      const object = reusedObject ?? createObject(node, colors);
+      const object = reusedObject ?? createObject(node, colors, geometryStore);
 
       if (reusedObject) {
         // Mark as reused so it is not disposed with removed nodes below.
@@ -1915,7 +1921,8 @@ function createCanvas3DAuthoringPreviewGroup(
   previews: readonly CanvasAuthoringPreviewForMode<"3d">[],
   scene: Canvas3DScene,
   objects: ReadonlyMap<string, Object3D>,
-  colors: Canvas3DContentColors
+  colors: Canvas3DContentColors,
+  geometryStore?: CanvasGeometryStore
 ): Group {
   const root = new Group();
   root.name = "denovo-next-authoring-previews";
@@ -1929,7 +1936,8 @@ function createCanvas3DAuthoringPreviewGroup(
               preview.node,
               scene,
               objects,
-              colors
+              colors,
+              geometryStore
             )
           );
           break;
@@ -2002,10 +2010,11 @@ function createCanvas3DNodeAuthoringPreview(
   node: Canvas3DNode,
   scene: Canvas3DScene,
   objects: ReadonlyMap<string, Object3D>,
-  colors: Canvas3DContentColors
+  colors: Canvas3DContentColors,
+  geometryStore?: CanvasGeometryStore
 ): Group {
   const container = new Group();
-  const object = createObject(node, colors);
+  const object = createObject(node, colors, geometryStore);
 
   try {
     object.name = `denovo-node-preview:${node.id}`;
@@ -2693,7 +2702,8 @@ function createBatchedBoxMesh(boxes: readonly BatchedBoxEntry[]): InstancedMesh 
 
 function createObject(
   node: Canvas3DNode,
-  colors: Canvas3DContentColors
+  colors: Canvas3DContentColors,
+  geometryStore?: CanvasGeometryStore
 ): Object3D {
   switch (node.type) {
     case "box":
@@ -2707,26 +2717,31 @@ function createObject(
       return new Mesh(sphereGeometry, createCanvas3DSurfaceMaterial(node.color));
     }
     case "mesh": {
+      const resolved = resolveCanvasMeshGeometry(node, geometryStore);
+      if (resolved === null) {
+        return new Group();
+      }
+
       const geometry = new BufferGeometry();
       geometry.setAttribute(
         "position",
-        new BufferAttribute(new Float32Array(node.positions), 3)
+        new BufferAttribute(new Float32Array(resolved.positions), 3)
       );
-      if (node.normals) {
+      if (resolved.normals) {
         geometry.setAttribute(
           "normal",
-          new BufferAttribute(new Float32Array(node.normals), 3)
+          new BufferAttribute(new Float32Array(resolved.normals), 3)
         );
       } else {
         geometry.computeVertexNormals();
       }
-      if (node.uvs) {
+      if (resolved.uvs) {
         geometry.setAttribute(
           "uv",
-          new BufferAttribute(new Float32Array(node.uvs), 2)
+          new BufferAttribute(new Float32Array(resolved.uvs), 2)
         );
       }
-      geometry.setIndex(Array.from(node.indices));
+      geometry.setIndex(Array.from(resolved.indices));
       prepareGeometryBounds(geometry);
       let material = createCanvas3DSurfaceMaterial(node.color);
       if (node.wireframe) {

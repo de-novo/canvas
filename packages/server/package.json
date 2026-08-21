@@ -1,6 +1,7 @@
 {
   "name": "@denovo/canvas-server",
   "version": "0.0.0",
+  "license": "Apache-2.0",
   "description": "Server-side scene utilities for Denovo Canvas.",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -18,15 +19,18 @@
       "require": "./dist/filesystem.cjs"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "sideEffects": false,
   "scripts": {
-    "build": "tsup src/index.ts src/filesystem.ts --format esm,cjs --clean --external @denovo/canvas-core && tsc --emitDeclarationOnly",
+    "build": "tsup src/index.ts src/filesystem.ts --format esm,cjs --clean --external @denovo/canvas-core --external @denovo/canvas-editor && tsc --emitDeclarationOnly",
     "clean": "rm -rf dist .turbo",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@denovo/canvas-core": "workspace:*"
+    "@denovo/canvas-core": "workspace:*",
+    "@denovo/canvas-editor": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^26.1.1"

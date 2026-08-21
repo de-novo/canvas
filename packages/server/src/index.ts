@@ -1,5 +1,9 @@
 import {
   CanvasDocumentSchema,
+  type AssetRecord,
+  type AssetRef,
+  type AssetUpload,
+  type CanvasCommand,
   type CanvasDocument,
   type CanvasDocumentInput,
   type CanvasDocumentSummary,
@@ -7,6 +11,12 @@ import {
   type CanvasStorageAdapter,
   type NodeId
 } from "@denovo/canvas-core";
+import { applyCommandsToStoredDocument } from "@denovo/canvas-editor";
+import {
+  storeUploadedAsset,
+  storedAssetRecord,
+  type StoredAssetBlob
+} from "./asset-blob.js";
 
 type StoredDocument = {
   document: CanvasDocument;
@@ -18,14 +28,15 @@ type StoredDocument = {
  * document id → `{ document, revision }` and enforces optimistic-concurrency
  * conflict detection via `baseRevision`.
  *
- * `applyCommands` and `uploadAsset` are intentionally omitted in M6 Phase A:
- * applying commands needs the editor's command applier (Phase B wiring), and
- * asset upload needs a real blob store (Phase C).
+ * `applyCommands` uses the editor command applier (`applyCommandsToStoredDocument`)
+ * so memory, filesystem, and IndexedDB share OCC and revision rules.
+ * `uploadAsset` / `loadAsset` keep blobs beside the document map.
  */
 export function createMemoryDocumentAdapter(
   initial: readonly CanvasDocumentInput[] = []
 ): CanvasStorageAdapter {
   const store = new Map<NodeId, StoredDocument>();
+  const assets = new Map<NodeId, StoredAssetBlob>();
 
   for (const input of initial) {
     const document = CanvasDocumentSchema.parse(input);
@@ -93,6 +104,41 @@ export function createMemoryDocumentAdapter(
 
     async deleteDocument(id) {
       return store.delete(id);
+    },
+
+    async applyCommands(documentId, commands, options) {
+      const stored = store.get(documentId) ?? null;
+      const result = await applyCommandsToStoredDocument(
+        stored,
+        documentId,
+        commands,
+        options ?? {}
+      );
+
+      if (!result.ok) {
+        return result;
+      }
+
+      store.set(result.document.id, {
+        document: result.document,
+        revision: result.revision
+      });
+
+      return result;
+    },
+
+    async uploadAsset(upload) {
+      return storeUploadedAsset(
+        upload,
+        (id) => `memory://${id}`,
+        (record) => {
+          assets.set(record.asset.id, record);
+        }
+      );
+    },
+
+    async loadAsset(id) {
+      return storedAssetRecord(assets.get(id));
     }
   };
 }
@@ -103,13 +149,20 @@ export type CanvasServerOptions = {
 
 export type CanvasServer = {
   readonly adapter: CanvasStorageAdapter;
+  applyCommands: (
+    documentId: NodeId,
+    commands: readonly CanvasCommand[],
+    options?: { baseRevision?: number }
+  ) => Promise<CanvasSaveResult>;
   deleteDocument: (id: NodeId) => Promise<boolean>;
   listDocuments: () => Promise<CanvasDocumentSummary[]>;
+  loadAsset: (id: NodeId) => Promise<AssetRecord | null>;
   loadDocument: (id: NodeId) => Promise<CanvasDocument | null>;
   saveDocument: (
     document: CanvasDocument,
     options?: { baseRevision?: number }
   ) => Promise<CanvasSaveResult>;
+  uploadAsset: (upload: AssetUpload) => Promise<AssetRef>;
 };
 
 /**
@@ -124,6 +177,20 @@ export function createCanvasServer(
 
   return {
     adapter,
+
+    applyCommands(documentId, commands, saveOptions) {
+      const impl = adapter.applyCommands;
+
+      if (!impl) {
+        return Promise.resolve({
+          ok: false as const,
+          reason: "unknown" as const,
+          message: `Storage adapter "${adapter.name}" does not support applyCommands.`
+        });
+      }
+
+      return impl(documentId, commands, saveOptions);
+    },
 
     deleteDocument(id) {
       const impl = adapter.deleteDocument;
@@ -145,12 +212,40 @@ export function createCanvasServer(
       return impl();
     },
 
+    loadAsset(id) {
+      const impl = adapter.loadAsset;
+
+      if (!impl) {
+        return Promise.reject(
+          new Error(
+            `Storage adapter "${adapter.name}" does not support loadAsset.`
+          )
+        );
+      }
+
+      return impl(id);
+    },
+
     loadDocument(id) {
       return adapter.loadDocument(id);
     },
 
     saveDocument(document, saveOptions) {
       return adapter.saveDocument(document, saveOptions);
+    },
+
+    uploadAsset(upload) {
+      const impl = adapter.uploadAsset;
+
+      if (!impl) {
+        return Promise.reject(
+          new Error(
+            `Storage adapter "${adapter.name}" does not support uploadAsset.`
+          )
+        );
+      }
+
+      return impl(upload);
     }
   };
 }

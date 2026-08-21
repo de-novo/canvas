@@ -40,6 +40,15 @@ The default package must expose:
 - `createCanvas3D`
 - `createEditor`
 - `applyCommandsToDocument`
+- `applyCommandsToStoredDocument`
+- `defineMeshGeometry`
+- `createMemoryGeometryStore`
+- `createMeshGeometryAssetRef`
+- `resolveCanvasMeshGeometry`
+- `encodeMeshGeometry`
+- `decodeMeshGeometry`
+- `persistCanvasGeometryStore`
+- `hydrateCanvasGeometryStore`
 - `connectEditorToRuntime`
 - `connectEditorToCanvas`
 - `connectCanvasSelection`
@@ -66,6 +75,10 @@ The default package must expose:
 - `defineToolInput`
 - `defineHitTestInput`
 - `defineHitResult`
+- `CanvasBackend`
+- `CanvasImplementedBackend`
+- `CanvasUnimplementedBackend`
+- `CanvasResolvedBackend`
 - `CanvasEditorError`
 - `CanvasBackendResolutionError`
 - `CanvasDocumentParseError`
@@ -154,8 +167,9 @@ createCanvas("#stage", {
 The facade reports resolved backend information through
 `canvas.config.renderer`. `auto` selects only an implemented backend compatible
 with the document mode and detected runtime capabilities. The current built-ins
-resolve 3D to the WebGL2-backed web runtime and 2D to Canvas2D. WebGPU is part
-of the public target contract but is not yet a built-in runtime.
+resolve 3D to the WebGL2-backed web runtime and 2D to Canvas2D. `resolved` is
+`CanvasResolvedBackend` (`canvas2d` | `webgl2` | `custom`). WebGPU is reserved
+vocabulary (`CanvasUnimplementedBackend`) and is not a current `auto` result.
 
 All explicit backend choices are strict. `webgpu` and
 `offscreen-canvas2d` currently throw `CanvasBackendResolutionError` with

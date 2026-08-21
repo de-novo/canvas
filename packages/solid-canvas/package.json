@@ -1,6 +1,7 @@
 {
   "name": "@denovo/solid-canvas",
   "version": "0.0.0",
+  "license": "Apache-2.0",
   "description": "Solid adapter for Denovo Canvas.",
   "type": "module",
   "main": "./src/index.tsx",
@@ -14,7 +15,10 @@
       "require": "./src/index.tsx"
     }
   },
-  "files": ["src", "dist"],
+  "files": [
+    "src",
+    "dist"
+  ],
   "sideEffects": false,
   "scripts": {
     "build": "tsc --emitDeclarationOnly",

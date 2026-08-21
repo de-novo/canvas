@@ -237,7 +237,14 @@ export type {
   CanvasLayoutInput,
   CanvasLayoutResult
 } from "./layout/adapters.js";
-export { applyCommandsToDocument } from "./commands/apply-document.js";
+export {
+  applyCommandsToDocument,
+  applyCommandsToStoredDocument
+} from "./commands/apply-document.js";
+export type {
+  ApplyStoredCommandsOptions,
+  CanvasStoredDocument
+} from "./commands/apply-document.js";
 export {
   createEditor,
   connectEditorToRuntime,

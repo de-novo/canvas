@@ -2,12 +2,15 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 
 import {
+  AssetRefSchema,
   CanvasDocumentSchema,
   type CanvasDocument,
   type CanvasDocumentSummary,
   type CanvasStorageAdapter,
   type NodeId
 } from "@denovo/canvas-core";
+import { applyCommandsToStoredDocument } from "@denovo/canvas-editor";
+import { assertSafeAssetId, storeUploadedAsset } from "./asset-blob.js";
 
 export type FileSystemDocumentAdapterOptions = {
   /** Directory where document JSON files are read and written. */
@@ -18,7 +21,8 @@ export type FileSystemDocumentAdapterOptions = {
  * Node.js filesystem `CanvasStorageAdapter`. Each document is stored as
  * `<directory>/<id>.json`. Optimistic-concurrency conflict detection uses the
  * stored file's `revision` against `baseRevision`, matching the in-memory
- * adapter.
+ * adapter. `applyCommands` uses the same editor command applier as memory and
+ * IndexedDB.
  *
  * Browser builds should not import this module (it uses `node:fs`); it is
  * published under the `@denovo/canvas-server/filesystem` export so bundlers can
@@ -29,6 +33,11 @@ export function createFileSystemDocumentAdapter(
 ): CanvasStorageAdapter {
   const { directory } = options;
   const documentPath = (id: NodeId) => path.join(directory, `${id}.json`);
+  const assetsDirectory = path.join(directory, "assets");
+  const assetMetaPath = (id: NodeId) =>
+    path.join(assetsDirectory, `${assertSafeAssetId(id)}.json`);
+  const assetDataPath = (id: NodeId) =>
+    path.join(assetsDirectory, `${assertSafeAssetId(id)}.bin`);
 
   const readStored = async (
     id: NodeId
@@ -126,6 +135,63 @@ export function createFileSystemDocumentAdapter(
         return true;
       } catch {
         return false;
+      }
+    },
+
+    async applyCommands(documentId, commands, options) {
+      const existing = await readStored(documentId);
+      const result = await applyCommandsToStoredDocument(
+        existing === null
+          ? null
+          : { document: existing, revision: existing.revision },
+        documentId,
+        commands,
+        options ?? {}
+      );
+
+      if (!result.ok) {
+        return result;
+      }
+
+      await fs.mkdir(directory, { recursive: true });
+      await fs.writeFile(
+        documentPath(result.document.id),
+        `${JSON.stringify(result.document, null, 2)}\n`,
+        "utf8"
+      );
+
+      return result;
+    },
+
+    async uploadAsset(upload) {
+      return storeUploadedAsset(upload, (id) => `filesystem://assets/${id}`, async (record) => {
+        await fs.mkdir(assetsDirectory, { recursive: true });
+        await fs.writeFile(
+          assetMetaPath(record.asset.id),
+          `${JSON.stringify(record.asset, null, 2)}\n`,
+          "utf8"
+        );
+        await fs.writeFile(
+          assetDataPath(record.asset.id),
+          Buffer.from(record.data)
+        );
+      });
+    },
+
+    async loadAsset(id) {
+      try {
+        const [metaRaw, data] = await Promise.all([
+          fs.readFile(assetMetaPath(id), "utf8"),
+          fs.readFile(assetDataPath(id))
+        ]);
+        const asset = AssetRefSchema.parse(JSON.parse(metaRaw));
+        const copy = data.buffer.slice(
+          data.byteOffset,
+          data.byteOffset + data.byteLength
+        );
+        return { asset, data: copy };
+      } catch {
+        return null;
       }
     }
   };

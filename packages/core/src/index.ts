@@ -1,5 +1,11 @@
 import { z } from "zod";
 import { createStore, type StoreApi } from "zustand/vanilla";
+import {
+  createMemoryGeometryStore,
+  decodeMeshGeometry,
+  encodeMeshGeometry,
+  type CanvasGeometryStore
+} from "./geometry.js";
 
 export const CANVAS_DOCUMENT_SCHEMA_VERSION = "0.2.0";
 export const CANVAS_LEGACY_DOCUMENT_SCHEMA_VERSION = "0.1.0";
@@ -113,21 +119,64 @@ export const SphereNodeSchema = NodeTransformSchema.extend({
   radius: z.number().positive().default(0.75)
 }).strict();
 
-export const MeshNodeSchema = NodeTransformSchema.extend({
+const MeshNodeObjectSchema = NodeTransformSchema.extend({
   ...CanvasNodeCommonSchemaShape,
   type: z.literal("mesh"),
   color: z.string().min(1).default("#9ca3af"),
+  geometryAssetId: NodeIdSchema.optional(),
   positions: z
     .array(z.number().finite())
     .min(6)
     .refine((values) => values.length % 3 === 0, {
       message: "mesh positions length must be a multiple of 3"
-    }),
-  indices: z.array(z.number().int().nonnegative()).min(3),
+    })
+    .optional(),
+  indices: z.array(z.number().int().nonnegative()).min(3).optional(),
   normals: z.array(z.number().finite()).optional(),
   uvs: z.array(z.number().finite()).optional(),
   wireframe: z.boolean().default(false)
 }).strict();
+
+function addMeshGeometrySourceIssues(
+  node: {
+    geometryAssetId?: string | undefined;
+    indices?: number[] | undefined;
+    normals?: number[] | undefined;
+    positions?: number[] | undefined;
+    uvs?: number[] | undefined;
+  },
+  context: z.RefinementCtx
+) {
+  const hasAsset = node.geometryAssetId !== undefined;
+  const hasInline =
+    node.positions !== undefined ||
+    node.indices !== undefined ||
+    node.normals !== undefined ||
+    node.uvs !== undefined;
+
+  if (hasAsset && hasInline) {
+    context.addIssue({
+      code: "custom",
+      message:
+        "mesh nodes cannot combine geometryAssetId with inline positions, indices, normals, or uvs",
+      path: ["geometryAssetId"]
+    });
+    return;
+  }
+
+  if (!hasAsset && (node.positions === undefined || node.indices === undefined)) {
+    context.addIssue({
+      code: "custom",
+      message:
+        "mesh nodes require inline positions and indices, or geometryAssetId",
+      path: node.positions === undefined ? ["positions"] : ["indices"]
+    });
+  }
+}
+
+export const MeshNodeSchema = MeshNodeObjectSchema.superRefine(
+  addMeshGeometrySourceIssues
+);
 
 export const InstanceTransformSchema = NodeTransformSchema.extend({
   color: z.string().min(1).optional()
@@ -294,15 +343,21 @@ export const Canvas2DNodeSchema = z.discriminatedUnion("type", [
   Canvas2DHtmlNodeSchema
 ]);
 
-export const Canvas3DNodeSchema = z.discriminatedUnion("type", [
-  BoxNodeSchema,
-  SphereNodeSchema,
-  MeshNodeSchema,
-  InstancesNodeSchema,
-  Canvas3DGroupNodeSchema,
-  Canvas3DMeasurementNodeSchema,
-  Canvas3DAnnotationNodeSchema
-]);
+export const Canvas3DNodeSchema = z
+  .discriminatedUnion("type", [
+    BoxNodeSchema,
+    SphereNodeSchema,
+    MeshNodeObjectSchema,
+    InstancesNodeSchema,
+    Canvas3DGroupNodeSchema,
+    Canvas3DMeasurementNodeSchema,
+    Canvas3DAnnotationNodeSchema
+  ])
+  .superRefine((node, context) => {
+    if (node.type === "mesh") {
+      addMeshGeometrySourceIssues(node, context);
+    }
+  });
 
 export const Canvas2DNodeTypeSchema = z.union([
   RectNodeSchema.shape.type,
@@ -318,7 +373,7 @@ export const Canvas2DNodeTypeSchema = z.union([
 export const Canvas3DNodeTypeSchema = z.union([
   BoxNodeSchema.shape.type,
   SphereNodeSchema.shape.type,
-  MeshNodeSchema.shape.type,
+  MeshNodeObjectSchema.shape.type,
   InstancesNodeSchema.shape.type,
   Canvas3DGroupNodeSchema.shape.type,
   Canvas3DMeasurementNodeSchema.shape.type,
@@ -532,6 +587,7 @@ export const AssetKindSchema = z.enum([
   "glb",
   "ifc",
   "xkt",
+  "geometry",
   "binary",
   "json",
   "other"
@@ -576,6 +632,35 @@ export const CanvasDocumentSchema = z
       }
 
       seenAssetIds.add(asset.id);
+    }
+
+    if (document.scene.mode === "3d") {
+      for (const [nodeIndex, node] of document.scene.nodes.entries()) {
+        if (node.type !== "mesh" || node.geometryAssetId === undefined) {
+          continue;
+        }
+
+        const asset = document.assets.find(
+          (candidate) => candidate.id === node.geometryAssetId
+        );
+
+        if (asset === undefined) {
+          context.addIssue({
+            code: "custom",
+            message: `Missing geometry asset: ${node.geometryAssetId}`,
+            path: ["scene", "nodes", nodeIndex, "geometryAssetId"]
+          });
+          continue;
+        }
+
+        if (asset.type !== "geometry") {
+          context.addIssue({
+            code: "custom",
+            message: `Geometry asset must have type "geometry": ${node.geometryAssetId}`,
+            path: ["scene", "nodes", nodeIndex, "geometryAssetId"]
+          });
+        }
+      }
     }
   });
 
@@ -1687,7 +1772,7 @@ type CanonicalNodeSchema =
   | typeof BoxNodeSchema
   | typeof SphereNodeSchema
   | typeof InstancesNodeSchema
-  | typeof MeshNodeSchema
+  | typeof MeshNodeObjectSchema
   | typeof Canvas2DGroupNodeSchema
   | typeof Canvas3DGroupNodeSchema
   | typeof Canvas2DMeasurementNodeSchema
@@ -1751,7 +1836,7 @@ const BoxNodePatchSchema = createCanonicalNodePatchSchema(BoxNodeSchema);
 const SphereNodePatchSchema = createCanonicalNodePatchSchema(SphereNodeSchema);
 const InstancesNodePatchSchema =
   createCanonicalNodePatchSchema(InstancesNodeSchema);
-const MeshNodePatchSchema = createCanonicalNodePatchSchema(MeshNodeSchema);
+const MeshNodePatchSchema = createCanonicalNodePatchSchema(MeshNodeObjectSchema);
 const Canvas2DGroupNodePatchSchema = createCanonicalNodePatchSchema(
   Canvas2DGroupNodeSchema
 );
@@ -2084,6 +2169,46 @@ export type AssetUpload = {
   data: ArrayBuffer | Blob;
 };
 
+/** Bytes plus the stored `AssetRef` returned by `loadAsset`. */
+export type AssetRecord = {
+  readonly asset: AssetRef;
+  readonly data: ArrayBuffer;
+};
+
+export async function readAssetUploadData(
+  data: ArrayBuffer | Blob
+): Promise<ArrayBuffer> {
+  if (data instanceof ArrayBuffer) {
+    return data;
+  }
+
+  if (typeof data.arrayBuffer === "function") {
+    return data.arrayBuffer();
+  }
+
+  throw new TypeError("Asset upload data must be an ArrayBuffer or Blob.");
+}
+
+export function defineUploadedAsset(
+  upload: AssetUpload,
+  data: ArrayBuffer,
+  defaultUri: string
+): AssetRef {
+  const id =
+    typeof upload.asset.id === "string" && upload.asset.id.length > 0
+      ? upload.asset.id
+      : `asset-${Date.now().toString(36)}`;
+
+  return AssetRefSchema.parse({
+    ...upload.asset,
+    id,
+    type: upload.asset.type ?? "binary",
+    uri: upload.asset.uri ?? defaultUri,
+    byteLength: data.byteLength,
+    metadata: upload.asset.metadata ?? {}
+  });
+}
+
 export type CanvasStorageAdapter = {
   name: string;
   applyCommands?: (
@@ -2095,6 +2220,7 @@ export type CanvasStorageAdapter = {
   ) => Promise<CanvasSaveResult>;
   deleteDocument?: (id: NodeId) => Promise<boolean>;
   listDocuments?: () => Promise<CanvasDocumentSummary[]>;
+  loadAsset?: (id: NodeId) => Promise<AssetRecord | null>;
   loadDocument: (id: NodeId) => Promise<CanvasDocument | null>;
   saveDocument: (
     document: CanvasDocument,
@@ -2104,6 +2230,82 @@ export type CanvasStorageAdapter = {
   ) => Promise<CanvasSaveResult>;
   uploadAsset?: (upload: AssetUpload) => Promise<AssetRef>;
 };
+
+/**
+ * Writes every `geometry` asset in `document.assets` from `store` through
+ * `adapter.uploadAsset`. Other asset kinds are left unchanged. Returns a
+ * document whose geometry refs carry the uploaded `uri` and `byteLength`.
+ */
+export async function persistCanvasGeometryStore(
+  document: CanvasDocument,
+  store: CanvasGeometryStore,
+  adapter: Pick<CanvasStorageAdapter, "uploadAsset">
+): Promise<CanvasDocument> {
+  const upload = adapter.uploadAsset;
+  if (upload === undefined) {
+    return document;
+  }
+
+  const assets: AssetRef[] = [];
+  for (const asset of document.assets) {
+    if (asset.type !== "geometry") {
+      assets.push(asset);
+      continue;
+    }
+
+    const geometry = store.get(asset.id);
+    if (geometry === undefined) {
+      assets.push(asset);
+      continue;
+    }
+
+    const data = encodeMeshGeometry(geometry);
+    assets.push(
+      await upload({
+        asset: {
+          ...asset,
+          byteLength: data.byteLength
+        },
+        data
+      })
+    );
+  }
+
+  return {
+    ...document,
+    assets
+  };
+}
+
+/**
+ * Fills `store` from `geometry` assets by calling `adapter.loadAsset` and
+ * decoding `denovo.mesh-geometry.v1` payloads.
+ */
+export async function hydrateCanvasGeometryStore(
+  document: CanvasDocument,
+  adapter: Pick<CanvasStorageAdapter, "loadAsset">,
+  store: CanvasGeometryStore = createMemoryGeometryStore()
+): Promise<CanvasGeometryStore> {
+  const load = adapter.loadAsset;
+  if (load === undefined) {
+    return store;
+  }
+
+  for (const asset of document.assets) {
+    if (asset.type !== "geometry") {
+      continue;
+    }
+
+    const record = await load(asset.id);
+    if (record === null) {
+      continue;
+    }
+
+    store.set(asset.id, decodeMeshGeometry(record.data));
+  }
+
+  return store;
+}
 
 /** Axis-aligned rectangle in scene space. */
 export type CanvasRectBounds = {
@@ -2561,6 +2763,27 @@ export function isCanvas3DNode(node: CanvasNode): node is Canvas3DNode {
       return node.anchor.length === 3;
   }
 }
+
+export {
+  CANVAS_MESH_GEOMETRY_SCHEMA,
+  computeMeshGeometryBounds,
+  createMemoryGeometryStore,
+  createMeshGeometryAssetRef,
+  decodeMeshGeometry,
+  defineMeshGeometry,
+  encodeMeshGeometry,
+  parseMeshGeometry,
+  resolveCanvasMeshGeometry,
+  safeParseMeshGeometry
+} from "./geometry.js";
+export type {
+  CanvasGeometryStore,
+  CanvasMeshBounds,
+  CanvasMeshGeometry,
+  CanvasMeshGeometryAssetMetadata,
+  CanvasMeshGeometryInput,
+  CanvasMeshGeometrySource
+} from "./geometry.js";
 
 export function createCanvasStore<TMode extends CanvasMode = CanvasMode>(
   initialScene: CanvasSceneInputForMode<TMode>

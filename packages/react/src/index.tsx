@@ -2,9 +2,11 @@
 
 import {
   defineScene,
+  resolveCanvasMeshGeometry,
   type Canvas3DNode,
   type Canvas3DScene,
   type Canvas3DSceneInput,
+  type CanvasGeometryStore,
   type CanvasSceneInput
 } from "@denovo/canvas-core";
 import {
@@ -48,6 +50,7 @@ export type CanvasViewProps = {
 export type CanvasStage3DProps = {
   cameraControls?: boolean;
   className?: string;
+  geometryStore?: CanvasGeometryStore | undefined;
   scene: Canvas3DSceneInput;
   style?: CSSProperties;
   onCreated?: CanvasProps["onCreated"];
@@ -98,6 +101,7 @@ export function CanvasView({
 export function CanvasStage3D({
   cameraControls = true,
   className,
+  geometryStore,
   scene,
   style,
   onCreated
@@ -127,7 +131,7 @@ export function CanvasStage3D({
         <ambientLight intensity={0.65} />
         <directionalLight position={[4, 6, 8]} intensity={1.8} />
         <SceneCamera scene={resolvedScene} />
-        <SceneObjects scene={resolvedScene} />
+        <SceneObjects geometryStore={geometryStore} scene={resolvedScene} />
         {cameraControls ? <OrbitControls makeDefault enableDamping /> : null}
       </Canvas>
     </div>
@@ -158,7 +162,13 @@ function SceneCamera({ scene }: { scene: Canvas3DScene }) {
   return null;
 }
 
-function SceneObjects({ scene }: { scene: Canvas3DScene }) {
+function SceneObjects({
+  geometryStore,
+  scene
+}: {
+  geometryStore?: CanvasGeometryStore | undefined;
+  scene: Canvas3DScene;
+}) {
   const nodes = scene.nodes;
   const childrenByParent = new Map<string | null, Canvas3DNode[]>();
 
@@ -179,7 +189,8 @@ function SceneObjects({ scene }: { scene: Canvas3DScene }) {
                   node,
                   childrenByParent,
                   scene.render.frustumCulling,
-                  new Matrix4()
+                  new Matrix4(),
+                  geometryStore
                 )
               )
           : []
@@ -192,7 +203,8 @@ function renderSceneNode(
   node: Canvas3DNode,
   childrenByParent: ReadonlyMap<string | null, readonly Canvas3DNode[]>,
   frustumCulled: boolean,
-  parentWorldTransform: Matrix4
+  parentWorldTransform: Matrix4,
+  geometryStore?: CanvasGeometryStore
 ): ReactNode {
   if (!node.visible) {
     return null;
@@ -229,8 +241,9 @@ function renderSceneNode(
       return (
         <MeshNode
           key={node.id}
-          node={node}
           frustumCulled={frustumCulled}
+          geometryStore={geometryStore}
+          node={node}
         />
       );
     case "instances":
@@ -262,7 +275,8 @@ function renderSceneNode(
               child,
               childrenByParent,
               frustumCulled,
-              worldTransform
+              worldTransform,
+              geometryStore
             )
           )}
         </group>
@@ -400,24 +414,33 @@ function InstancesNode({
 type Canvas3DMeshNode = Extract<Canvas3DNode, { type: "mesh" }>;
 
 type MeshNodeProps = {
-  node: Canvas3DMeshNode;
   frustumCulled: boolean;
+  geometryStore?: CanvasGeometryStore | undefined;
+  node: Canvas3DMeshNode;
 };
 
-function MeshNode({ node, frustumCulled }: MeshNodeProps) {
-  const positions = useMemo(() => new Float32Array(node.positions), [node.positions]);
+function MeshNode({ frustumCulled, geometryStore, node }: MeshNodeProps) {
+  const resolved = resolveCanvasMeshGeometry(node, geometryStore);
+  const positions = useMemo(
+    () => (resolved ? new Float32Array(resolved.positions) : null),
+    [resolved]
+  );
   const indices = useMemo(
-    () => new Uint32Array(node.indices),
-    [node.indices]
+    () => (resolved ? new Uint32Array(resolved.indices) : null),
+    [resolved]
   );
   const normals = useMemo(
-    () => (node.normals ? new Float32Array(node.normals) : null),
-    [node.normals]
+    () => (resolved?.normals ? new Float32Array(resolved.normals) : null),
+    [resolved]
   );
   const uvs = useMemo(
-    () => (node.uvs ? new Float32Array(node.uvs) : null),
-    [node.uvs]
+    () => (resolved?.uvs ? new Float32Array(resolved.uvs) : null),
+    [resolved]
   );
+
+  if (!resolved || !positions || !indices) {
+    return null;
+  }
 
   return (
     <mesh

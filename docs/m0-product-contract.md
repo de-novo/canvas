@@ -66,13 +66,15 @@ runtime objects, or app-specific storage clients.
 
 ## Renderer Backend Contract
 
-The product should be WebGPU-first, not WebGPU-only.
+Implemented built-in backends are Canvas2D (2D) and WebGL2 (3D). WebGPU is
+reserved public vocabulary and a future adapter milestone, not a current
+`auto` result.
 
 M0 separates document `mode` from runtime `backend`:
 
 - `mode`: persistent scene intent, currently `2d` or `3d`.
 - `backend`: runtime implementation, such as `webgpu`, `webgl2`, `canvas2d`, or
-  `custom`.
+  `custom`. `webgpu` is reserved until a runtime exists.
 
 The target default is:
 
@@ -87,11 +89,11 @@ createCanvas("#stage", {
 
 `backend: "auto"` resolves only to a genuinely implemented backend compatible
 with the scene mode and current runtime capabilities. The current built-ins
-resolve 3D to WebGL2 and 2D to Canvas2D. WebGPU may become the preferred `auto`
-result only after a compatible runtime exists. An explicitly requested backend
-is never silently replaced: unimplemented, unavailable, or mode-incompatible
-choices fail with a backend-resolution error. Backend choice remains a runtime
-concern and is not embedded into saved documents.
+resolve 3D to WebGL2 and 2D to Canvas2D. Requesting `webgpu` fails with
+`backend-unimplemented`. An explicitly requested backend is never silently
+replaced: unimplemented, unavailable, or mode-incompatible choices fail with a
+backend-resolution error. Backend choice remains a runtime concern and is not
+embedded into saved documents.
 
 Detailed policy lives in
 [Rendering Backend Strategy](./rendering-backend-strategy.md).
@@ -132,8 +134,9 @@ The canonical `0.2.0` schema extends both mode-specific unions with `group`,
 built-ins that shipped without a version bump and are now frozen in place:
 
 - 2D: `edge`, `text`, `html` — see [M8 Diagram Contract](./m8-diagram-contract.md);
-- 3D: `mesh` (inline positions/indices; large IFC/glTF geometry still belongs
-  on `AssetRef`).
+- 3D: `mesh` (inline positions/indices for small meshes, or
+  `geometryAssetId` pointing at an `AssetRef` of type `geometry`; large
+  IFC/glTF tessellation stays out of the node JSON).
 
 `0.2.0` is not getting a `0.3.0` successor for those kinds. New built-in
 node kinds after this freeze require a schema migration or a namespaced
@@ -238,6 +241,7 @@ Storage adapters implement `CanvasStorageAdapter`:
 - optional `listDocuments()`
 - optional `deleteDocument(id)`
 - optional `uploadAsset(upload)`
+- optional `loadAsset(id)`
 
 The default document JSON should remain small and deterministic. Large binary
 data belongs in assets and is referenced by `AssetRef`. Server packages can

@@ -20,11 +20,14 @@ verified** in the M0–M3.1 sense:
   and have adapter smoke coverage. They mount `@denovo/canvas-web`, not the
   full facade/editor.
 - **M6 Persistence:** snapshot OCC, memory/filesystem/IndexedDB adapters, and
-  the editor storage bridge exist. IndexedDB `applyCommands` now applies
-  commands; conflict handling no longer rebases onto the server. Not a
-  verified milestone.
-- **M7 BIM:** optional `web-ifc` importer produces `mesh` nodes. View-scale
-  sample only (5000-element cap, no workers/section planes).
+  the editor storage bridge exist. All three adapters apply `applyCommands`
+  through `applyCommandsToStoredDocument`. Undo/redo emit `history.changed` so
+  `connectEditorToStorage` persists the restored snapshot. Conflict handling
+  does not rebase onto the server. Not a verified milestone.
+- **M7 BIM:** optional `web-ifc` importer produces `mesh` nodes that
+  reference `geometry` assets. Tessellation lives in a session
+  `CanvasGeometryStore`, not as unbounded `number[]` on each node.
+  View-scale sample only (5000-element cap, no workers/section planes).
 - **M8 Diagram:** `edge`/`text`/`html`, connector, routing, layout adapters,
   and 2D UX slices have landed. The
   [M8 Diagram Contract](./m8-diagram-contract.md) now freezes that
@@ -41,8 +44,9 @@ optional packages, not a second product identity. See
   React adapter, server, worker, BIM, and examples.
 - `@denovo/canvas` facade package exists as the current public entrypoint.
 - Public API contract verification exists and passes.
-- Renderer backend strategy is documented as WebGPU-first with WebGL2 and
-  Canvas2D compatibility backends and strict explicit selection.
+- Renderer backend vocabulary includes `auto`, `webgpu`, `webgl2`,
+  `canvas2d`, `offscreen-canvas2d`, and `custom`. Implemented `auto`
+  results are Canvas2D and WebGL2. WebGPU is reserved and unimplemented.
 - Agent/project/document/history management policy is defined.
 - Enforceable agent rules are defined.
 - TypeScript 7 is the required repository toolchain, and Effect is the preferred
@@ -223,25 +227,40 @@ optional packages, not a second product identity. See
 - Review hardening landed on 2026-08-17. See
   [2026-08-17 review-hardening](./history/2026-08-17-review-hardening.md).
 - Canonical schema stays `0.2.0`. `mesh` / `edge` / `text` / `html` are
-  frozen as current `0.2.0` built-ins (no `0.3.0` bump). LICENSE is
-  deferred to the public-release pass.
+  frozen as current `0.2.0` built-ins (no `0.3.0` bump). The repository
+  is Apache-2.0. See
+  [2026-08-17 open-source governance](./history/2026-08-17-open-source-governance.md).
 - [M8 Diagram Contract](./m8-diagram-contract.md) acceptance checks ran
   on 2026-08-17, including a live-playground connector gesture on
   desktop and iPhone 14. M8 is contract-accepted, not a second product.
   Residual: the full vanilla M3 desktop/mobile suite was not re-run in
   this pass.
 - M4–M8 remain landed-but-unverified.
+- v1 persistence slice landed on 2026-08-17: memory/filesystem
+  `applyCommands` parity and undo/redo visibility. See
+  [2026-08-17 v1 persistence applyCommands](./history/2026-08-17-v1-persistence-applycommands.md).
+- Geometry store slice landed on 2026-08-17: mesh nodes accept
+  `geometryAssetId`, BIM writes tessellation onto `AssetRef` +
+  `CanvasGeometryStore`. See
+  [2026-08-17 geometry store](./history/2026-08-17-geometry-store.md).
+- WebGPU language slice landed on 2026-08-17: implemented `auto` backends
+  stay Canvas2D/WebGL2; `webgpu` is reserved vocabulary, not a resolved
+  result. See
+  [2026-08-17 WebGPU language](./history/2026-08-17-webgpu-language.md).
+- Open-source governance landed on 2026-08-17: Apache-2.0 LICENSE,
+  NOTICE, CONTRIBUTING, CODE_OF_CONDUCT, and SECURITY. See
+  [2026-08-17 open-source governance](./history/2026-08-17-open-source-governance.md).
+- Geometry blob persistence landed on 2026-08-17: memory/filesystem/IndexedDB
+  `uploadAsset`/`loadAsset`, plus `persistCanvasGeometryStore` /
+  `hydrateCanvasGeometryStore`. See
+  [2026-08-17 geometry blob persistence](./history/2026-08-17-geometry-blob-persistence.md).
 
 ## Next
 
-1. **v1 persistence:** memory/filesystem `applyCommands` parity with
-   IndexedDB, and undo/redo visible to the storage bridge.
-2. **Geometry store:** IFC/glTF tessellation belongs on `AssetRef`, not as
-   unbounded `number[]` on every `mesh` node.
-3. **WebGPU language:** keep WebGL2/Canvas2D as the implemented backends;
-   treat WebGPU as a future adapter milestone, not a current `auto` result.
-4. **Open-source governance (deferred to release):** LICENSE, CONTRIBUTING,
-   CODE_OF_CONDUCT, SECURITY. Explicitly last, not next.
+1. **Milestone verification:** run the remaining M4–M8 acceptance suites
+   instead of leaving them landed-but-unverified.
+2. **Adapter host:** framework view wrappers should mount the facade, not
+   only `@denovo/canvas-web`.
 
 ## Blocked
 
@@ -251,15 +270,20 @@ optional packages, not a second product identity. See
 
 - `pnpm typecheck`: passed on 2026-08-17 (30/30 tasks).
 - `pnpm build`: passed on 2026-08-17 (20/20 packages and apps).
-- `pnpm verify:document-schema`: passed on 2026-08-17 (36 named checks),
-  including mesh `node.update`.
+- `pnpm verify:document-schema`: passed on 2026-08-17 (37 named checks),
+  including mesh `node.update` and `geometryAssetId` exclusive-or.
 - `pnpm verify:editor-core`: passed on 2026-08-17, including mesh update,
   paste id remapping + single undo, delete of incident edges + single undo,
-  text ungroup world transform, and `applyCommandsToDocument`.
-- `pnpm verify:server`: passed on 2026-08-17 (15 assertions), including
-  conflict-does-not-overwrite.
+  text ungroup world transform, `applyCommandsToDocument`,
+  `applyCommandsToStoredDocument` OCC/validation, and geometry-store
+  helper exports.
+- `pnpm verify:server`: passed on 2026-08-17 (30 assertions), including
+  conflict-does-not-overwrite, memory/filesystem `applyCommands`, undo/redo
+  `history.changed` persistence, and geometry blob upload/hydrate.
 - `pnpm verify:public-api`: passed on 2026-08-17, including
-  `applyCommandsToDocument` and mesh update fixtures.
+  `applyCommandsToStoredDocument`, `history.changed`, geometry-store
+  fixtures, `CanvasResolvedBackend` rejecting `webgpu`, and
+  `loadAsset` / `persistCanvasGeometryStore`.
 - `pnpm verify:hit-testing`: passed on 2026-08-17, including M8 edge path
   resolution (`orthogonal` waypoints, quadratic control, ignored
   `routing: "curved"`).
@@ -310,4 +334,9 @@ optional packages, not a second product identity. See
 - [2026-08-17 M8 in-browser connector](./history/2026-08-17-m8-connector-browser.md)
 - [2026-08-17 ego-browser html overlay](./history/2026-08-17-ego-browser-html-overlay.md)
 - [2026-08-17 trackpad wheel boundary](./history/2026-08-17-trackpad-wheel-boundary.md)
+- [2026-08-17 v1 persistence applyCommands](./history/2026-08-17-v1-persistence-applycommands.md)
+- [2026-08-17 geometry store](./history/2026-08-17-geometry-store.md)
+- [2026-08-17 WebGPU language](./history/2026-08-17-webgpu-language.md)
+- [2026-08-17 open-source governance](./history/2026-08-17-open-source-governance.md)
+- [2026-08-17 geometry blob persistence](./history/2026-08-17-geometry-blob-persistence.md)
 

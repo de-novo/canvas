@@ -108,9 +108,11 @@ defines process, status, documentation, verification, and history management.
 
 ## Rendering Rules
 
-- MUST treat WebGPU as a target backend, not the only supported runtime.
-- MUST keep WebGL2 and Canvas2D as compatibility backends in the renderer
-  vocabulary.
+- MUST treat WebGPU as reserved target vocabulary and a future adapter
+  milestone, not the current `auto` result and not the only supported runtime.
+- MUST keep WebGL2 and Canvas2D as the implemented built-in backends.
+- MUST NOT describe or implement `auto` as resolving to WebGPU until a
+  compatible runtime exists.
 - MUST NOT silently substitute another backend for an explicitly requested
   backend. `auto` MAY resolve only to an implemented, mode-compatible backend
   whose required capability is available; otherwise it MUST fail explicitly.

@@ -1,4 +1,8 @@
-import type { CanvasScene } from "@denovo/canvas-core";
+import type {
+  CanvasDocument,
+  CanvasGeometryStore,
+  CanvasScene
+} from "@denovo/canvas-core";
 
 export type BimModelSource =
   | {
@@ -19,10 +23,27 @@ export type BimModelMetadata = {
   sourceType: BimModelSource["type"];
 };
 
+export type BimImportResult = {
+  document: CanvasDocument;
+  geometryStore: CanvasGeometryStore;
+};
+
 export type BimAdapter = {
   dispose: () => void | Promise<void>;
   loadModel: (source: BimModelSource) => Promise<BimModelMetadata>;
+  /**
+   * Scene-only import. Mesh nodes may reference `geometryAssetId`; the
+   * corresponding buffers live on {@link BimAdapter.getGeometryStore} or
+   * {@link BimImportResult.geometryStore}.
+   */
   toScene?: () => Promise<CanvasScene>;
+  /**
+   * Canonical import. The document JSON keeps `AssetRef`s; tessellation is
+   * in `geometryStore`, not on each mesh node. Persist with
+   * `persistCanvasGeometryStore`, reload with `hydrateCanvasGeometryStore`.
+   */
+  toDocument?: () => Promise<BimImportResult>;
+  getGeometryStore?: () => CanvasGeometryStore;
 };
 
 /**

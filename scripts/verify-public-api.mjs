@@ -126,6 +126,16 @@ assert.ok(
 
 const facadeSource = readFileSync(facadeSourcePath, "utf8");
 assertIncludes(facadeSource, "export type CanvasBackend", "facade source");
+assertIncludes(
+  facadeSource,
+  "export type CanvasResolvedBackend",
+  "facade source"
+);
+assertIncludes(
+  facadeSource,
+  "export type CanvasImplementedBackend",
+  "facade source"
+);
 assertIncludes(facadeSource, "export type CanvasRendererConfig", "facade source");
 assertIncludes(facadeSource, "export type ResolvedCanvasRenderer", "facade source");
 assertIncludes(facadeSource, "export function createCanvas", "facade source");
@@ -366,6 +376,15 @@ for (const exportName of [
   "connectEditorToCanvas",
   "connectEditorToRuntime",
   "applyCommandsToDocument",
+  "applyCommandsToStoredDocument",
+  "createMemoryGeometryStore",
+  "createMeshGeometryAssetRef",
+  "decodeMeshGeometry",
+  "defineMeshGeometry",
+  "encodeMeshGeometry",
+  "hydrateCanvasGeometryStore",
+  "persistCanvasGeometryStore",
+  "resolveCanvasMeshGeometry",
   "create2DShapeTool",
   "create3DPrimitiveTool",
   "create3DSurfacePlacementTool",
@@ -1951,6 +1970,7 @@ writeFileSync(
   createDistanceMeasurementTool,
   createEditor,
   applyCommandsToDocument,
+  applyCommandsToStoredDocument,
   createGroupNodesCommand,
   createNodeUpdateCommand,
   CanvasPluginError,
@@ -1962,6 +1982,14 @@ writeFileSync(
   definePluginCommand,
   define2DEdge,
   defineDocument,
+  defineMeshGeometry,
+  decodeMeshGeometry,
+  encodeMeshGeometry,
+  hydrateCanvasGeometryStore,
+  persistCanvasGeometryStore,
+  createMemoryGeometryStore,
+  createMeshGeometryAssetRef,
+  resolveCanvasMeshGeometry,
   defineHitResult,
   defineHitTestInput,
   defineScene,
@@ -1970,7 +1998,12 @@ writeFileSync(
   createSelectTool,
   createTransformTool,
   defineCanvas2DViewState,
+  type AssetRecord,
+  type CanvasStorageAdapter,
   type CanvasBackend,
+  type CanvasImplementedBackend,
+  type CanvasResolvedBackend,
+  type CanvasUnimplementedBackend,
   type Canvas2DSceneInput,
   type Canvas3DSceneInput,
   type Canvas3DSurfacePointRequest,
@@ -1983,6 +2016,8 @@ writeFileSync(
   type CanvasFacadeRendererAdapter,
   type CanvasFacadeRendererRuntime,
   type CanvasEditor,
+  type CanvasPersistenceEvent,
+  type CanvasStoredDocument,
   type CanvasHitResult,
   type CanvasHitTestInput,
   type CanvasNavigationInputRuntime,
@@ -2002,6 +2037,18 @@ import { CanvasView, type CanvasStage3DProps } from "${facadeName}/react";
 import { parseSceneEffect } from "@denovo/canvas-core/effect";
 
 const backend: CanvasBackend = "auto";
+const implementedBackend: CanvasImplementedBackend = "webgl2";
+const reservedBackend: CanvasUnimplementedBackend = "webgpu";
+const resolvedBackend: CanvasResolvedBackend = "canvas2d";
+// @ts-expect-error WebGPU is reserved and cannot be a resolved built-in.
+const invalidResolvedWebgpu: CanvasResolvedBackend = "webgpu";
+// @ts-expect-error auto is a selector, not a resolved backend.
+const invalidResolvedAuto: CanvasResolvedBackend = "auto";
+void implementedBackend;
+void reservedBackend;
+void resolvedBackend;
+void invalidResolvedWebgpu;
+void invalidResolvedAuto;
 const controls: CanvasCameraControlsOptions = {
   enablePan: true,
   enableRotate: true,
@@ -2138,7 +2185,70 @@ const preciseMeshUpdate = createNodeUpdateCommand(typedMesh, {
   position: [2, 3, 4]
 });
 const preciseMeshType: "mesh" = preciseMeshUpdate.nodeType;
+const typedAssetMesh: CanvasNodeByType<"3d", "mesh"> = {
+  color: "#9ca3af",
+  geometryAssetId: "typed-mesh-geo",
+  id: "typed-asset-mesh",
+  layerId: "main",
+  locked: false,
+  metadata: {},
+  parentId: null,
+  position: [0, 0, 0],
+  rotation: [0, 0, 0],
+  scale: [1, 1, 1],
+  type: "mesh",
+  visible: true,
+  wireframe: false
+};
+const meshGeometry = defineMeshGeometry({
+  schema: "denovo.mesh-geometry.v1",
+  positions: [0, 0, 0, 1, 0, 0, 0, 1, 0],
+  indices: [0, 1, 2]
+});
+const meshAsset = createMeshGeometryAssetRef("typed-mesh-geo", meshGeometry);
+const geometryStore = createMemoryGeometryStore();
+geometryStore.set(meshAsset.id, meshGeometry);
+const resolvedMesh = resolveCanvasMeshGeometry(typedAssetMesh, geometryStore);
+const geometryBytes = encodeMeshGeometry(meshGeometry);
+const decodedGeometry = decodeMeshGeometry(geometryBytes);
+void persistCanvasGeometryStore;
+void hydrateCanvasGeometryStore;
+declare const storageAdapter: CanvasStorageAdapter;
+const loadedAsset: Promise<AssetRecord | null> | undefined =
+  storageAdapter.loadAsset?.("typed-mesh-geo");
+// @ts-expect-error asset ids are strings
+void storageAdapter.loadAsset?.(12);
 void applyCommandsToDocument;
+void applyCommandsToStoredDocument;
+void typedAssetMesh;
+void meshAsset;
+void resolvedMesh;
+void decodedGeometry;
+void loadedAsset;
+const storedRevision: CanvasStoredDocument = {
+  document,
+  revision: 0
+};
+const persistedHistory: CanvasPersistenceEvent = {
+  action: "redo",
+  documentId: "public-api-document",
+  revision: 2,
+  type: "history.changed"
+};
+const persistedAction: "undo" | "redo" =
+  persistedHistory.type === "history.changed"
+    ? persistedHistory.action
+    : "undo";
+void storedRevision;
+void persistedAction;
+const invalidPersistedHistory: CanvasPersistenceEvent = {
+  // @ts-expect-error history.changed actions are undo or redo only.
+  action: "reset",
+  documentId: "public-api-document",
+  revision: 2,
+  type: "history.changed"
+};
+void invalidPersistedHistory;
 void preciseMeshType;
 // @ts-expect-error mesh updates cannot use 2D-only size patches.
 createNodeUpdateCommand(typedMesh, { size: [10, 10] });
@@ -2549,12 +2659,14 @@ writeFileSync(
   path.join(tmpDir, "editor-smoke.ts"),
   `import {
   CanvasEditorError,
+  applyCommandsToStoredDocument,
   connectEditorToRuntime,
   createEditor,
   createPanOrbitTool,
   createSelectTool,
   createTransformTool,
-  type CanvasEditor
+  type CanvasEditor,
+  type CanvasPersistenceEvent
 } from "@denovo/canvas-editor";
 
 const editor: CanvasEditor = createEditor({
@@ -2599,6 +2711,24 @@ editor.registerCommand({
   document: editor.getState().document
 }));
 
+const historyChanged: CanvasPersistenceEvent = {
+  action: "undo",
+  documentId: "headless-document",
+  revision: 1,
+  type: "history.changed"
+};
+const historyAction: "undo" | "redo" =
+  historyChanged.type === "history.changed" ? historyChanged.action : "undo";
+const invalidHistory: CanvasPersistenceEvent = {
+  // @ts-expect-error history.changed actions are undo or redo only.
+  action: "reset",
+  documentId: "headless-document",
+  revision: 1,
+  type: "history.changed"
+};
+void applyCommandsToStoredDocument;
+void historyAction;
+void invalidHistory;
 void error;
 void hovered;
 void selected;

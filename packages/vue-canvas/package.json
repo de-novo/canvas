@@ -1,6 +1,7 @@
 {
   "name": "@denovo/vue-canvas",
   "version": "0.0.0",
+  "license": "Apache-2.0",
   "description": "Vue adapter for Denovo Canvas.",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -13,7 +14,9 @@
       "require": "./dist/index.cjs"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "sideEffects": false,
   "scripts": {
     "build": "tsup src/index.ts --format esm,cjs --clean --external vue --external @denovo/canvas-core --external @denovo/canvas-web && tsc --emitDeclarationOnly",

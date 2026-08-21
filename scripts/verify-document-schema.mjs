@@ -31,7 +31,11 @@ import {
   CanvasScenePointResultSchema,
   CanvasWorkPlaneSchema,
   Canvas2DEdgeNodeSchema,
+  createMemoryGeometryStore,
+  createMeshGeometryAssetRef,
   define2DEdge,
+  defineMeshGeometry,
+  resolveCanvasMeshGeometry,
   defineCommand,
   defineDocument,
   defineHitResult,
@@ -196,6 +200,113 @@ check("defineScene-validates-3d-scene", () => {
     "instances",
     "mesh"
   ]);
+});
+
+check("mesh-nodes-accept-inline-or-geometry-asset", () => {
+  const inline = defineScene({
+    id: "inline-mesh-scene",
+    layers: [{ id: "layer-main", name: "Main" }],
+    mode: "3d",
+    nodes: [
+      {
+        id: "inline-mesh",
+        indices: [0, 1, 2],
+        layerId: "layer-main",
+        positions: [0, 0, 0, 1, 0, 0, 0, 1, 0],
+        type: "mesh"
+      }
+    ]
+  });
+  assert.equal(inline.nodes[0]?.type, "mesh");
+  assert.deepEqual(inline.nodes[0]?.positions?.slice(0, 3), [0, 0, 0]);
+
+  const assetScene = defineScene({
+    id: "asset-mesh-scene",
+    layers: [{ id: "layer-main", name: "Main" }],
+    mode: "3d",
+    nodes: [
+      {
+        geometryAssetId: "mesh-geo-1",
+        id: "asset-mesh",
+        layerId: "layer-main",
+        type: "mesh"
+      }
+    ]
+  });
+  assert.equal(assetScene.nodes[0]?.geometryAssetId, "mesh-geo-1");
+  assert.equal(assetScene.nodes[0]?.positions, undefined);
+
+  assertParseFails(
+    safeDefineScene({
+      id: "mesh-neither-scene",
+      layers: [{ id: "layer-main", name: "Main" }],
+      mode: "3d",
+      nodes: [
+        {
+          id: "empty-mesh",
+          layerId: "layer-main",
+          type: "mesh"
+        }
+      ]
+    }),
+    /inline positions and indices, or geometryAssetId/
+  );
+
+  assertParseFails(
+    safeDefineScene({
+      id: "mesh-both-scene",
+      layers: [{ id: "layer-main", name: "Main" }],
+      mode: "3d",
+      nodes: [
+        {
+          geometryAssetId: "mesh-geo-1",
+          id: "both-mesh",
+          indices: [0, 1, 2],
+          layerId: "layer-main",
+          positions: [0, 0, 0, 1, 0, 0, 0, 1, 0],
+          type: "mesh"
+        }
+      ]
+    }),
+    /cannot combine geometryAssetId/
+  );
+
+  const geometry = defineMeshGeometry({
+    schema: "denovo.mesh-geometry.v1",
+    positions: [0, 0, 0, 1, 0, 0, 0, 1, 0],
+    indices: [0, 1, 2]
+  });
+  const asset = createMeshGeometryAssetRef("mesh-geo-1", geometry);
+  const document = defineDocument({
+    id: "asset-mesh-document",
+    assets: [asset],
+    scene: assetScene
+  });
+  assert.equal(document.assets[0]?.type, "geometry");
+  assert.equal(document.assets[0]?.id, "mesh-geo-1");
+
+  assertParseFails(
+    safeDefineDocument({
+      id: "missing-geo-document",
+      scene: assetScene
+    }),
+    /Missing geometry asset/
+  );
+
+  assertParseFails(
+    safeDefineDocument({
+      assets: [{ id: "mesh-geo-1", type: "binary" }],
+      id: "wrong-kind-document",
+      scene: assetScene
+    }),
+    /Geometry asset must have type/
+  );
+
+  const store = createMemoryGeometryStore();
+  store.set("mesh-geo-1", geometry);
+  const resolved = resolveCanvasMeshGeometry(assetScene.nodes[0], store);
+  assert.deepEqual(resolved?.indices, [0, 1, 2]);
+  assert.equal(resolveCanvasMeshGeometry(assetScene.nodes[0]), null);
 });
 
 check("defineScene-rejects-duplicate-node-ids", () => {

@@ -1,4 +1,10 @@
-import type { CanvasCommand, CanvasDocument } from "@denovo/canvas-core";
+import {
+  CanvasDocumentSchema,
+  type CanvasCommand,
+  type CanvasDocument,
+  type CanvasSaveResult,
+  type NodeId
+} from "@denovo/canvas-core";
 import { applyCommandEffect, createInitialSnapshot } from "./handlers.js";
 import { cloneCommand, runEditorEffect } from "../runtime.js";
 
@@ -27,4 +33,76 @@ export async function applyCommandsToDocument(
   }
 
   return snapshot.document;
+}
+
+/**
+ * Stored snapshot plus the adapter-owned revision used for optimistic
+ * concurrency. Adapters may keep `revision` beside the document; do not assume
+ * `document.revision` is the stored value.
+ */
+export type CanvasStoredDocument = {
+  readonly document: CanvasDocument;
+  readonly revision: number;
+};
+
+export type ApplyStoredCommandsOptions = {
+  readonly baseRevision?: number;
+  readonly now?: () => string;
+};
+
+/**
+ * Applies commands to a stored snapshot with the same OCC and revision rules
+ * used by memory, filesystem, and IndexedDB `applyCommands` implementations.
+ */
+export async function applyCommandsToStoredDocument(
+  existing: CanvasStoredDocument | null,
+  documentId: NodeId,
+  commands: readonly CanvasCommand[],
+  options: ApplyStoredCommandsOptions = {}
+): Promise<CanvasSaveResult> {
+  if (existing === null) {
+    return {
+      ok: false,
+      reason: "unknown",
+      message: `Document not found: ${documentId}`
+    };
+  }
+
+  const baseRevision = options.baseRevision;
+  if (baseRevision !== undefined && baseRevision !== existing.revision) {
+    return {
+      ok: false,
+      reason: "conflict",
+      serverRevision: existing.revision,
+      document: existing.document
+    };
+  }
+
+  const now = options.now?.() ?? new Date().toISOString();
+
+  try {
+    const appliedDocument = await applyCommandsToDocument(
+      existing.document,
+      commands
+    );
+    const nextRevision = existing.revision + 1;
+    const parsed = CanvasDocumentSchema.parse({
+      ...appliedDocument,
+      revision: nextRevision,
+      updatedAt: now
+    });
+
+    return {
+      ok: true,
+      document: parsed,
+      revision: nextRevision
+    };
+  } catch (cause) {
+    return {
+      ok: false,
+      reason: "validation",
+      message:
+        cause instanceof Error ? cause.message : "Command application failed."
+    };
+  }
 }

@@ -13,7 +13,7 @@ The SDK should:
 - make common 2D/3D setup fast;
 - keep React and Next.js optional;
 - support vanilla web first;
-- use proven engines such as Three.js, Canvas2D, WebGPU, WebGL2, workers,
+- use proven engines such as Three.js, Canvas2D, WebGL2, workers,
   Zustand, Zod, TanStack Query, and optional BIM libraries where they help;
 - hide boilerplate without hiding escape hatches;
 - keep saved documents renderer-independent;

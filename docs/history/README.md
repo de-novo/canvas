@@ -92,3 +92,8 @@ Each entry should include:
 - [2026-08-17 M8 in-browser connector gesture](./2026-08-17-m8-connector-browser.md)
 - [2026-08-17 ego-browser html overlay](./2026-08-17-ego-browser-html-overlay.md)
 - [2026-08-17 trackpad wheel boundary](./2026-08-17-trackpad-wheel-boundary.md)
+- [2026-08-17 v1 persistence applyCommands](./2026-08-17-v1-persistence-applycommands.md)
+- [2026-08-17 geometry store](./2026-08-17-geometry-store.md)
+- [2026-08-17 WebGPU language](./2026-08-17-webgpu-language.md)
+- [2026-08-17 open-source governance](./2026-08-17-open-source-governance.md)
+- [2026-08-17 geometry blob persistence](./2026-08-17-geometry-blob-persistence.md)

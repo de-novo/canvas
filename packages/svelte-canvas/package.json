@@ -1,6 +1,7 @@
 {
   "name": "@denovo/svelte-canvas",
   "version": "0.0.0",
+  "license": "Apache-2.0",
   "description": "Svelte adapter for Denovo Canvas.",
   "type": "module",
   "main": "./src/index.ts",
@@ -14,7 +15,10 @@
       "import": "./src/index.ts"
     }
   },
-  "files": ["src", "dist"],
+  "files": [
+    "src",
+    "dist"
+  ],
   "sideEffects": false,
   "scripts": {
     "build": "tsc --emitDeclarationOnly",

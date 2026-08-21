@@ -1,16 +1,16 @@
 import {
   CanvasDocumentSchema,
   buildPatchRecord,
+  defineUploadedAsset,
+  readAssetUploadData,
   type CanvasDocument,
   type CanvasDocumentSummary,
   type CanvasStorageAdapter,
   type DocumentPatchRecord,
   type NodeId,
-  type AssetUpload,
-  type AssetRef,
-  type JsonValue
+  type AssetRef
 } from "@denovo/canvas-core";
-import { applyCommandsToDocument } from "@denovo/canvas-editor";
+import { applyCommandsToStoredDocument } from "@denovo/canvas-editor";
 
 const DEFAULT_DB_NAME = "denovo-canvas";
 const DEFAULT_STORE_NAME = "documents";
@@ -200,26 +200,23 @@ export function createIndexedDbDocumentAdapter(
     async applyCommands(documentId, commands, options) {
       const db = await getDb();
       const existing = await readStored(db, documentId);
+      const createdAt = new Date().toISOString();
+      const result = await applyCommandsToStoredDocument(
+        existing === null
+          ? null
+          : { document: existing.document, revision: existing.revision },
+        documentId,
+        commands,
+        {
+          ...(options?.baseRevision === undefined
+            ? {}
+            : { baseRevision: options.baseRevision }),
+          now: () => createdAt
+        }
+      );
 
-      if (!existing) {
-        return {
-          ok: false,
-          reason: "unknown",
-          message: `Document not found: ${documentId}`
-        } as const;
-      }
-
-      const baseRevision = options?.baseRevision;
-      const currentRevision = existing.revision;
-
-      // Conflict detection
-      if (baseRevision !== undefined && baseRevision !== currentRevision) {
-        return {
-          ok: false,
-          reason: "conflict",
-          serverRevision: currentRevision,
-          document: existing.document
-        } as const;
+      if (!result.ok) {
+        return result;
       }
 
       // Serialize the commands into a DocumentPatchRecord with a real patch.
@@ -237,34 +234,12 @@ export function createIndexedDbDocumentAdapter(
       const patchRecord: StoredPatch = buildPatchRecord({
         id: `patch-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         documentId,
-        baseRevision: currentRevision,
-        revision: currentRevision + 1,
+        baseRevision: result.revision - 1,
+        revision: result.revision,
         commands,
-        createdAt: new Date().toISOString(),
+        createdAt,
         ...(commandType === undefined ? {} : { commandType })
       });
-
-      let appliedDocument: CanvasDocument;
-      try {
-        appliedDocument = await applyCommandsToDocument(
-          existing.document,
-          commands
-        );
-      } catch (cause) {
-        return {
-          ok: false,
-          reason: "validation",
-          message:
-            cause instanceof Error ? cause.message : "Command application failed."
-        };
-      }
-
-      const nextRevision = currentRevision + 1;
-      const updatedDocument = {
-        ...appliedDocument,
-        revision: nextRevision,
-        updatedAt: new Date().toISOString()
-      };
 
       await new Promise<void>((resolve, reject) => {
         const tx = db.transaction([storeName, PATCHES_STORE_NAME], "readwrite");
@@ -274,9 +249,9 @@ export function createIndexedDbDocumentAdapter(
         patchRequest.onerror = () => reject(patchRequest.error);
 
         const updatedEntry: StoredEntry = {
-          id: existing.document.id,
-          document: updatedDocument,
-          revision: nextRevision
+          id: result.document.id,
+          document: result.document,
+          revision: result.revision
         };
 
         const docsStore = tx.objectStore(storeName);
@@ -286,37 +261,19 @@ export function createIndexedDbDocumentAdapter(
         tx.oncomplete = () => resolve();
       });
 
-      return {
-        ok: true,
-        document: updatedDocument,
-        revision: nextRevision
-      };
+      return result;
     },
 
     async uploadAsset(upload) {
       const db = await getDb();
-      const assetId = upload.asset.id || `asset-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-
-      // Convert Blob to ArrayBuffer if needed
-      let data: ArrayBuffer;
-      if (upload.data instanceof ArrayBuffer) {
-        data = upload.data;
-      } else {
-        data = await upload.data.arrayBuffer();
-      }
-
-      const asset: AssetRef = {
-        id: assetId,
-        type: upload.asset.type || "binary",
-        uri: upload.asset.uri || `indexeddb://${assetId}`,
-        mimeType: upload.asset.mimeType,
-        byteLength: data.byteLength,
-        checksum: upload.asset.checksum,
-        metadata: (upload.asset.metadata || {}) as Record<string, JsonValue>
-      };
-
+      const data = await readAssetUploadData(upload.data);
+      const draftId =
+        typeof upload.asset.id === "string" && upload.asset.id.length > 0
+          ? upload.asset.id
+          : `asset-${Date.now().toString(36)}`;
+      const asset = defineUploadedAsset(upload, data, `indexeddb://${draftId}`);
       const storedAsset: StoredAsset = {
-        id: assetId,
+        id: asset.id,
         asset,
         data,
         createdAt: new Date().toISOString()
@@ -332,6 +289,28 @@ export function createIndexedDbDocumentAdapter(
       });
 
       return asset;
+    },
+
+    async loadAsset(id) {
+      const db = await getDb();
+
+      return new Promise<
+        { asset: AssetRef; data: ArrayBuffer } | null
+      >((resolve, reject) => {
+        const tx = db.transaction(ASSETS_STORE_NAME, "readonly");
+        const request = tx.objectStore(ASSETS_STORE_NAME).get(id);
+
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          const result = request.result as StoredAsset | undefined;
+          if (result === undefined) {
+            resolve(null);
+            return;
+          }
+
+          resolve({ asset: result.asset, data: result.data });
+        };
+      });
     }
   };
 }

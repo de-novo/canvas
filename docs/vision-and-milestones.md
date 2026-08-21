@@ -34,11 +34,12 @@ project.
 This does not mean avoiding dependencies. Denovo should depend on strong
 libraries where appropriate and turn them into a simpler product-facing SDK.
 
-The rendering direction is WebGPU-first, with WebGL2 and Canvas2D as
-compatibility backends. The document model should describe what a scene is,
-while runtime adapters decide how it is rendered on the current device.
-Explicit backend requests are strict; only `auto` may choose among genuinely
-implemented, compatible backends, and it fails when none is usable.
+Implemented rendering backends are WebGL2 and Canvas2D. WebGPU stays in the
+backend vocabulary as a future adapter milestone; `auto` does not select it.
+The document model should describe what a scene is, while runtime adapters
+decide how it is rendered on the current device. Explicit backend requests are
+strict; only `auto` may choose among genuinely implemented, compatible
+backends, and it fails when none is usable.
 
 Better Auth is the reference product shape: a clear setup function, adapters for
 ecosystem choices, plugins for capabilities, and CLI support for generated

@@ -122,6 +122,17 @@ export type CanvasPersistenceEvent =
       readonly inverseCommand?: CanvasCommand;
     }
   | {
+      /**
+       * Undo or redo restored a historical snapshot. The editor does not
+       * increment `baseRevision` here; `connectEditorToStorage` flushes the
+       * restored document and advances the acknowledged revision on save.
+       */
+      readonly type: "history.changed";
+      readonly documentId: NodeId;
+      readonly action: "undo" | "redo";
+      readonly revision: number;
+    }
+  | {
       readonly type: "revision.changed";
       readonly documentId: NodeId;
       readonly revision: number;
@@ -872,6 +883,12 @@ export function createEditor(options: CreateCanvasEditorOptions): CanvasEditor {
 
         historyIndex -= 1;
         snapshot = entry.before;
+        notifyPersistence({
+          type: "history.changed",
+          documentId,
+          action: "undo",
+          revision: baseRevision
+        });
         notify({ entry: toPublicHistoryEntry(entry), type: "undo" });
         return toPublicHistoryEntry(entry);
       })
@@ -895,6 +912,12 @@ export function createEditor(options: CreateCanvasEditorOptions): CanvasEditor {
 
         historyIndex += 1;
         snapshot = entry.after;
+        notifyPersistence({
+          type: "history.changed",
+          documentId,
+          action: "redo",
+          revision: baseRevision
+        });
         notify({ entry: toPublicHistoryEntry(entry), type: "redo" });
         return toPublicHistoryEntry(entry);
       })
@@ -1289,9 +1312,10 @@ export type ConnectEditorToStorageOptions = {
 
 /**
  * Connects an editor to a `CanvasStorageAdapter`. Listens for
- * `transaction.committed` persistence events and saves the document (debounced)
- * via `adapter.saveDocument`, using the last acknowledged server revision as
- * `baseRevision`. On conflict the local document is left unchanged and
+ * `transaction.committed` and `history.changed` persistence events and saves
+ * the document (debounced) via `adapter.saveDocument`, using the last
+ * acknowledged server revision as `baseRevision`. Undo/redo therefore persist
+ * the restored snapshot. On conflict the local document is left unchanged and
  * `onConflict` runs; the next save still uses the acknowledged revision.
  *
  * Returns a disconnect function. Pending saves are cancelled (not flushed) on
@@ -1338,7 +1362,10 @@ export function connectEditorToStorage(
       return;
     }
 
-    if (event.type !== "transaction.committed") {
+    if (
+      event.type !== "transaction.committed" &&
+      event.type !== "history.changed"
+    ) {
       return;
     }
 

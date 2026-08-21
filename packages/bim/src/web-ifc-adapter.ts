@@ -10,12 +10,23 @@
  */
 
 import {
+  createMemoryGeometryStore,
+  createMeshGeometryAssetRef,
+  defineDocument,
+  defineMeshGeometry,
   defineScene,
+  resolveCanvasMeshGeometry,
+  type AssetRef,
   type Canvas3DNode,
+  type CanvasDocument,
+  type CanvasGeometryStore,
   type CanvasLayer,
+  type CanvasMeshGeometry,
   type CanvasScene,
   type JsonValue
 } from "@denovo/canvas-core";
+
+import type { BimImportResult } from "./index.js";
 import { IfcAPI } from "web-ifc";
 
 import {
@@ -83,6 +94,8 @@ export class WebIfcBimAdapter implements BimAdapter {
   private readonly maxElements: number;
   private staged: StagedModel | null = null;
   private skippedElementCount = 0;
+  private readonly geometryStore: CanvasGeometryStore =
+    createMemoryGeometryStore();
 
   constructor(options: WebIfcAdapterOptions) {
     this.wasm = options.wasm;
@@ -125,10 +138,14 @@ export class WebIfcBimAdapter implements BimAdapter {
     return metadata;
   }
 
-  async toScene(): Promise<CanvasScene> {
+  getGeometryStore(): CanvasGeometryStore {
+    return this.geometryStore;
+  }
+
+  async toDocument(): Promise<BimImportResult> {
     if (!this.staged) {
       throw new Error(
-        "WebIfcBimAdapter.toScene called before loadModel resolved."
+        "WebIfcBimAdapter.toDocument called before loadModel resolved."
       );
     }
 
@@ -136,18 +153,22 @@ export class WebIfcBimAdapter implements BimAdapter {
     const { modelID, source } = this.staged;
     const meshes = api.LoadAllGeometry(modelID);
 
+    this.geometryStore.clear();
     const layers = new Map<string, CanvasLayer>();
     const nodes: Canvas3DNode[] = [];
+    const assets: AssetRef[] = [];
     const total = meshes.size();
     const limit = Math.min(total, this.maxElements);
     this.skippedElementCount = Math.max(0, total - limit);
 
     for (let index = 0; index < limit; index += 1) {
       const flatMesh = meshes.get(index);
-      const node = this.buildElementNode(api, modelID, flatMesh);
-      if (node) {
-        ensureLayer(layers, node.layerId);
-        nodes.push(node);
+      const built = this.buildElementNode(api, modelID, flatMesh);
+      if (built) {
+        ensureLayer(layers, built.node.layerId);
+        nodes.push(built.node);
+        assets.push(built.asset as AssetRef);
+        this.geometryStore.set(built.asset.id, built.geometry);
       }
     }
 
@@ -161,7 +182,7 @@ export class WebIfcBimAdapter implements BimAdapter {
       });
     }
 
-    return defineScene({
+    const scene = defineScene({
       id: source.name ?? "ifc-scene",
       mode: "3d",
       background: "#0f172a",
@@ -173,8 +194,24 @@ export class WebIfcBimAdapter implements BimAdapter {
         frustumCulling: true,
         batch: false
       },
-      camera: frameCameraForMeshes(nodes)
+      camera: frameCameraForMeshes(nodes, this.geometryStore)
     });
+
+    const document: CanvasDocument = defineDocument({
+      id: source.name ?? `ifc-document-${modelID}`,
+      scene,
+      assets
+    });
+
+    return {
+      document,
+      geometryStore: this.geometryStore
+    };
+  }
+
+  async toScene(): Promise<CanvasScene> {
+    const imported = await this.toDocument();
+    return imported.document.scene;
   }
 
   async dispose(): Promise<void> {
@@ -184,6 +221,7 @@ export class WebIfcBimAdapter implements BimAdapter {
     const api = await getIfcApi(this.wasm);
     api.CloseModel(this.staged.modelID);
     this.staged = null;
+    this.geometryStore.clear();
   }
 
   /** Number of elements skipped past `maxElements` on the last `toScene()`. */
@@ -195,7 +233,11 @@ export class WebIfcBimAdapter implements BimAdapter {
     api: IfcAPI,
     modelID: number,
     flatMesh: { expressID: number; geometries: { size(): number; get(i: number): { flatTransformation: number[]; geometryExpressID: number } } }
-  ): Canvas3DNode | null {
+  ): {
+    node: Canvas3DNode;
+    asset: AssetRef;
+    geometry: CanvasMeshGeometry;
+  } | null {
     const expressID = flatMesh.expressID;
     const partCount = flatMesh.geometries.size();
 
@@ -258,23 +300,36 @@ export class WebIfcBimAdapter implements BimAdapter {
       }
     };
 
-    return {
-      type: "mesh",
-      id: `ifc-element-${expressID}`,
-      layerId: category.layerId,
-      visible: true,
-      locked: false,
-      position: [0, 0, 0],
-      rotation: [0, 0, 0],
-      scale: [1, 1, 1],
-      color: category.color ?? "#9ca3af",
+    const geometry = defineMeshGeometry({
+      schema: "denovo.mesh-geometry.v1",
       positions,
       indices,
-      ...(hasNormals ? { normals } : {}),
-      wireframe: false,
-      parentId: null,
-      metadata: nodeMetadata
-    } as Canvas3DNode;
+      ...(hasNormals ? { normals } : {})
+    });
+    const assetId = `ifc-geometry-${expressID}`;
+    const asset = createMeshGeometryAssetRef(assetId, geometry, {
+      uri: `ifc://element/${expressID}`
+    });
+
+    return {
+      node: {
+        type: "mesh",
+        id: `ifc-element-${expressID}`,
+        layerId: category.layerId,
+        visible: true,
+        locked: false,
+        position: [0, 0, 0],
+        rotation: [0, 0, 0],
+        scale: [1, 1, 1],
+        color: category.color ?? "#9ca3af",
+        geometryAssetId: assetId,
+        wireframe: false,
+        parentId: null,
+        metadata: nodeMetadata
+      } as Canvas3DNode,
+      asset,
+      geometry
+    };
   }
 }
 
@@ -386,7 +441,8 @@ function transformNormal(
 }
 
 function frameCameraForMeshes(
-  nodes: readonly Canvas3DNode[]
+  nodes: readonly Canvas3DNode[],
+  geometryStore: CanvasGeometryStore
 ): {
   position: [number, number, number];
   target: [number, number, number];
@@ -405,10 +461,15 @@ function frameCameraForMeshes(
       continue;
     }
 
-    for (let index = 0; index + 2 < node.positions.length; index += 3) {
-      const x = node.positions[index] ?? 0;
-      const y = node.positions[index + 1] ?? 0;
-      const z = node.positions[index + 2] ?? 0;
+    const geometry = resolveCanvasMeshGeometry(node, geometryStore);
+    if (geometry === null) {
+      continue;
+    }
+
+    for (let index = 0; index + 2 < geometry.positions.length; index += 3) {
+      const x = geometry.positions[index] ?? 0;
+      const y = geometry.positions[index + 1] ?? 0;
+      const z = geometry.positions[index + 2] ?? 0;
       minX = Math.min(minX, x);
       minY = Math.min(minY, y);
       minZ = Math.min(minZ, z);

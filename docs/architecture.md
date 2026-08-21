@@ -9,8 +9,8 @@
 - [M3 Authoring Contract](./m3-authoring-contract.md) defines authoring schema,
   tool, capability, package-responsibility, and no-fallback boundaries.
 - [Rendering Backend Strategy](./rendering-backend-strategy.md) defines
-  WebGPU-first direction, compatibility backends, and strict backend selection
-  vocabulary.
+  implemented Canvas2D/WebGL2 backends, reserved WebGPU vocabulary, and
+  strict backend selection.
 - [Vision and Milestones](./vision-and-milestones.md) defines what Denovo
   Canvas should be able to express.
 - [Editing Model](./editing-model.md) defines how documents are changed.
@@ -62,11 +62,12 @@
 
 ## Rendering Strategy
 
-- Denovo should be WebGPU-first, not WebGPU-only.
+- Implemented `auto` backends are Canvas2D (2D) and WebGL2 (3D). WebGPU is a
+  reserved backend name and a future adapter milestone, not a current `auto`
+  result.
 - Runtime backend selection should default to `auto`. It may select only a
   genuinely implemented, mode-compatible backend with the required runtime
-  capability. The current built-ins resolve 3D to WebGL2 and 2D to Canvas2D;
-  future WebGPU selection begins only after a compatible runtime exists.
+  capability.
 - An explicitly requested backend is strict: unsupported, unavailable, or
   mode-incompatible requests fail instead of silently selecting another
   backend. Custom rendering requires an explicit adapter.

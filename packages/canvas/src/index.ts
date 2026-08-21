@@ -65,6 +65,7 @@ export * from "./react-query";
 export {
   CanvasEditorError,
   applyCommandsToDocument,
+  applyCommandsToStoredDocument,
   create2DShapeTool,
   create3DPrimitiveTool,
   create3DSurfacePlacementTool,
@@ -95,6 +96,7 @@ export type {
   CanvasAnnotationToolOptions,
   CanvasConnectorToolOptions,
   CanvasDistanceMeasurementToolOptions,
+  ApplyStoredCommandsOptions,
   CanvasEditor,
   CanvasEditorChange,
   CanvasEditorDispatchResult,
@@ -105,6 +107,9 @@ export type {
   CanvasEditorRuntimeTarget,
   CanvasEditorState,
   CanvasEditorToolRuntimeContext,
+  CanvasPersistenceEvent,
+  CanvasPersistenceListener,
+  CanvasStoredDocument,
   ConnectEditorToStorageOptions,
   CanvasEffectiveNodeState,
   CanvasGroupNodesOptions,
@@ -192,6 +197,14 @@ export type CanvasFacadeRendererAdapter = CanvasRendererAdapter<
   CanvasFacadeRendererRuntime,
   CreateCanvasOptions
 >;
+/**
+ * Renderer backend selector.
+ *
+ * `auto` resolves only to an implemented built-in: Canvas2D for 2D scenes and
+ * WebGL2 for 3D scenes. `webgpu` and `offscreen-canvas2d` are reserved names;
+ * requesting them fails with `backend-unimplemented` until a runtime exists.
+ * WebGPU is a future adapter milestone, not a current `auto` result.
+ */
 export type CanvasBackend =
   | "auto"
   | "webgpu"
@@ -199,6 +212,12 @@ export type CanvasBackend =
   | "canvas2d"
   | "offscreen-canvas2d"
   | "custom";
+/** Built-in backends that `auto` may currently resolve to. */
+export type CanvasImplementedBackend = "canvas2d" | "webgl2";
+/** Reserved built-in names. Requests fail until a runtime is implemented. */
+export type CanvasUnimplementedBackend = "webgpu" | "offscreen-canvas2d";
+/** Successful resolution result. Never `auto`, `webgpu`, or `offscreen-canvas2d`. */
+export type CanvasResolvedBackend = CanvasImplementedBackend | "custom";
 export type CanvasBuiltInBackend = Exclude<CanvasBackend, "custom">;
 export type RendererPreset = CanvasBuiltInBackend | "three";
 export type CanvasThemePreset = "dark" | "light";
@@ -235,7 +254,7 @@ export type ResolvedCanvasRenderer = {
   adapterName: string;
   capabilities: CanvasBackendCapabilities;
   requested: CanvasBackend;
-  resolved: Exclude<CanvasBackend, "auto">;
+  resolved: CanvasResolvedBackend;
 };
 
 export class CanvasBackendResolutionError extends Error {
@@ -605,7 +624,10 @@ export function createCanvas(
     ...(config.devicePixelRatio === undefined
       ? {}
       : { devicePixelRatio: config.devicePixelRatio }),
-    ...(config.onFrame === undefined ? {} : { onFrame: config.onFrame })
+    ...(config.onFrame === undefined ? {} : { onFrame: config.onFrame }),
+    ...(config.geometryStore === undefined
+      ? {}
+      : { geometryStore: config.geometryStore })
   };
   const customAdapter = resolveRendererAdapter(config.renderer);
   const runtime = createResolvedRendererRuntime(
@@ -2048,8 +2070,9 @@ function resolveBackend(
   mode: CanvasMode,
   adapter: CanvasFacadeRendererAdapter | null,
   capabilities: CanvasBackendCapabilities
-): Exclude<CanvasBackend, "auto"> {
+): CanvasResolvedBackend {
   if (requested === "auto") {
+    // `capabilities.webgpu` is detection-only. Auto never selects WebGPU.
     if (mode === "2d") {
       requireBackendCapability("canvas2d", mode, capabilities.canvas2d);
       return "canvas2d";

@@ -1,6 +1,7 @@
 {
   "name": "@denovo/canvas-editor",
   "version": "0.0.0",
+  "license": "Apache-2.0",
   "description": "Framework-agnostic command, transaction, selection, and history runtime for Denovo Canvas.",
   "type": "module",
   "main": "./dist/index.cjs",

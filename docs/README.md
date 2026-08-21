@@ -3,6 +3,12 @@
 This directory is the product and architecture source of truth for Denovo
 Canvas.
 
+Repository governance files live at the repo root:
+[LICENSE](../LICENSE), [NOTICE](../NOTICE),
+[CONTRIBUTING](../CONTRIBUTING.md),
+[CODE_OF_CONDUCT](../CODE_OF_CONDUCT.md), and
+[SECURITY](../SECURITY.md). The Work is Apache-2.0.
+
 ## Core Documents
 
 - [Agent Operating Policy](./agent-operating-policy.md): how agents manage
@@ -27,9 +33,9 @@ Canvas.
 - [Public API Contract](./public-api-contract.md): facade exports, rename
   policy, default import shape, backend config, and smoke verification.
 - [Architecture](./architecture.md): package layers and runtime boundaries.
-- [Rendering Backend Strategy](./rendering-backend-strategy.md): WebGPU-first
-  direction, implemented compatibility backends, strict explicit selection,
-  capability detection, and backend vocabulary.
+- [Rendering Backend Strategy](./rendering-backend-strategy.md): implemented
+  Canvas2D/WebGL2 backends, reserved WebGPU vocabulary, strict explicit
+  selection, and capability detection.
 - [Vision and Milestones](./vision-and-milestones.md): what the SDK should be
   able to express and the staged roadmap.
 - [Editing Model](./editing-model.md): how view-only scenes become editable

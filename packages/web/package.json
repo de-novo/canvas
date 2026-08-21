@@ -1,6 +1,7 @@
 {
   "name": "@denovo/canvas-web",
   "version": "0.0.0",
+  "license": "Apache-2.0",
   "description": "Framework-agnostic 2D/3D DOM canvas runtime for Denovo Canvas.",
   "type": "module",
   "main": "./dist/index.cjs",
