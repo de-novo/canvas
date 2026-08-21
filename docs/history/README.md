@@ -97,3 +97,4 @@ Each entry should include:
 - [2026-08-17 WebGPU language](./2026-08-17-webgpu-language.md)
 - [2026-08-17 open-source governance](./2026-08-17-open-source-governance.md)
 - [2026-08-17 geometry blob persistence](./2026-08-17-geometry-blob-persistence.md)
+- [2026-08-21 M3 suite and ghost material](./2026-08-21-m3-suite-ghost-material.md)

@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: 2026-08-17.
+Last updated: 2026-08-21.
 
 This is the canonical project status index. Keep milestone definitions in
 [Vision and Milestones](./vision-and-milestones.md); keep chronological evidence
@@ -13,9 +13,10 @@ tools, surface placement). Later slices have landed but are **not milestone-
 verified** in the M0–M3.1 sense:
 
 - **M4 Performance Layer (Phases A–B):** measurement, caching, BVH picking,
-  diff-based `applyScene`, opt-in box batching. 1k boxes 158 ms → 48.60 ms.
-  Remaining vision deliverables (LOD, chunks, workers, 16 ms target) are not
-  accepted.
+  diff-based `applyScene`, opt-in box batching. Phase B recorded 1k boxes
+  158 ms → 48.60 ms. Re-measured 2026-08-21 at 1k p50 50.00 ms / 10k
+  116.60 ms with `drawCalls=1`. Remaining vision deliverables (LOD,
+  chunks, workers, 16 ms target) are not accepted.
 - **M5 Framework Adapters:** React, Vue, Svelte, and Solid view wrappers exist
   and have adapter smoke coverage. They mount `@denovo/canvas-web`, not the
   full facade/editor.
@@ -233,9 +234,12 @@ optional packages, not a second product identity. See
 - [M8 Diagram Contract](./m8-diagram-contract.md) acceptance checks ran
   on 2026-08-17, including a live-playground connector gesture on
   desktop and iPhone 14. M8 is contract-accepted, not a second product.
-  Residual: the full vanilla M3 desktop/mobile suite was not re-run in
-  this pass.
-- M4–M8 remain landed-but-unverified.
+  The leftover vanilla M3 desktop/mobile suite re-ran on 2026-08-21.
+- M4–M8 remain landed-but-unverified as milestones.
+- Authoring preview materials no longer mutate the cached 3D surface
+  material. `verify:browser-rendering` failed on stacked-box preview
+  cleanup until ghosts cloned the cache. See
+  [2026-08-21 M3 suite and ghost material](./history/2026-08-21-m3-suite-ghost-material.md).
 - v1 persistence slice landed on 2026-08-17: memory/filesystem
   `applyCommands` parity and undo/redo visibility. See
   [2026-08-17 v1 persistence applyCommands](./history/2026-08-17-v1-persistence-applycommands.md).
@@ -268,30 +272,35 @@ optional packages, not a second product identity. See
 
 ## Evidence
 
-- `pnpm typecheck`: passed on 2026-08-17 (30/30 tasks).
-- `pnpm build`: passed on 2026-08-17 (20/20 packages and apps).
-- `pnpm verify:document-schema`: passed on 2026-08-17 (37 named checks),
+- `pnpm typecheck`: passed on 2026-08-21 (30/30 tasks).
+- `pnpm build`: passed on 2026-08-21 (20/20 packages and apps).
+- `pnpm verify:document-schema`: passed on 2026-08-21 (39 named checks),
   including mesh `node.update` and `geometryAssetId` exclusive-or.
-- `pnpm verify:editor-core`: passed on 2026-08-17, including mesh update,
+- `pnpm verify:editor-core`: passed on 2026-08-21, including mesh update,
   paste id remapping + single undo, delete of incident edges + single undo,
   text ungroup world transform, `applyCommandsToDocument`,
   `applyCommandsToStoredDocument` OCC/validation, and geometry-store
   helper exports.
-- `pnpm verify:server`: passed on 2026-08-17 (30 assertions), including
+- `pnpm verify:server`: passed on 2026-08-21 (30 assertions), including
   conflict-does-not-overwrite, memory/filesystem `applyCommands`, undo/redo
   `history.changed` persistence, and geometry blob upload/hydrate.
-- `pnpm verify:public-api`: passed on 2026-08-17, including
+- `pnpm verify:public-api`: passed on 2026-08-21, including
   `applyCommandsToStoredDocument`, `history.changed`, geometry-store
   fixtures, `CanvasResolvedBackend` rejecting `webgpu`, and
   `loadAsset` / `persistCanvasGeometryStore`.
 - `pnpm verify:hit-testing`: passed on 2026-08-17, including M8 edge path
   resolution (`orthogonal` waypoints, quadratic control, ignored
-  `routing: "curved"`).
+  `routing: "curved"`). Not re-run on 2026-08-21.
 - `pnpm verify:diagram-rendering`: passed on 2026-08-17 (desktop + iPhone
   14), including overlay card, textContent probe, edge-follows-source,
-  and missing `flyToNode`.
-- `pnpm verify:browser-rendering` / `verify:performance`: last recorded
-  2026-07-20; not re-run in this pass.
+  and missing `flyToNode`. Not re-run on 2026-08-21.
+- `pnpm verify:browser-rendering`: passed on 2026-08-21 after cloning
+  cached surface materials for authoring ghosts. Desktop mouse and
+  iPhone 14 touch cover 2D/3D authoring, surface stacking, and demand
+  rendering.
+- `pnpm verify:performance`: re-measured on 2026-08-21 with
+  `drawCalls=1` / `geometries=1`. Frame p50: 100 boxes 8.80 ms, 1k
+  50.00 ms, 10k 116.60 ms. No pass/fail gates.
 - `doc-governance-*.py`: not run on 2026-08-17 — scripts are not present at
   `~/.agents/skills/doc-governance/scripts/`.
 - Generated declaration `any` audit and positive/negative TypeScript consumer
@@ -339,4 +348,5 @@ optional packages, not a second product identity. See
 - [2026-08-17 WebGPU language](./history/2026-08-17-webgpu-language.md)
 - [2026-08-17 open-source governance](./history/2026-08-17-open-source-governance.md)
 - [2026-08-17 geometry blob persistence](./history/2026-08-17-geometry-blob-persistence.md)
+- [2026-08-21 M3 suite and ghost material](./history/2026-08-21-m3-suite-ghost-material.md)
 

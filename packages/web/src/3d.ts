@@ -2276,19 +2276,26 @@ function createAuthoringSnapMarker(
   return marker;
 }
 
+function cloneAuthoringPreviewMaterial<T extends Material>(material: T): T {
+  return cachedResources.has(material) ? material.clone() : material;
+}
+
 function setAuthoringPreviewOpacity(object: Object3D, opacity: number) {
   object.traverse((descendant) => {
     if (descendant instanceof Mesh) {
-      const materials = Array.isArray(descendant.material)
-        ? descendant.material
-        : [descendant.material];
+      const apply = (material: Material) => {
+        const previewMaterial = cloneAuthoringPreviewMaterial(material);
+        previewMaterial.depthWrite = false;
+        previewMaterial.opacity = opacity;
+        previewMaterial.transparent = true;
+        return previewMaterial;
+      };
 
-      for (const material of materials) {
-        material.depthWrite = false;
-        material.opacity = opacity;
-        material.transparent = true;
-      }
+      descendant.material = Array.isArray(descendant.material)
+        ? descendant.material.map(apply)
+        : apply(descendant.material);
     } else if (descendant instanceof Sprite) {
+      descendant.material = cloneAuthoringPreviewMaterial(descendant.material);
       descendant.material.depthWrite = false;
       descendant.material.opacity = opacity;
       descendant.material.transparent = true;
