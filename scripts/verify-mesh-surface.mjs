@@ -67,6 +67,56 @@ try {
       await browser.close();
     }
   });
+
+  await check("instances-surface-point-browser", async () => {
+    const browser = await chromium.launch();
+    try {
+      const page = await browser.newPage({
+        viewport: { width: 1280, height: 800 }
+      });
+      const consoleErrors = [];
+      page.on("pageerror", (error) => consoleErrors.push(String(error)));
+      page.on("console", (message) => {
+        if (message.type() === "error") {
+          consoleErrors.push(message.text());
+        }
+      });
+
+      await page.goto(
+        `${server.url}/instances-surface-bench.html`,
+        { waitUntil: "networkidle" }
+      );
+      await page.waitForFunction(
+        () =>
+          Boolean(window.__instancesSurfaceResult) ||
+          Boolean(window.__instancesSurfaceError),
+        undefined,
+        { timeout: 60_000 }
+      );
+
+      const error = await page.evaluate(() => window.__instancesSurfaceError);
+      assert.equal(error ?? null, null, `bench errored: ${error}`);
+
+      const result = await page.evaluate(
+        () => window.__instancesSurfaceResult
+      );
+      assert.deepEqual(result, {
+        hitNodeId: "bench-instances",
+        instanceIndexIsCentre: true,
+        missOutsideGeometry: true,
+        normalUnit: true,
+        normalFacesCamera: true,
+        pointOnCentreBox: true
+      });
+      assert.deepEqual(consoleErrors, []);
+
+      console.log(
+        "[instances-surface] centre-instance hit + unit camera-facing normal verified"
+      );
+    } finally {
+      await browser.close();
+    }
+  });
 } finally {
   server.process.kill("SIGTERM");
 }

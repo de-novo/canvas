@@ -1163,7 +1163,11 @@ export const Canvas3DSurfacePointRequestSchema = z
     mode: z.literal("3d"),
     target: z.object({
       kind: z.literal("node"),
-      nodeType: z.union([z.literal("box"), z.literal("mesh")])
+      nodeType: z.union([
+        z.literal("box"),
+        z.literal("mesh"),
+        z.literal("instances")
+      ])
     }),
     viewportPoint: CanvasFinitePoint2Schema
   })
@@ -1181,6 +1185,13 @@ const Canvas3DMeshTriangleFeatureSchema = z
   .object({
     kind: z.literal("mesh.triangle"),
     triangleIndex: z.number().int().nonnegative()
+  })
+  .strict();
+
+const Canvas3DInstanceFeatureSchema = z
+  .object({
+    instanceIndex: z.number().int().nonnegative(),
+    kind: z.literal("instances.instance")
   })
   .strict();
 
@@ -1209,6 +1220,17 @@ export const Canvas3DSurfacePointResultSchema = z.union([
       mode: z.literal("3d"),
       nodeId: NodeIdSchema,
       nodeType: z.literal("mesh"),
+      normal: CanvasUnitVector3Schema,
+      point: CanvasFiniteVector3Schema
+    })
+    .strict(),
+  z
+    .object({
+      feature: Canvas3DInstanceFeatureSchema,
+      kind: z.literal("hit"),
+      mode: z.literal("3d"),
+      nodeId: NodeIdSchema,
+      nodeType: z.literal("instances"),
       normal: CanvasUnitVector3Schema,
       point: CanvasFiniteVector3Schema
     })

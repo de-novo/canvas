@@ -97,3 +97,25 @@ mesh document through a mock runtime — surface endpoints commit in one
 transaction with one undo; start-miss starts nothing; release-miss does
 not commit and a re-aimed release commits afterwards. Capability-missing
 and grid-in-surface-mode fail with typed errors.
+
+## Follow-up slice 2 (2026-08-22, same day): instance surface points
+
+The surface-point vocabulary now covers `instances` nodes too:
+
+- Request target widens to `"box" | "mesh" | "instances"`.
+- A new correlated hit arm carries
+  `{ kind: "instances.instance", instanceIndex }` — which copy was struck —
+  with world point and unit normal. The normal composes the object's world
+  matrix with the per-instance matrix before the normal-matrix transform.
+- The surface-capture distance measurement tool accepts instanced targets
+  (endpoint filter widened from box/mesh).
+- Batched-box draw-call batching is unaffected: those InstancedMeshes
+  resolve back to individual `box` document nodes, so an `"instances"`
+  request still misses them by the correlation rule.
+
+Verification: schema fixtures (valid round-trip; negative/fractional/∞
+instanceIndex and cross-arm rejections), public-api narrowing fixture,
+contract-smoke narrowing, and a new browser check
+(`instances-surface-bench.html` via `pnpm verify:mesh-surface`, now two
+checks) proving the centre ray hits the middle of three instances at
+index 1 with a unit camera-facing normal, plus an outside miss.

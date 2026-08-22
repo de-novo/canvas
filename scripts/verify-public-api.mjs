@@ -2343,6 +2343,13 @@ async function inspectSurfacePoint(): Promise<void> {
       return;
     }
 
+    if (result.nodeType === "instances") {
+      // Instance hits correlate which copy was hit.
+      const instanceIndex: number = result.feature.instanceIndex;
+      void instanceIndex;
+      return;
+    }
+
     const axis: "x" | "y" | "z" = result.feature.axis;
     const side: -1 | 1 = result.feature.side;
     const normal: readonly [number, number, number] = result.normal;

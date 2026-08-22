@@ -264,6 +264,8 @@ export function createCanvas3D(
   const surfacePointPointer = new Vector2();
   const surfacePointNormalMatrix = new Matrix3();
   const surfacePointNormal = new Vector3();
+  const surfacePointInstanceMatrix = new Matrix4();
+  const surfacePointInstanceWorld = new Matrix4();
 
   let currentScene: Canvas3DScene = initialScene;
   let transformHandleTarget: CanvasNodeTransformHandleTarget | null = null;
@@ -1346,6 +1348,65 @@ export function createCanvas3D(
           mode: "3d",
           nodeId,
           nodeType: "mesh",
+          normal: [
+            surfacePointNormal.x,
+            surfacePointNormal.y,
+            surfacePointNormal.z
+          ],
+          point: [
+            intersection.point.x,
+            intersection.point.y,
+            intersection.point.z
+          ]
+        });
+      }
+
+      if (request.target.nodeType === "instances") {
+        if (node.type !== "instances" || !intersection.face) {
+          throw new Error(
+            `Canvas3D instances raycast did not resolve a triangle face: ${nodeId}`
+          );
+        }
+
+        const instanceIndex = intersection.instanceId;
+
+        if (
+          typeof instanceIndex !== "number" ||
+          !Number.isInteger(instanceIndex) ||
+          instanceIndex < 0 ||
+          !(object as InstancedMesh).isInstancedMesh
+        ) {
+          throw new Error(
+            `Canvas3D instances raycast did not resolve an instance index: ${nodeId}`
+          );
+        }
+
+        // The hit normal is geometry-local to the instance; compose the
+        // object's world matrix with the per-instance matrix before the
+        // normal matrix, mirroring how three positions the intersection.
+        (object as InstancedMesh).getMatrixAt(
+          instanceIndex,
+          surfacePointInstanceMatrix
+        );
+        surfacePointInstanceWorld.multiplyMatrices(
+          object.matrixWorld,
+          surfacePointInstanceMatrix
+        );
+        surfacePointNormalMatrix.getNormalMatrix(surfacePointInstanceWorld);
+        surfacePointNormal
+          .copy(intersection.face.normal)
+          .applyMatrix3(surfacePointNormalMatrix)
+          .normalize();
+
+        return Canvas3DSurfacePointResultSchema.parse({
+          feature: {
+            instanceIndex,
+            kind: "instances.instance"
+          },
+          kind: "hit",
+          mode: "3d",
+          nodeId,
+          nodeType: "instances",
           normal: [
             surfacePointNormal.x,
             surfacePointNormal.y,

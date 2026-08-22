@@ -291,9 +291,12 @@ BIM stay optional packages, not a second product identity. See
 3. **B-item residual risks:** storey layers landed 2026-08-22 — the IFC
    importer maps each `IfcBuildingStorey` to a layer ("Level 1", "Level 2")
    and places contained elements there, giving native level isolation
-   (`artifacts/verification/bim-storey-isolation.png`). Remaining:
-   instanced-node surface points, then BIM multi-model federation. See
-   [2026-08-22 BIM storey layers](./history/2026-08-22-bim-storey-layers.md).
+   (`artifacts/verification/bim-storey-isolation.png`); instance surface
+   points landed the same day — `resolveSurfacePoint` covers `"instances"`
+   with correlated `instances.instance` hits and the measurement tool
+   accepts them (browser-verified). Remaining: BIM multi-model federation.
+   See [2026-08-22 BIM storey layers](./history/2026-08-22-bim-storey-layers.md)
+   and [2026-08-22 mesh surface points](./history/2026-08-22-mesh-surface-points.md).
 
 ## Blocked
 

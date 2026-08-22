@@ -1633,6 +1633,61 @@ check("surface-point-protocol-accepts-correlated-mesh-hits", () => {
   }
 });
 
+check("surface-point-protocol-accepts-correlated-instance-hits", () => {
+  const instancesRequest = {
+    mode: "3d",
+    target: {
+      kind: "node",
+      nodeType: "instances"
+    },
+    viewportPoint: [200, 150]
+  };
+  assert.deepEqual(
+    Canvas3DSurfacePointRequestSchema.parse(instancesRequest),
+    instancesRequest
+  );
+
+  const instanceHit = {
+    feature: { instanceIndex: 1, kind: "instances.instance" },
+    kind: "hit",
+    mode: "3d",
+    nodeId: "instances-1",
+    nodeType: "instances",
+    normal: [0, 0, 1],
+    point: [0.25, -0.4, 0.5]
+  };
+  assert.deepEqual(
+    Canvas3DSurfacePointResultSchema.parse(instanceHit),
+    instanceHit
+  );
+
+  for (const invalidInstanceResult of [
+    { ...instanceHit, nodeType: "mesh" },
+    {
+      ...instanceHit,
+      feature: { kind: "mesh.triangle", triangleIndex: 1 }
+    },
+    {
+      ...instanceHit,
+      feature: { instanceIndex: -2, kind: "instances.instance" }
+    },
+    {
+      ...instanceHit,
+      feature: { instanceIndex: 0.5, kind: "instances.instance" }
+    },
+    {
+      ...instanceHit,
+      feature: { instanceIndex: Number.POSITIVE_INFINITY, kind: "instances.instance" }
+    },
+    { ...instanceHit, normal: [0, 0, 2] }
+  ]) {
+    assert.equal(
+      Canvas3DSurfacePointResultSchema.safeParse(invalidInstanceResult).success,
+      false
+    );
+  }
+});
+
 check("grid-protocol-is-strict-mode-correlated-and-grid-only", () => {
   const grid2d = {
     mode: "2d",
@@ -2362,7 +2417,7 @@ const surfacePointRequest: Canvas3DSurfacePointRequest = {
 const surfacePointRuntime: Canvas3DSurfacePointRuntime = {
   resolveSurfacePoint(request) {
     const mode: "3d" = request.mode;
-    const nodeType: "box" | "mesh" = request.target.nodeType;
+    const nodeType: "box" | "mesh" | "instances" = request.target.nodeType;
 
     void mode;
     void nodeType;
@@ -2472,6 +2527,13 @@ async function verifySurfacePointNarrowing() {
     // Mesh hits correlate a triangle index instead of a box face.
     const triangleIndex: number = result.feature.triangleIndex;
     void triangleIndex;
+    return;
+  }
+
+  if (result.nodeType === "instances") {
+    // Instance hits correlate which copy was hit.
+    const instanceIndex: number = result.feature.instanceIndex;
+    void instanceIndex;
     return;
   }
 

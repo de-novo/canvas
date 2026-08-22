@@ -239,7 +239,12 @@ export function createDistanceMeasurementTool(
           .getDocument()
           .scene.nodes.find((candidate) => candidate.id === hit.nodeId);
 
-        if (!node || (node.type !== "box" && node.type !== "mesh")) {
+        if (
+          !node ||
+          (node.type !== "box" &&
+            node.type !== "mesh" &&
+            node.type !== "instances")
+        ) {
           return null;
         }
 
