@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+  <head><meta charset="utf-8" /><title>mesh-surface-bench</title></head>
+  <body>
+    <div id="stage" style="position:fixed;inset:0;"></div>
+    <script type="module">
+      import {
+        createCanvas,
+        defineMeshGeometry
+      } from "@denovo/canvas";
+
+      // One quad facing +z, two triangles. Camera looks down -z from +z, so
+      // a centre-viewport ray must hit the front face with normal ≈ +z.
+      const geometry = defineMeshGeometry({
+        schema: "denovo.mesh-geometry.v1",
+        positions: [
+          -2, -2, 0,
+           2, -2, 0,
+           2,  2, 0,
+          -2,  2, 0
+        ],
+        normals: [
+          0, 0, 1,
+          0, 0, 1,
+          0, 0, 1,
+          0, 0, 1
+        ],
+        indices: [0, 1, 2, 0, 2, 3]
+      });
+
+      const geometryStore = new Map();
+      geometryStore.set("bench-mesh-geometry", geometry);
+
+      try {
+        const runtime = createCanvas(document.getElementById("stage"), {
+          geometryStore,
+          scene: {
+            background: "#111827",
+            camera: { fov: 50, position: [0, 0, 10], target: [0, 0, 0] },
+            id: "mesh-surface-scene",
+            layers: [{ id: "default", name: "Default" }],
+            mode: "3d",
+            nodes: [
+              {
+                color: "#38bdf8",
+                geometryAssetId: "bench-mesh-geometry",
+                id: "bench-mesh",
+                layerId: "default",
+                position: [0, 0, 0],
+                rotation: [0, 0, 0],
+                scale: [1, 1, 1],
+                type: "mesh",
+                visible: true,
+                wireframe: false,
+                locked: false,
+                parentId: null,
+                metadata: {}
+              }
+            ],
+            render: { frustumCulling: false }
+          }
+        });
+
+        await runtime.ready;
+
+        const size = runtime.canvas.getBoundingClientRect();
+        const centre = [size.width / 2, size.height / 2];
+
+        function resolveAt(point) {
+          return runtime.resolveSurfacePoint({
+            mode: "3d",
+            target: { kind: "node", nodeType: "mesh" },
+            viewportPoint: point
+          });
+        }
+
+        const hit = resolveAt(centre);
+        const missProbe = resolveAt([2, 2]);
+
+        const isUnit = (normal) =>
+          Math.abs(
+            Math.hypot(normal[0], normal[1], normal[2]) - 1
+          ) < 1e-6;
+
+        window.__meshSurfaceResult = hit && hit.kind === "hit" && hit.nodeType === "mesh"
+          ? {
+              hitNodeId: hit.nodeId,
+              missOutsideGeometry:
+                missProbe !== undefined &&
+                missProbe.kind === "miss",
+              normalUnit: isUnit(hit.normal),
+              normalFacesCamera:
+                hit.normal[2] > 0.99 &&
+                Math.abs(hit.normal[0]) < 1e-3 &&
+                Math.abs(hit.normal[1]) < 1e-3,
+              pointOnQuad:
+                Math.abs(hit.point[2]) < 1e-6 &&
+                Math.abs(hit.point[0]) <= 2 &&
+                Math.abs(hit.point[1]) <= 2,
+              triangleIndexInRange:
+                hit.feature.kind === "mesh.triangle" &&
+                Number.isInteger(hit.feature.triangleIndex) &&
+                hit.feature.triangleIndex >= 0 &&
+                hit.feature.triangleIndex <= 1
+            }
+          : { unexpectedResult: JSON.stringify(hit ?? null) };
+      } catch (cause) {
+        window.__meshSurfaceError = String(cause);
+      }
+    </script>
+  </body>
+</html>

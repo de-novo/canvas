@@ -2336,6 +2336,13 @@ async function inspectSurfacePoint(): Promise<void> {
   );
 
   if (result.kind === "hit") {
+    if (result.nodeType === "mesh") {
+      // Mesh hits correlate a triangle index instead of a box face.
+      const triangleIndex: number = result.feature.triangleIndex;
+      void triangleIndex;
+      return;
+    }
+
     const axis: "x" | "y" | "z" = result.feature.axis;
     const side: -1 | 1 = result.feature.side;
     const normal: readonly [number, number, number] = result.normal;
@@ -2349,6 +2356,14 @@ async function inspectSurfacePoint(): Promise<void> {
 }
 void surfacePlacementToolId;
 void inspectSurfacePoint;
+const meshSurfaceRequest: Canvas3DSurfacePointRequest = {
+  mode: "3d",
+  target: { kind: "node", nodeType: "mesh" },
+  viewportPoint: [320, 240]
+};
+const meshSurfaceNode: Canvas3DSurfacePointRequest["target"]["nodeType"] =
+  meshSurfaceRequest.target.nodeType;
+void meshSurfaceNode;
 const measurementAuthoringTool = createDistanceMeasurementTool({
   createId,
   id: "plugin.public-api.tool.measurement",

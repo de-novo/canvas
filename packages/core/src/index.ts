@@ -1161,12 +1161,10 @@ const CanvasUnitVector3Schema = CanvasFiniteVector3Schema.superRefine(
 export const Canvas3DSurfacePointRequestSchema = z
   .object({
     mode: z.literal("3d"),
-    target: z
-      .object({
-        kind: z.literal("node"),
-        nodeType: z.literal("box")
-      })
-      .strict(),
+    target: z.object({
+      kind: z.literal("node"),
+      nodeType: z.union([z.literal("box"), z.literal("mesh")])
+    }),
     viewportPoint: CanvasFinitePoint2Schema
   })
   .strict();
@@ -1179,7 +1177,14 @@ const Canvas3DBoxFaceFeatureSchema = z
   })
   .strict();
 
-export const Canvas3DSurfacePointResultSchema = z.discriminatedUnion("kind", [
+const Canvas3DMeshTriangleFeatureSchema = z
+  .object({
+    kind: z.literal("mesh.triangle"),
+    triangleIndex: z.number().int().nonnegative()
+  })
+  .strict();
+
+export const Canvas3DSurfacePointResultSchema = z.union([
   z
     .object({
       kind: z.literal("miss"),
@@ -1193,6 +1198,17 @@ export const Canvas3DSurfacePointResultSchema = z.discriminatedUnion("kind", [
       mode: z.literal("3d"),
       nodeId: NodeIdSchema,
       nodeType: z.literal("box"),
+      normal: CanvasUnitVector3Schema,
+      point: CanvasFiniteVector3Schema
+    })
+    .strict(),
+  z
+    .object({
+      feature: Canvas3DMeshTriangleFeatureSchema,
+      kind: z.literal("hit"),
+      mode: z.literal("3d"),
+      nodeId: NodeIdSchema,
+      nodeType: z.literal("mesh"),
       normal: CanvasUnitVector3Schema,
       point: CanvasFiniteVector3Schema
     })

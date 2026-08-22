@@ -71,7 +71,7 @@ export type ThreeHitTester = {
 
 type Canvas3DBoxSurfaceHit = Extract<
   Canvas3DSurfacePointResult,
-  { kind: "hit" }
+  { kind: "hit"; nodeType: "box" }
 >;
 
 export type ThreeUnitBoxSurfaceIntersection = Pick<

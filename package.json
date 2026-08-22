@@ -19,6 +19,7 @@
     "verify:editor-core": "node scripts/verify-editor-core.mjs",
     "verify:hit-testing": "node scripts/verify-hit-testing.mjs",
     "verify:m4-performance": "node scripts/verify-m4-performance.mjs",
+    "verify:mesh-surface": "node scripts/verify-mesh-surface.mjs",
     "verify:public-api": "node scripts/verify-public-api.mjs",
     "verify:performance": "node scripts/verify-performance.mjs",
     "verify:point-field": "node scripts/verify-point-field.mjs",

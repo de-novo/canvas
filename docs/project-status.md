@@ -274,11 +274,16 @@ BIM stay optional packages, not a second product identity. See
    10k-point draw cost and screen-size clamp. Hosts (for example haru)
    own glow, cluster colour, and labels. See
    [2026-08-22 graph field host presentation](./history/2026-08-22-graph-field-host-presentation.md).
-2. **Next contract — mesh-surface measurement endpoints (decided
-   2026-08-22):** extend the verified M3.1 surface vocabulary with a
-   correlated `mesh` variant so BIM measurements can pick real surfaces
-   instead of work planes. WebGPU adapter and a pinned-environment frame
-   budget gate are explicitly deferred (rationale in
+2. **Next contract — mesh-surface measurement endpoints (in
+   progress):** the protocol extension landed 2026-08-22 —
+   `resolveSurfacePoint` accepts `mesh` targets with correlated
+   `mesh.triangle` hits (schema, Three resolver, facade; browser-verified;
+   see [2026-08-22 mesh surface points](./history/2026-08-22-mesh-surface-points.md)
+   and the extension section in
+   [M3.1 Surface Placement Contract](./m3-1-surface-placement-contract.md)).
+   Remaining slice: editor measurement tools capturing endpoints on mesh
+   surfaces. WebGPU adapter and a pinned-environment frame budget gate are
+   explicitly deferred (rationale in
    [2026-08-22 next contract decision](./history/2026-08-22-next-contract-decision.md)).
 
 ## Blocked

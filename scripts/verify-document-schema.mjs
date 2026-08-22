@@ -1576,6 +1576,63 @@ check("surface-point-protocol-is-strict-box-correlated-and-unit-normal", () => {
   }
 });
 
+check("surface-point-protocol-accepts-correlated-mesh-hits", () => {
+  const meshRequest = {
+    mode: "3d",
+    target: {
+      kind: "node",
+      nodeType: "mesh"
+    },
+    viewportPoint: [320, 240]
+  };
+  assert.deepEqual(
+    Canvas3DSurfacePointRequestSchema.parse(meshRequest),
+    meshRequest
+  );
+
+  const meshHit = {
+    feature: { kind: "mesh.triangle", triangleIndex: 17 },
+    kind: "hit",
+    mode: "3d",
+    nodeId: "ifc-element-42",
+    nodeType: "mesh",
+    // A non-axis-aligned unit normal — meshes are not axis constrained.
+    normal: [0.5773502691896258, 0.5773502691896258, 0.5773502691896258],
+    point: [1.5, 2.5, 3.5]
+  };
+  assert.deepEqual(Canvas3DSurfacePointResultSchema.parse(meshHit), meshHit);
+
+  for (const invalidMeshResult of [
+    { ...meshHit, nodeType: "box" },
+    {
+      ...meshHit,
+      feature: { axis: "y", kind: "box.face", side: 1 }
+    },
+    {
+      ...meshHit,
+      feature: { kind: "mesh.triangle", triangleIndex: -1 }
+    },
+    {
+      ...meshHit,
+      feature: { kind: "mesh.triangle", triangleIndex: 2.5 }
+    },
+    {
+      ...meshHit,
+      feature: { kind: "mesh.quad", triangleIndex: 0 }
+    },
+    {
+      ...meshHit,
+      feature: { kind: "mesh.triangle", triangleIndex: Number.NaN }
+    },
+    { ...meshHit, normal: [0.1, 0.1, 0.1] }
+  ]) {
+    assert.equal(
+      Canvas3DSurfacePointResultSchema.safeParse(invalidMeshResult).success,
+      false
+    );
+  }
+});
+
 check("grid-protocol-is-strict-mode-correlated-and-grid-only", () => {
   const grid2d = {
     mode: "2d",
@@ -2305,10 +2362,26 @@ const surfacePointRequest: Canvas3DSurfacePointRequest = {
 const surfacePointRuntime: Canvas3DSurfacePointRuntime = {
   resolveSurfacePoint(request) {
     const mode: "3d" = request.mode;
-    const nodeType: "box" = request.target.nodeType;
+    const nodeType: "box" | "mesh" = request.target.nodeType;
 
     void mode;
     void nodeType;
+
+    if (request.target.nodeType === "mesh") {
+      return {
+        feature: { kind: "mesh.triangle", triangleIndex: 4 },
+        kind: "hit",
+        mode: "3d",
+        nodeId: "mesh-1",
+        nodeType: "mesh",
+        normal: [
+          0.5773502691896258,
+          0.5773502691896258,
+          0.5773502691896258
+        ],
+        point: [request.viewportPoint[0], 0.5, request.viewportPoint[1]]
+      };
+    }
 
     return {
       feature: { axis: "y", kind: "box.face", side: 1 },
@@ -2391,14 +2464,23 @@ async function verifySurfacePointNarrowing() {
 
   const hitKind: "hit" = result.kind;
   const hitMode: "3d" = result.mode;
+
+  void hitKind;
+  void hitMode;
+
+  if (result.nodeType === "mesh") {
+    // Mesh hits correlate a triangle index instead of a box face.
+    const triangleIndex: number = result.feature.triangleIndex;
+    void triangleIndex;
+    return;
+  }
+
   const nodeType: "box" = result.nodeType;
   const axis: "x" | "y" | "z" = result.feature.axis;
   const side: -1 | 1 = result.feature.side;
   const point: [number, number, number] = result.point;
   const normal: [number, number, number] = result.normal;
 
-  void hitKind;
-  void hitMode;
   void nodeType;
   void axis;
   void side;

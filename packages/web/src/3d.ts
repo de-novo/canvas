@@ -57,6 +57,7 @@ import {
   LOD,
   LineBasicMaterial,
   LineSegments,
+  Matrix3,
   Matrix4,
   Mesh,
   MeshBasicMaterial,
@@ -261,6 +262,8 @@ export function createCanvas3D(
   const scenePointIntersection = new Vector3();
   const surfacePointRaycaster = new Raycaster();
   const surfacePointPointer = new Vector2();
+  const surfacePointNormalMatrix = new Matrix3();
+  const surfacePointNormal = new Vector3();
 
   let currentScene: Canvas3DScene = initialScene;
   let transformHandleTarget: CanvasNodeTransformHandleTarget | null = null;
@@ -1307,6 +1310,53 @@ export function createCanvas3D(
         throw new Error(
           `Canvas3D surface-point object was not found: ${node.id}`
         );
+      }
+
+      if (request.target.nodeType === "mesh") {
+        if (node.type !== "mesh" || !intersection.face) {
+          throw new Error(
+            `Canvas3D mesh raycast did not resolve a triangle face: ${nodeId}`
+          );
+        }
+
+        if (
+          typeof intersection.faceIndex !== "number" ||
+          !Number.isInteger(intersection.faceIndex) ||
+          intersection.faceIndex < 0
+        ) {
+          throw new Error(
+            `Canvas3D mesh raycast did not resolve a triangle index: ${nodeId}`
+          );
+        }
+
+        // face.normal is geometry-local; the normal matrix maps it to world
+        // space under non-uniform scale, then the schema enforces unit length.
+        surfacePointNormalMatrix.getNormalMatrix(object.matrixWorld);
+        surfacePointNormal
+          .copy(intersection.face.normal)
+          .applyMatrix3(surfacePointNormalMatrix)
+          .normalize();
+
+        return Canvas3DSurfacePointResultSchema.parse({
+          feature: {
+            kind: "mesh.triangle",
+            triangleIndex: intersection.faceIndex
+          },
+          kind: "hit",
+          mode: "3d",
+          nodeId,
+          nodeType: "mesh",
+          normal: [
+            surfacePointNormal.x,
+            surfacePointNormal.y,
+            surfacePointNormal.z
+          ],
+          point: [
+            intersection.point.x,
+            intersection.point.y,
+            intersection.point.z
+          ]
+        });
       }
 
       const surface = intersectThreeUnitBoxSurface(

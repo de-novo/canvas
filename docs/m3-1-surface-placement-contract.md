@@ -109,6 +109,35 @@ The query and result must not expose `THREE.Intersection`, `Object3D`, faces,
 materials, DOM events, renderer handles, `unknown`, `Record<string, ...>`, or an
 unconstrained target or feature string as a convenience public contract.
 
+### Extension 2026-08-22: `mesh` surface targets
+
+The request vocabulary additively widens to a correlated `mesh` variant
+beside `box`; the miss semantics, unit-normal tolerance, and no-fallback
+rules are unchanged:
+
+```ts
+type CanvasMeshTriangleFeature = {
+  readonly kind: "mesh.triangle";
+  readonly triangleIndex: number; // integer ≥ 0, geometry-triangle scoped
+};
+
+type Canvas3DSurfacePointRequest = {
+  readonly mode: "3d";
+  readonly target: {
+    readonly kind: "node";
+    readonly nodeType: "box" | "mesh";
+  };
+  readonly viewportPoint: Point2;
+};
+```
+
+A `mesh` hit correlates `nodeType: "mesh"` with the triangle-index feature
+and a world-space unit normal derived from the intersected triangle under
+the node's world matrix. Requesting one node type never returns a hit for
+another: an unsupported frontmost node still yields `miss`. The placement
+tool continues to accept box targets only; mesh-surface measurement
+endpoint capture is the follow-up slice inside this same contract.
+
 ## Tool Contract
 
 Surface placement uses a dedicated tool contract rather than optional fields

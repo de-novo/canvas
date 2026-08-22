@@ -76,7 +76,7 @@ const SURFACE_PLACEMENT_TOLERANCE = 1e-6;
 
 type SurfacePlacementHit = Extract<
   Canvas3DSurfacePointResult,
-  { readonly kind: "hit" }
+  { readonly kind: "hit"; readonly nodeType: "box" }
 >;
 
 type SurfacePlacementAxis = SurfacePlacementHit["feature"]["axis"];
@@ -480,6 +480,15 @@ async function updateSurfacePlacementPreview(
       []
     );
     return published ? { kind: "miss" } : { kind: "stale" };
+  }
+
+  if (result.nodeType !== "box") {
+    // The tool only requests box targets; a mesh hit here means the runtime
+    // violated the request contract.
+    throw new CanvasEditorError(
+      "invalid-hit-result",
+      `The surface target is not a current box node: ${result.nodeId}`
+    );
   }
 
   assertSurfacePlacementTarget(session.document, result);
