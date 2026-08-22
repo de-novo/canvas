@@ -288,6 +288,12 @@ BIM stay optional packages, not a second product identity. See
    WebGPU adapter and a pinned-environment frame budget gate are
    explicitly deferred (rationale in
    [2026-08-22 next contract decision](./history/2026-08-22-next-contract-decision.md)).
+3. **B-item residual risks:** storey layers landed 2026-08-22 — the IFC
+   importer maps each `IfcBuildingStorey` to a layer ("Level 1", "Level 2")
+   and places contained elements there, giving native level isolation
+   (`artifacts/verification/bim-storey-isolation.png`). Remaining:
+   instanced-node surface points, then BIM multi-model federation. See
+   [2026-08-22 BIM storey layers](./history/2026-08-22-bim-storey-layers.md).
 
 ## Blocked
 
