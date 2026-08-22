@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Denovo Canvas Graph Field</title>
+  </head>
+  <body>
+    <main class="shell">
+      <section class="viewport">
+        <div
+          id="stage"
+          class="stage"
+          aria-label="Graph field"
+          tabindex="0"
+        ></div>
+      </section>
+      <aside class="panel">
+        <p class="eyebrow">Graph field</p>
+        <h1>Time and relation</h1>
+        <p>
+          Layout adapters and point throughput only. Hosts own colour,
+          glow, and labels. Add <code>?points=10000</code> to measure the
+          packed field.
+        </p>
+        <div class="controls">
+          <button id="layout-time" type="button">Time</button>
+          <button id="layout-relation" type="button">Relation</button>
+          <button id="fit" type="button">Fit view</button>
+        </div>
+        <p class="status">
+          Status: <output id="status">idle</output>
+        </p>
+      </aside>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
