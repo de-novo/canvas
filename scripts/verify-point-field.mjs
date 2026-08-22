@@ -14,14 +14,16 @@ const web = await import(
 );
 
 function mockContext() {
-  const calls = { arcs: 0, strokes: 0, moves: 0 };
+  const calls = { arcs: 0, fills: 0, strokes: 0, moves: 0 };
   return {
     calls,
     beginPath() {},
     arc() {
       calls.arcs += 1;
     },
-    fill() {},
+    fill() {
+      calls.fills += 1;
+    },
     stroke() {
       calls.strokes += 1;
     },
@@ -85,6 +87,26 @@ check("edges-are-counted", () => {
   assert.equal(context.calls.strokes, 1);
 });
 
+// Per-point beginPath/fill is the measured-fastest Canvas2D shape for this
+// primitive (colour-batched union fills were tried and measured slower —
+// see docs/history/2026-08-22-graph-field-throughput.md). This check pins
+// that shape so a future edit cannot silently switch strategies.
+check("hex-points-draw-per-point", () => {
+  const context = mockContext();
+  const stats = web.renderCanvas2DPointField(context, {
+    points: [
+      { x: 10, y: 10, fill: "#38bdf8" },
+      { x: 20, y: 20, fill: "#f97316" },
+      { x: 30, y: 30, fill: "#38bdf8" }
+    ],
+    view: { offset: [0, 0], zoom: 1 },
+    viewport: { width: 200, height: 200 }
+  });
+  assert.equal(stats.drawnPoints, 3);
+  assert.equal(context.calls.arcs, 3);
+  assert.equal(context.calls.fills, 3);
+});
+
 const server = await startPlayground(5189);
 try {
   await check("10k-point-field-browser", async () => {
@@ -108,6 +130,27 @@ try {
       console.log(
         `[point-field] 10k draw min ${perf.drawMsMin.toFixed(2)}ms · drawn ${perf.drawnPoints}/${perf.count}`
       );
+
+      // Scale evidence at the 100k working set: correctness gates only —
+      // draw time is recorded as a machine-dependent baseline.
+      const large = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+      try {
+        await large.goto(`${server.url}/?points=100000`, { waitUntil: "networkidle" });
+        await large.waitForFunction(
+          () => Boolean(window.__pointFieldPerf?.count === 100000),
+          undefined,
+          { timeout: 120_000 }
+        );
+        const bigPerf = await large.evaluate(() => window.__pointFieldPerf);
+        assert.equal(bigPerf.count, 100_000);
+        assert.ok(bigPerf.drawnPoints > 0);
+        assert.ok(Number.isFinite(bigPerf.drawMsMin) && bigPerf.drawMsMin > 0);
+        console.log(
+          `[point-field] 100k draw min ${bigPerf.drawMsMin.toFixed(2)}ms · drawn ${bigPerf.drawnPoints}/${bigPerf.count}`
+        );
+      } finally {
+        await large.close();
+      }
     } finally {
       await browser.close();
     }
