@@ -2847,6 +2847,173 @@ assert.deepEqual(measurement.end, [3, 4]);
 assert.equal(measurementEditor.getState().history.undoDepth, 1);
 assert.deepEqual(measurementPreviews.at(-1), []);
 
+// Surface-capture 3D distance: endpoints come from the M3.1 surface-point
+// capability against whatever box/mesh node is under the pointer. Misses
+// never fall back to a work plane.
+const surfaceMesh = {
+  color: "#38bdf8",
+  id: "m1",
+  indices: [0, 1, 2],
+  layerId: "main",
+  position: [0, 0, 0],
+  positions: [0, 0, 0, 1, 0, 0, 0, 1, 0],
+  rotation: [0, 0, 0],
+  scale: [1, 1, 1],
+  type: "mesh",
+  visible: true,
+  wireframe: false,
+  locked: false,
+  parentId: null,
+  metadata: {}
+};
+const surfaceTool = editorCore.createDistanceMeasurementTool({
+  capture: "surface",
+  createId: () => "surface-distance-1",
+  layerId: "main",
+  mode: "3d",
+  precision: 2,
+  type: "measurement",
+  unit: { metersPerUnit: 1, name: "meter", symbol: "m" }
+});
+const surfaceEditor = editorCore.createEditor({
+  activeToolId: surfaceTool.id,
+  document: {
+    id: "surface-measurement-document",
+    scene: {
+      id: "surface-measurement-scene",
+      layers: [{ id: "main", name: "Main" }],
+      mode: "3d",
+      nodes: [surfaceMesh]
+    }
+  },
+  tools: [surfaceTool]
+});
+const surfacePreviews = [];
+let surfaceMissNextHitTest = false;
+let surfaceMissNextResolve = false;
+const surfaceRuntime = {
+  hitTest(input) {
+    if (surfaceMissNextHitTest) {
+      return { kind: "none", renderer: "test" };
+    }
+    return { kind: "node", nodeId: "m1", renderer: "test" };
+  },
+  resolveSurfacePoint(request) {
+    assert.equal(request.mode, "3d");
+    assert.deepEqual(request.target, { kind: "node", nodeType: "mesh" });
+    if (surfaceMissNextResolve) {
+      return { kind: "miss", mode: "3d" };
+    }
+    const [x, y] = request.viewportPoint;
+    return {
+      feature: { kind: "mesh.triangle", triangleIndex: x + y >= 6 ? 3 : 1 },
+      kind: "hit",
+      mode: "3d",
+      nodeId: "m1",
+      nodeType: "mesh",
+      normal: [0, 0, 1],
+      point: [x / 2, y / 2, 0]
+    };
+  },
+  setAuthoringPreviews(previews) {
+    surfacePreviews.push(previews);
+  }
+};
+
+// Start tap on the mesh captures a surface endpoint (2,1) from point (4,2).
+await surfaceEditor.handleToolInput(
+  pointerInput("pointer.down", { buttons: 1, point: [4, 2] }),
+  surfaceRuntime
+);
+await surfaceEditor.handleToolInput(
+  pointerInput("pointer.up", { point: [4, 2] }),
+  surfaceRuntime
+);
+const startedSurfaceNode = surfaceEditor
+  .getState()
+  .document.scene.nodes.find((node) => node.id === "surface-distance-1");
+assert.equal(startedSurfaceNode, undefined, "draft must not be committed early");
+
+// Release tap at (10,8) resolves surface endpoint (5,4) and commits once.
+await surfaceEditor.handleToolInput(
+  pointerInput("pointer.down", { buttons: 1, point: [10, 8] }),
+  surfaceRuntime
+);
+await surfaceEditor.handleToolInput(
+  pointerInput("pointer.up", { point: [10, 8] }),
+  surfaceRuntime
+);
+
+const surfaceMeasurement = surfaceEditor
+  .getState()
+  .document.scene.nodes.find((node) => node.type === "measurement");
+assert.ok(surfaceMeasurement, "a distance measurement must commit");
+assert.deepEqual(surfaceMeasurement.start, [2, 1, 0]);
+assert.deepEqual(surfaceMeasurement.end, [5, 4, 0]);
+assert.equal(surfaceEditor.getState().history.undoDepth, 1);
+await surfaceEditor.undo();
+assert.equal(
+  surfaceEditor.getState().document.scene.nodes.some((node) => node.type === "measurement"),
+  false,
+  "one undo removes the surface measurement"
+);
+
+// A start-tap miss starts nothing; the next full gesture still works.
+surfaceMissNextHitTest = true;
+await surfaceEditor.handleToolInput(
+  pointerInput("pointer.down", { buttons: 1, point: [1, 1] }),
+  surfaceRuntime
+);
+await surfaceEditor.handleToolInput(
+  pointerInput("pointer.up", { point: [1, 1] }),
+  surfaceRuntime
+);
+assert.equal(
+  surfaceEditor.getState().document.scene.nodes.filter((node) => node.type === "measurement").length,
+  0
+);
+
+// A release-tap resolver miss never commits and keeps the tool armed.
+surfaceMissNextHitTest = false;
+surfaceMissNextResolve = true;
+await surfaceEditor.handleToolInput(
+  pointerInput("pointer.down", { buttons: 1, point: [4, 2] }),
+  surfaceRuntime
+);
+await surfaceEditor.handleToolInput(
+  pointerInput("pointer.up", { point: [4, 2] }),
+  surfaceRuntime
+);
+assert.equal(
+  surfaceEditor.getState().document.scene.nodes.filter((node) => node.type === "measurement").length,
+  0,
+  "a missed release tap must not commit"
+);
+surfaceMissNextResolve = false;
+await surfaceEditor.handleToolInput(
+  pointerInput("pointer.down", { buttons: 1, point: [4, 2] }),
+  surfaceRuntime
+);
+await surfaceEditor.handleToolInput(
+  pointerInput("pointer.up", { point: [4, 2] }),
+  surfaceRuntime
+);
+await surfaceEditor.handleToolInput(
+  pointerInput("pointer.down", { buttons: 1, point: [10, 8] }),
+  surfaceRuntime
+);
+await surfaceEditor.handleToolInput(
+  pointerInput("pointer.up", { point: [10, 8] }),
+  surfaceRuntime
+);
+assert.equal(
+  surfaceEditor.getState().document.scene.nodes.filter((node) => node.type === "measurement").length,
+  1,
+  "the armed tool commits after a re-aimed release"
+);
+
+check("distance-surface-capture-tool", () => {});
+
 const annotationTool = editorCore.createAnnotationTool({
   createId: () => "annotation-1",
   layerId: "main",

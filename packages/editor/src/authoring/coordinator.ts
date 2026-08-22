@@ -150,6 +150,29 @@ export function requireSurfacePlacementCapabilities(context: CanvasToolContext):
   };
 }
 
+export function requireDistanceSurfaceCapabilities(context: CanvasToolContext): {
+  readonly hitTest: NonNullable<CanvasToolContext["hitTest"]>;
+  readonly resolveSurfacePoint: SurfacePointResolver;
+  readonly setPreviews: AuthoringPreviewSetter;
+} {
+  if (
+    !context.hitTest ||
+    !context.resolveSurfacePoint ||
+    !context.setAuthoringPreviews
+  ) {
+    throw new CanvasEditorError(
+      "tool-capability-missing",
+      "A surface-capture measurement tool requires hit testing, surface-point resolution, and preview capabilities."
+    );
+  }
+
+  return {
+    hitTest: context.hitTest,
+    resolveSurfacePoint: context.resolveSurfacePoint,
+    setPreviews: context.setAuthoringPreviews
+  };
+}
+
 export function requireAuthoringTarget(
   document: CanvasDocument,
   mode: CanvasMode,

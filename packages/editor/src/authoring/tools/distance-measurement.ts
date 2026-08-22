@@ -53,10 +53,12 @@ import {
   publishOwnedAuthoringPreviews,
   requireAuthoringCapabilities,
   requireAuthoringTarget,
+  requireDistanceSurfaceCapabilities,
   requireSurfacePlacementCapabilities,
   resolve2DAuthoringPoint,
   resolve3DAuthoringPoint,
   takeAuthoringDeactivationCleanups,
+  type AuthoringPreviewSetter,
   type AuthoringSessionBase,
   type PendingAuthoringStart,
   type Primitive3DSession,
@@ -72,14 +74,37 @@ import type {
   CanvasDistanceMeasurementToolOptions
 } from "../tool-options.js";
 
-type MeasurementSession<TMode extends CanvasMode> = AuthoringSessionBase & {
+/**
+ * A measurement endpoint resolver returns `null` for an explicit miss.
+ * Only surface capture can miss; work-plane resolution always yields a
+ * point or throws.
+ */
+type MeasurementEndpointResolver<TMode extends CanvasMode> = (
+  point: Point2
+) => Promise<CanvasCoordinateForMode<TMode> | null>;
+
+type MeasurementSession<TMode extends CanvasMode> = Pick<
+  AuthoringSessionBase,
+  "document" | "previewLease"
+> & {
   readonly nodeId: NodeId;
   phase: "first" | "second";
   pointerId: number | null;
+  readonly resolveEndpoint: MeasurementEndpointResolver<TMode>;
   readonly start: CanvasCoordinateForMode<TMode>;
 };
 
+/**
+ * Capability set required by surface capture: hit testing for target
+ * discovery plus the M3.1 surface-point resolver.
+ */
+type DistanceSurfaceCapabilities = {
+  readonly hitTest: NonNullable<CanvasToolContext["hitTest"]>;
+  readonly resolveSurfacePoint: SurfacePointResolver;
+};
+
 type DistanceToolAdapter<TMode extends CanvasMode> = {
+  readonly capture: "work-plane" | "surface";
   readonly createId: CanvasCreateId;
   readonly createNode: (
     nodeId: NodeId,
@@ -98,7 +123,17 @@ type DistanceToolAdapter<TMode extends CanvasMode> = {
   readonly resolve: (
     resolver: ScenePointResolver,
     viewportPoint: Point2
-  ) => Promise<CanvasCoordinateForMode<TMode>>;
+  ) => Promise<CanvasCoordinateForMode<TMode>> | CanvasCoordinateForMode<TMode>;
+  /**
+   * Surface-capture endpoint resolution. Returns `null` for an explicit
+   * miss. Supplied only by the `"surface"` adapter; work-plane adapters
+   * never consult it.
+   */
+  readonly resolveSurfaceEndpoint?: (
+    context: CanvasToolContext,
+    capabilities: DistanceSurfaceCapabilities,
+    point: Point2
+  ) => Promise<CanvasCoordinateForMode<TMode> | null>;
 };
 
 export function createDistanceMeasurementTool<const TId extends string>(
@@ -121,6 +156,7 @@ export function createDistanceMeasurementTool(
   if (options.mode === "2d") {
     const grid = options.grid ? parse2DGrid(options.grid) : undefined;
     return createDistanceToolDefinition({
+      capture: "work-plane",
       createId: options.createId,
       createNode(nodeId, start, end) {
         return Canvas2DMeasurementNodeSchema.parse({
@@ -154,6 +190,70 @@ export function createDistanceMeasurementTool(
     );
   }
 
+  if (options.capture === "surface") {
+    if (options.grid) {
+      throw new CanvasEditorError(
+        "invalid-command",
+        "Grid snapping is a work-plane vocabulary; surface-capture measurements do not support a grid."
+      );
+    }
+
+    return createDistanceToolDefinition({
+      capture: "surface",
+      createId: options.createId,
+      createNode(nodeId, start, end) {
+        return Canvas3DMeasurementNodeSchema.parse({
+          end,
+          id: nodeId,
+          layerId: options.layerId,
+          measurement: "distance",
+          precision,
+          start,
+          type: "measurement",
+          unit
+        });
+      },
+      ...(options.cursor === undefined ? {} : { cursor: options.cursor }),
+      ...(options.id === undefined ? {} : { id: options.id }),
+      label,
+      layerId: options.layerId,
+      mode: "3d",
+      previews(start, end) {
+        return create3DMeasurementPreviewEntries(undefined, start, end);
+      },
+      resolve() {
+        // Surface capture never consults scene-point resolution.
+        throw new CanvasEditorError(
+          "internal-error",
+          "Surface-capture measurements do not use scene-point resolution."
+        );
+      },
+      async resolveSurfaceEndpoint(context, capabilities, point) {
+        const hit = await capabilities.hitTest({ point });
+
+        if (!hit || hit.kind !== "node") {
+          return null;
+        }
+
+        const node = context
+          .getDocument()
+          .scene.nodes.find((candidate) => candidate.id === hit.nodeId);
+
+        if (!node || (node.type !== "box" && node.type !== "mesh")) {
+          return null;
+        }
+
+        const result = await capabilities.resolveSurfacePoint({
+          mode: "3d",
+          target: { kind: "node", nodeType: node.type },
+          viewportPoint: point
+        });
+
+        return result.kind === "hit" ? result.point : null;
+      }
+    });
+  }
+
   const workPlane = parseWorkPlane(options.workPlane);
   const grid = options.grid ? parse3DGrid(options.grid) : undefined;
 
@@ -162,6 +262,7 @@ export function createDistanceMeasurementTool(
   }
 
   return createDistanceToolDefinition({
+    capture: "work-plane",
     createId: options.createId,
     createNode(nodeId, start, end) {
       return Canvas3DMeasurementNodeSchema.parse({
@@ -233,23 +334,51 @@ function createDistanceToolDefinition<TMode extends CanvasMode>(
         if (!session) {
           const document = context.getDocument();
           requireAuthoringTarget(document, adapter.mode, adapter.layerId);
-          const capabilities = requireAuthoringCapabilities(context);
+
+          let endpointResolver: MeasurementEndpointResolver<TMode>;
+          let setPreviews: AuthoringPreviewSetter;
+
+          if (adapter.capture === "surface") {
+            const surfaceCapabilities =
+              requireDistanceSurfaceCapabilities(context);
+            const hook = adapter.resolveSurfaceEndpoint;
+
+            if (!hook) {
+              throw new CanvasEditorError(
+                "internal-error",
+                "A surface-capture measurement tool is missing its endpoint resolver."
+              );
+            }
+
+            endpointResolver = async (point) =>
+              hook(context, surfaceCapabilities, point);
+            setPreviews = surfaceCapabilities.setPreviews;
+          } else {
+            const capabilities = requireAuthoringCapabilities(context);
+            endpointResolver = async (point) =>
+              adapter.resolve(capabilities.resolveScenePoint, point);
+            setPreviews = capabilities.setPreviews;
+          }
+
           const pendingStart: PendingAuthoringStart = {
             previewLease: acquireAuthoringPreviewLease(
               context,
-              capabilities.setPreviews
+              setPreviews
             )
           };
           clearAuthoringSessionOnDeactivate(pendingStarts, context);
           pendingStarts.set(context, pendingStart);
 
           try {
-            const start = await adapter.resolve(
-              capabilities.resolveScenePoint,
-              input.point
-            );
+            const start = await endpointResolver(input.point);
 
             if (pendingStarts.get(context) !== pendingStart) {
+              return;
+            }
+
+            // A surface miss on the first tap starts nothing: no draft, no
+            // session, nothing to undo. The next tap may try again.
+            if (start === null) {
               return;
             }
 
@@ -276,7 +405,7 @@ function createDistanceToolDefinition<TMode extends CanvasMode>(
               phase: "first",
               pointerId: input.pointerId,
               previewLease: pendingStart.previewLease,
-              resolveScenePoint: capabilities.resolveScenePoint,
+              resolveEndpoint: endpointResolver,
               start
             };
             sessions.set(context, session);
@@ -290,8 +419,15 @@ function createDistanceToolDefinition<TMode extends CanvasMode>(
 
         if (session.phase === "second" && session.pointerId === null) {
           assertSessionDocument(context, session);
+          const end = await session.resolveEndpoint(input.point);
+
+          // Surface miss while re-aiming the second tap keeps the session in
+          // its waiting state; the preview stays where it was.
+          if (end === null) {
+            return;
+          }
+
           session.pointerId = input.pointerId;
-          const end = await adapter.resolve(session.resolveScenePoint, input.point);
           await publishOwnedAuthoringPreviews(
             sessions,
             context,
@@ -310,7 +446,20 @@ function createDistanceToolDefinition<TMode extends CanvasMode>(
       assertSessionDocument(context, session);
 
       if (input.type === "pointer.move") {
-        const end = await adapter.resolve(session.resolveScenePoint, input.point);
+        const end = await session.resolveEndpoint(input.point);
+
+        if (end === null) {
+          // Off-geometry during surface capture hides the draft instead of
+          // guessing an endpoint.
+          await publishOwnedAuthoringPreviews(
+            sessions,
+            context,
+            session,
+            []
+          );
+          return;
+        }
+
         await publishOwnedAuthoringPreviews(
           sessions,
           context,
@@ -324,7 +473,15 @@ function createDistanceToolDefinition<TMode extends CanvasMode>(
         return;
       }
 
-      const end = await adapter.resolve(session.resolveScenePoint, input.point);
+      const end = await session.resolveEndpoint(input.point);
+
+      if (end === null) {
+        // A missed release tap never commits and never falls back. The
+        // session stays armed so the user can aim again.
+        await publishOwnedAuthoringPreviews(sessions, context, session, []);
+        return;
+      }
+
       const published = await publishOwnedAuthoringPreviews(
         sessions,
         context,
@@ -422,4 +579,3 @@ function coordinatesEqual(
     left.every((value, index) => value === right[index])
   );
 }
-

@@ -83,6 +83,21 @@ export type CanvasDistanceMeasurementToolOptions<TId extends string = string> =
       readonly unit: CanvasNodeByType<"2d", "measurement">["unit"];
     })
   | (Canvas3DAuthoringToolOptionsBase<TId> & {
+      /** Endpoint vocabulary. Defaults to `"work-plane"`. */
+      readonly capture?: "work-plane";
+      readonly precision: CanvasNodeByType<"3d", "measurement">["precision"];
+      readonly type: "measurement";
+      readonly unit: CanvasNodeByType<"3d", "measurement">["unit"];
+    })
+  /**
+   * Surface capture resolves every endpoint through the M3.1 surface-point
+   * capability against whatever drawable node is under the pointer (box or
+   * `mesh`). No work plane exists in this mode: a tap that misses geometry
+   * starts nothing, hides the draft, and never commits — there is no
+   * fallback onto planes, origins, or previous hits.
+   */
+  | (CanvasAuthoringToolOptionsBase<"3d", TId> & {
+      readonly capture: "surface";
       readonly precision: CanvasNodeByType<"3d", "measurement">["precision"];
       readonly type: "measurement";
       readonly unit: CanvasNodeByType<"3d", "measurement">["unit"];

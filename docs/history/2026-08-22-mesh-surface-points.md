@@ -64,18 +64,36 @@ workflows can pick real tessellated surfaces instead of work planes.
 
 ## Residual risk
 
-- Editor measurement/placement tools do not yet *capture* endpoints on
-  meshes — hosts can resolve mesh surface points today, but tool-level
-  endpoint capture (measurement on real BIM surfaces) is the follow-up
-  slice inside this contract.
 - Instanced nodes are not mesh targets (different node type) and return
   `miss` by the correlation rule; instanced-surface support would be its
   own extension.
 - `triangleIndex` is scoped to the geometry's triangle order; geometry
   edits reorder indices by design.
 
-## Next action
+## Follow-up slice (2026-08-22, same day): measurement endpoint capture
 
-Tool-level measurement endpoint capture on mesh surfaces (the original
-motivating workflow), then fold this slice into the next milestone-style
-verification pass.
+`createDistanceMeasurementTool` gains a 3D `capture: "surface"` mode. Every
+endpoint resolves through hit testing plus the M3.1 surface-point
+capability against whatever box/mesh node is under the pointer — BIM
+models measure real surfaces, not work planes.
+
+Semantics (explicit-failure culture, no fallback):
+
+- A missed start tap starts nothing (no draft, no session).
+- Off-geometry during aim hides the draft preview.
+- A missed release tap never commits and never falls back; the tool stays
+  armed so the user can re-aim.
+- Grid options are rejected in surface mode (grid snapping is work-plane
+  vocabulary). Default remains `"work-plane"`, byte-preserving all
+  verified M3 flows.
+
+Implementation shape: the tool definition resolves endpoints through a
+per-session closure; surface mode binds hitTest + resolveSurfacePoint from
+the tool context (`requireDistanceSurfaceCapabilities`), work-plane mode
+binds scene-point resolution exactly as before.
+
+Verification: new editor-core coverage drives the full gesture against a
+mesh document through a mock runtime — surface endpoints commit in one
+transaction with one undo; start-miss starts nothing; release-miss does
+not commit and a re-aimed release commits afterwards. Capability-missing
+and grid-in-surface-mode fail with typed errors.
