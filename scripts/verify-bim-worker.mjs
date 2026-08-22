@@ -139,6 +139,42 @@ const sampleData = () =>
       assert.ok(layerIds.has(node.layerId));
     }
 
+    // Spatial hierarchy: one layer per building storey; contained elements
+    // live on their storey's layer so level isolation is native.
+    const layers = imported.document.scene.layers;
+    const storeyLayers = layers.filter((layer) =>
+      /^ifc-storey-\d+$/.test(layer.id)
+    );
+    const storeyLayerIds = new Set(storeyLayers.map((layer) => layer.id));
+    const meshNodes = nodes.filter((node) => node.type === "mesh");
+
+    assert.ok(
+      storeyLayers.length > 0,
+      "sample.ifc must contain at least one building storey layer"
+    );
+    for (const layer of storeyLayers) {
+      assert.ok(
+        typeof layer.name === "string" && layer.name.length > 0,
+        "storey layers carry display names"
+      );
+    }
+
+    let onStoreyLayer = 0;
+    for (const node of meshNodes) {
+      if (storeyLayerIds.has(node.layerId)) {
+        onStoreyLayer += 1;
+      }
+    }
+    assert.ok(
+      onStoreyLayer > 0,
+      "sample.ifc elements must be placed on their storey layers"
+    );
+    console.log(
+      `[bim-worker] spatial hierarchy: ${storeyLayers.length} storey layers (${storeyLayers
+        .map((layer) => layer.name)
+        .join(", ")}), ${onStoreyLayer}/${meshNodes.length} elements on storey layers`
+    );
+
     check("bim-worker-parses-sample-ifc-end-to-end", () => {});
 
     // 2. Property sets follow the best-effort contract (empty is valid).

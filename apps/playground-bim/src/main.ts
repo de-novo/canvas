@@ -107,6 +107,12 @@ async function loadSample(): Promise<void> {
     });
     updateMeasurementCount();
 
+    // Verification/demo handle: lets tooling exercise layer isolation
+    // (`layer.update`) without adding UI.
+    (
+      window as unknown as { __bimEditor?: unknown }
+    ).__bimEditor = editor;
+
     let measuring = false;
 
     function setMeasuring(next: boolean): void {

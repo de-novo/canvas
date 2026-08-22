@@ -155,7 +155,8 @@ export class WebIfcBimAdapter implements BimAdapter {
     const assembled = assembleBimDocument(
       output.elements,
       this.geometryStore,
-      source.name ?? "ifc-scene"
+      source.name ?? "ifc-scene",
+      output.hierarchy
     );
 
     return { document: assembled.document, geometryStore: this.geometryStore };

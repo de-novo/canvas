@@ -21,7 +21,9 @@ import {
   type JsonValue
 } from "@denovo/canvas-core";
 import {
+  IFCBUILDINGSTOREY,
   IFCPROPERTYSET,
+  IFCRELCONTAINEDINSPATIALSTRUCTURE,
   IFCRELDEFINESBYPROPERTIES,
   IfcAPI
 } from "web-ifc";
@@ -46,8 +48,25 @@ export type BimParsedElement = {
   positions: Float32Array;
 };
 
+/**
+ * Storey layers resolved from the IFC spatial structure. Layers are the
+ * document's isolation vocabulary, so one layer per building storey gives
+ * level navigation and hide/show for free; categories stay on
+ * `metadata.__bim.ifcType` and node colours.
+ */
+export type BimSpatialHierarchy = {
+  /** Element expressID → owning storey layer id. */
+  readonly elementLayerById: ReadonlyMap<number, string>;
+  /** Storey layers in document order. */
+  readonly storeyLayers: readonly {
+    readonly id: string;
+    readonly name: string;
+  }[];
+};
+
 export type BimParseOutput = {
   elements: BimParsedElement[];
+  hierarchy?: BimSpatialHierarchy | undefined;
   skippedElementCount: number;
 };
 
@@ -68,6 +87,7 @@ export function parseIfcModel(
   const total = meshes.size();
   const limit = Math.min(total, Math.max(1, maxElements));
   const elements: BimParsedElement[] = [];
+  const hierarchy = buildSpatialHierarchy(api, modelID);
 
   for (let index = 0; index < limit; index += 1) {
     const flatMesh = meshes.get(index) as FlatMesh | undefined;
@@ -79,11 +99,110 @@ export function parseIfcModel(
     const element = buildElement(api, modelID, flatMesh);
 
     if (element) {
+      // Storey containment overrides the category layer: layers are the
+      // document's isolation vocabulary, so one layer per storey gives
+      // level navigation and hide/show for free.
+      const storeyLayerId = hierarchy.elementLayerById.get(flatMesh.expressID);
+
+      if (storeyLayerId !== undefined) {
+        element.layerId = storeyLayerId;
+      }
+
       elements.push(element);
     }
   }
 
-  return { elements, skippedElementCount: Math.max(0, total - limit) };
+  return {
+    elements,
+    hierarchy,
+    skippedElementCount: Math.max(0, total - limit)
+  };
+}
+
+/**
+ * Walks the IFC spatial structure — building storeys via
+ * `IfcBuildingStorey`, elements → storeys via
+ * `IfcRelContainedInSpatialStructure` — and returns one storey layer per
+ * storey plus the element→layer mapping. Best-effort: a model without
+ * spatial structure yields no layers and every element keeps its category
+ * layer.
+ */
+export function buildSpatialHierarchy(
+  api: IfcAPI,
+  modelID: number
+): BimSpatialHierarchy {
+  const elementLayerById = new Map<number, string>();
+  const storeyLayers: { id: string; name: string }[] = [];
+  const layerIdByStoreyId = new Map<number, string>();
+
+  try {
+    const storeyIds = api.GetLineIDsWithType(modelID, IFCBUILDINGSTOREY);
+
+    for (let index = 0; index < storeyIds.size(); index += 1) {
+      const expressID = storeyIds.get(index);
+      let identity: ReturnType<typeof readElementIdentity>;
+
+      try {
+        identity = readElementIdentity(api, modelID, expressID);
+      } catch {
+        identity = {
+          ifcGuid: `express-${expressID}`,
+          ifcType: "IfcBuildingStorey"
+        };
+      }
+
+      const id = `ifc-storey-${expressID}`;
+      layerIdByStoreyId.set(expressID, id);
+      storeyLayers.push({
+        id,
+        name:
+          identity.ifcName === undefined
+            ? `Storey ${storeyLayers.length + 1}`
+            : identity.ifcName
+      });
+    }
+  } catch {
+    // Structure walking is best-effort.
+  }
+
+  try {
+    const containedIds = api.GetLineIDsWithType(
+      modelID,
+      IFCRELCONTAINEDINSPATIALSTRUCTURE
+    );
+
+    for (let index = 0; index < containedIds.size(); index += 1) {
+      const relation = api.GetLine(modelID, containedIds.get(index)) as
+        | {
+            RelatingStructure?: { value?: number };
+            RelatedElements?: Array<{ value?: number }>;
+          }
+        | undefined;
+      const structureLayerId =
+        typeof relation?.RelatingStructure?.value === "number"
+          ? layerIdByStoreyId.get(relation.RelatingStructure.value)
+          : undefined;
+
+      if (!structureLayerId) {
+        continue;
+      }
+
+      for (const related of relation?.RelatedElements ?? []) {
+        const elementId = related?.value;
+
+        if (
+          typeof elementId === "number" &&
+          !elementLayerById.has(elementId)
+        ) {
+          elementLayerById.set(elementId, structureLayerId);
+        }
+      }
+    }
+  } catch {
+    // Containment walking is best-effort.
+  }
+
+  return { elementLayerById, storeyLayers };
 }
 
 function buildElement(
@@ -408,19 +527,33 @@ function layerNameForId(layerId: string): string {
 
 /**
  * Assembles parsed elements into the canonical document + geometry store:
- * one `mesh` node per element, category layers, `AssetRef` geometry
+ * one `mesh` node per element, category layers (overridden by storey
+ * layers when a spatial hierarchy is supplied), `AssetRef` geometry
  * references, and a camera framed on the imported bounds.
  */
 export function assembleBimDocument(
   elements: readonly BimParsedElement[],
   geometryStore: CanvasGeometryStore,
-  sceneId: string
+  sceneId: string,
+  hierarchy?: BimSpatialHierarchy | undefined
 ): { document: CanvasDocument; nodes: Canvas3DNode[] } {
   geometryStore.clear();
 
   const layers = new Map<string, CanvasLayer>();
   const nodes: Canvas3DNode[] = [];
   const assets: AssetRef[] = [];
+
+  if (hierarchy) {
+    for (const storey of hierarchy.storeyLayers) {
+      layers.set(storey.id, {
+        id: storey.id,
+        name: storey.name,
+        visible: true,
+        locked: false,
+        metadata: {}
+      });
+    }
+  }
 
   for (const element of elements) {
     if (!layers.has(element.layerId)) {

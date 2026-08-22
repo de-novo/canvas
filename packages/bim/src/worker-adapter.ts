@@ -25,7 +25,7 @@ import {
   assembleBimDocument,
   DEFAULT_MAX_ELEMENTS
 } from "./web-ifc-parse.js";
-import type { BimParsedElement } from "./web-ifc-parse.js";
+import type { BimParsedElement, BimSpatialHierarchy } from "./web-ifc-parse.js";
 import type { DenovoBimWorkerTaskMap } from "./web-ifc-worker.js";
 
 export { DEFAULT_MAX_ELEMENTS };
@@ -42,6 +42,7 @@ export type WorkerBimAdapterOptions = {
 
 type StagedParse = {
   elements: BimParsedElement[];
+  hierarchy?: BimSpatialHierarchy | undefined;
   skippedElementCount: number;
   source: BimModelSource;
 };
@@ -74,7 +75,8 @@ export function createWorkerBimAdapter(
     const assembled = assembleBimDocument(
       staged.elements,
       geometryStore,
-      staged.source.name ?? "ifc-scene"
+      staged.source.name ?? "ifc-scene",
+      staged.hierarchy
     );
 
     return { document: assembled.document, geometryStore };
@@ -101,6 +103,7 @@ export function createWorkerBimAdapter(
 
       staged = {
         elements: result.elements,
+        hierarchy: result.hierarchy,
         skippedElementCount: result.skippedElementCount,
         source
       };
