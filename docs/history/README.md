@@ -103,5 +103,6 @@ Each entry should include:
 - [2026-08-22 M4 worker task queue and OffscreenCanvas capability](./2026-08-22-m4-worker-task-queue.md)
 - [2026-08-22 M4 LOD controls, chunk loading, and batching gate](./2026-08-22-m4-lod-chunk-loading.md)
 - [2026-08-22 M7 worker parsing and section plane](./2026-08-22-m7-worker-parsing-section-plane.md)
+- [2026-08-22 next contract decision](./2026-08-22-next-contract-decision.md)
 - [2026-08-22 graph layout adapters](./2026-08-22-graph-layout-adapters.md)
 - [2026-08-22 graph field host presentation](./2026-08-22-graph-field-host-presentation.md)

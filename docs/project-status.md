@@ -274,12 +274,12 @@ BIM stay optional packages, not a second product identity. See
    10k-point draw cost and screen-size clamp. Hosts (for example haru)
    own glow, cluster colour, and labels. See
    [2026-08-22 graph field host presentation](./history/2026-08-22-graph-field-host-presentation.md).
-2. **Post-milestone planning:** with M0–M8 verified, pick the next
-   contract before new surface work — candidates from
-   [Vision](./vision-and-milestones.md): a WebGPU adapter milestone
-   (backend vocabulary is already reserved), the pinned-environment frame
-   budget gate, or mesh-surface-picked measurements as an M3.1-contract
-   extension.
+2. **Next contract — mesh-surface measurement endpoints (decided
+   2026-08-22):** extend the verified M3.1 surface vocabulary with a
+   correlated `mesh` variant so BIM measurements can pick real surfaces
+   instead of work planes. WebGPU adapter and a pinned-environment frame
+   budget gate are explicitly deferred (rationale in
+   [2026-08-22 next contract decision](./history/2026-08-22-next-contract-decision.md)).
 
 ## Blocked
 
