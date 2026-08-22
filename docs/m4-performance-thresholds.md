@@ -196,6 +196,79 @@ should improve the ones it targets.
 - **Target**: TBD once a real worker task (e.g. geometry/BVH build) is wired;
   until then, this category is documented but not gated.
 
+#### Worker task queue (done, opt-in)
+
+`createWorkerTaskQueue` pools workers behind a FIFO queue, and
+`createDenovoWorkerHandler` installs the first-party
+`denovo.geometry.convert` task (raw arrays → transferable typed arrays +
+bounds). The facade re-exports both under `@denovo/canvas/worker`, and
+`supportsOffscreenCanvas()` is the OffscreenCanvas capability check.
+
+Measured 2026-08-22 in Chromium via `apps/vanilla/worker-bench.html`
+(ego-browser session, Vite dev server, pool size 2, transferred buffers,
+30 samples per row). Main-thread column is `convertDenovoGeometry` alone;
+RTT adds structured-clone/transfer plus cross-thread latency:
+
+| Payload (floats) | main-thread p50 (ms) | worker RTT p50 (ms) | worker RTT p95 (ms) |
+| --- | --- | --- | --- |
+| 3k (12 KB) | 0.10 | 0.10 | 1.60 |
+| 300k (1.2 MB) | 0.30 | 0.50 | 0.80 |
+| 3M (12 MB) | 4.40 | 5.50 | 8.40 |
+
+Non-blocking proof: while the worker converted a 12 MB payload,
+`requestAnimationFrame` fired **0.4 ms** after issue; running the same
+conversion on the main thread delayed rAF by **86.2 ms** (window includes
+payload construction). Heavy conversion therefore stays off the main
+thread as required by the M4 acceptance criteria.
+
+Node-side semantics are covered by `pnpm verify:worker-tasks` (loopback
+workers): FIFO ordering within pool size, one in-flight request per
+worker, error recovery, dispose rejecting in-flight + buffered work, and
+explicit unknown-task failures.
+
+### LOD controls (done, opt-in)
+
+`render.lod: { enabled, distances }` (default off, schema in
+`RenderOptionsSchema`) wraps sphere primitives in a three-level
+`THREE.LOD` (48×24 → 16×8 → 8×4 segments at the configured distances).
+Boxes stay single-detail (shared 12-triangle unit cube), meshes keep
+authored tessellation, and instances batch internally, so spheres are the
+primitive where distance reduction pays. Hit testing resolves through the
+LOD parent, and disposal traverses LOD children.
+
+Measured 2026-08-22 in Chromium via `apps/vanilla/lod-bench.html`
+(ego-browser session): 301 spheres spread across depth, camera at
+distance ~30, frustum culling off:
+
+| render.lod | triangles | drawCalls | center hit resolves |
+| --- | --- | --- | --- |
+| off | 664,608 | 301 | yes |
+| on ([10, 20]) | 17,312 | 301 | yes |
+
+Triangle count dropped **97.4%** at identical draw-call count; picking
+still resolves the node id through the active LOD level.
+
+### Chunk loading API (done, opt-in)
+
+`createSceneChunkLoader(runtime, { chunkSize, budgetMs, yieldSlice })`
+applies large scenes across scheduled slices (default 2k nodes per update,
+8 ms soft budget per slice, rAF yields) so hosts can stream big documents
+without freezing input. The final slice is skipped when the last chunk
+already covered every node. Cancellation throws
+`CanvasSceneChunkCancelledError` with the applied count; the next `load`
+starts clean. Semantics are covered by `pnpm verify:m4-performance`
+(Node-side, deterministic).
+
+### Batching gate (done)
+
+`pnpm verify:performance` now hard-fails unless every workload renders
+through exactly one draw call (`drawCalls=1` with `batch: true`). Frame
+times stay recorded baselines, not gates: headless numbers are
+machine-dependent (1k-boxes p50 measured 50.0 ms on 2026-08-21 vs
+66.3 ms on 2026-08-22 on the same commit family). A 16 ms frame-budget
+gate needs a defined measurement environment before it can be enforced;
+until then it remains a documented target, not a test.
+
 ### Memory
 
 - **Workload**: 10k-box scene held for 60s with periodic `update()` churn.

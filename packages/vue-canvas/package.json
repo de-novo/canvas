@@ -19,18 +19,18 @@
   ],
   "sideEffects": false,
   "scripts": {
-    "build": "tsup src/index.ts --format esm,cjs --clean --external vue --external @denovo/canvas-core --external @denovo/canvas-web && tsc --emitDeclarationOnly",
+    "build": "tsup src/index.ts --format esm,cjs --clean --external vue --external @denovo/canvas --external @denovo/canvas-core && tsc --emitDeclarationOnly",
     "clean": "rm -rf dist .turbo",
     "typecheck": "tsc --noEmit"
   },
   "peerDependencies": {
+    "@denovo/canvas": "workspace:*",
     "@denovo/canvas-core": "workspace:*",
-    "@denovo/canvas-web": "workspace:*",
     "vue": ">=3.4.0"
   },
   "devDependencies": {
+    "@denovo/canvas": "workspace:*",
     "@denovo/canvas-core": "workspace:*",
-    "@denovo/canvas-web": "workspace:*",
     "vue": "^3.5.13"
   }
 }

@@ -1895,6 +1895,46 @@ const ungroupedText = textGroupEditor
 assertVectorClose(ungroupedText.position, [20, 30]);
 assertVectorClose(ungroupedText.scale, [2, 2]);
 
+const htmlGroupEditor = editorCore.createEditor({
+  document: {
+    id: "html-group-document",
+    scene: {
+      id: "html-group-scene",
+      layers: [{ id: "main", name: "Main" }],
+      mode: "2d",
+      nodes: [
+        {
+          id: "html-group",
+          layerId: "main",
+          position: [10, 20],
+          rotation: 0,
+          scale: [2, 2],
+          type: "group"
+        },
+        {
+          id: "grouped-html",
+          layerId: "main",
+          parentId: "html-group",
+          position: [5, 5],
+          html: "<div>Card</div>",
+          type: "html"
+        }
+      ]
+    }
+  }
+});
+await htmlGroupEditor.dispatch(
+  editorCore.createUngroupNodesCommand(
+    htmlGroupEditor.getState().document,
+    "html-group"
+  )
+);
+const ungroupedHtml = htmlGroupEditor
+  .getState()
+  .document.scene.nodes.find((node) => node.id === "grouped-html");
+assertVectorClose(ungroupedHtml.position, [20, 30]);
+assertVectorClose(ungroupedHtml.scale, [2, 2]);
+
 const meshEditor = editorCore.createEditor({
   document: {
     id: "mesh-update-document",
@@ -3603,6 +3643,126 @@ try {
       .apply({ ...input, nodes: nodes.slice(0, 2) }).positions,
     [],
     "two nodes have a single gap, so there is nothing to equalise"
+  );
+}
+
+// --- time / relation graph adapters --------------------------------------
+// These are the first graph layouts: time is a left-to-right axis, relation
+// is BFS layers with no global centre. Both must be order-independent.
+{
+  const nodes = [
+    { id: "c", type: "circle", position: [9, 9], bounds: { minX: 9, minY: 9, maxX: 9, maxY: 9 } },
+    { id: "a", type: "circle", position: [1, 1], bounds: { minX: 1, minY: 1, maxX: 1, maxY: 1 } },
+    { id: "b", type: "circle", position: [2, 2], bounds: { minX: 2, minY: 2, maxX: 2, maxY: 2 } },
+    { id: "d", type: "circle", position: [4, 4], bounds: { minX: 4, minY: 4, maxX: 4, maxY: 4 } }
+  ];
+  const reversed = [...nodes].reverse();
+  const edges = [
+    { id: "e2", sourceId: "b", targetId: "c" },
+    { id: "e1", sourceId: "a", targetId: "b" }
+  ];
+  const at = { a: 10, b: 20, c: 20 };
+  const timeAdapter = editorCore.createTimeGraphLayoutAdapter({
+    origin: [0, 0],
+    columnGap: 100,
+    laneGap: 40
+  });
+  const relationAdapter = editorCore.createRelationGraphLayoutAdapter({
+    origin: [0, 0],
+    layerGap: 80,
+    laneGap: 40,
+    componentGap: 120
+  });
+  const byId = (adapter, input) =>
+    Object.fromEntries(adapter.apply(input).positions.map((p) => [p.id, p.position]));
+
+  const timeForward = byId(timeAdapter, {
+    nodes,
+    edges,
+    measured: true,
+    options: { at }
+  });
+  const timeReversed = byId(timeAdapter, {
+    nodes: reversed,
+    edges: [...edges].reverse(),
+    measured: true,
+    options: { at }
+  });
+  assert.deepEqual(timeForward, timeReversed, "time layout must ignore input order");
+  assert.equal(timeForward.a[0], 0, "earliest time is the first column");
+  assert.equal(timeForward.b[0], 100);
+  assert.equal(timeForward.c[0], 100, "same time shares a column");
+  assert.ok(timeForward.d[0] > timeForward.c[0], "untimed nodes sit to the right");
+  assert.ok(timeForward.b[1] < timeForward.c[1], "same-time lanes follow id order");
+
+  const relationForward = byId(relationAdapter, { nodes, edges, measured: true });
+  const relationReversed = byId(relationAdapter, {
+    nodes: reversed,
+    edges: [...edges].reverse(),
+    measured: true
+  });
+  assert.deepEqual(
+    relationForward,
+    relationReversed,
+    "relation layout must ignore input order"
+  );
+  // a–b–c is one component; b has degree 2 so it is the root. d is isolated.
+  assert.equal(relationForward.b[0], 0, "highest-degree node is the relation root");
+  assert.equal(relationForward.a[0], 80);
+  assert.equal(relationForward.c[0], 80);
+  assert.ok(
+    relationForward.d[0] > relationForward.a[0],
+    "unconnected nodes start a new component to the right"
+  );
+
+  assert.equal(
+    editorCore.canvasScreenPointRadius(20, 0.1, { min: 4, max: 14 }),
+    40,
+    "far zoom grows world radius so the painted size stays at min screen px"
+  );
+  assert.equal(editorCore.canvasScreenPointRadius(8, 1, { min: 4, max: 14 }), 8);
+  assert.equal(
+    editorCore.canvasScreenPointRadius(20, 2, { min: 4, max: 14 }),
+    7,
+    "close zoom shrinks world radius so the screen size stays at max"
+  );
+}
+
+{
+  const graphEditor = facade.createEditor({
+    document: {
+      id: "graph-layout",
+      scene: {
+        id: "graph",
+        mode: "2d",
+        layers: [{ id: "main", name: "Main" }],
+        nodes: [
+          { id: "early", layerId: "main", type: "circle", position: [40, 10], radius: 8, fill: "#fff" },
+          { id: "late", layerId: "main", type: "circle", position: [10, 40], radius: 8, fill: "#fff" }
+        ]
+      }
+    }
+  });
+  graphEditor.registerLayoutAdapter(editorCore.createTimeGraphLayoutAdapter());
+  const before = JSON.parse(JSON.stringify(graphEditor.getState().document.scene.nodes));
+  const applied = await graphEditor.applyLayout("layout.time-graph", {
+    options: { at: { early: 1, late: 2 }, origin: [0, 0], columnGap: 50, laneGap: 20 }
+  });
+  assert.deepEqual(applied.movedNodeIds.slice().sort(), ["early", "late"]);
+  const after = graphEditor.getState().document.scene.nodes;
+  assert.deepEqual(
+    after.find((node) => node.id === "early").position,
+    [0, 0]
+  );
+  assert.deepEqual(
+    after.find((node) => node.id === "late").position,
+    [50, 0]
+  );
+  await graphEditor.undo();
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(graphEditor.getState().document.scene.nodes)),
+    before,
+    "one undo must restore the time-graph placements"
   );
 }
 

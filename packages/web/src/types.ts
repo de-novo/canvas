@@ -107,6 +107,15 @@ export type Canvas2DRenderNode = (
   context: Canvas2DRenderNodeContext
 ) => HTMLElement | string;
 
+/**
+ * Renderer-level section plane. Fragments on the negative side of `normal`
+ * (offset by `constant`) are clipped. Pass `null` to clear.
+ */
+export type Canvas3DSectionPlaneInput = {
+  constant: number;
+  normal: [number, number, number];
+};
+
 export type CreateCanvasOptions = {
   antialias?: boolean;
   autoStart?: boolean;
@@ -143,6 +152,8 @@ type WebCanvasRuntimeForMode<TMode extends CanvasMode> = {
   getRenderStats: () => CanvasRenderStats | undefined;
   render: () => void;
   resize: () => void;
+  /** Three.js runtime only. Sets/clears the renderer-level section plane. */
+  setSectionPlane?: (section: Canvas3DSectionPlaneInput | null) => void;
   start: () => void;
   stop: () => void;
   update: (
@@ -160,6 +171,7 @@ type WebCanvasRuntimeForAnyMode = {
   getRenderStats: () => CanvasRenderStats | undefined;
   render: () => void;
   resize: () => void;
+  setSectionPlane?: (section: Canvas3DSectionPlaneInput | null) => void;
   start: () => void;
   stop: () => void;
   update: (

@@ -14,6 +14,9 @@ importers:
       '@types/node':
         specifier: ^26.1.1
         version: 26.1.1
+      fake-indexeddb:
+        specifier: ^6.2.5
+        version: 6.2.5
       playwright:
         specifier: ^1.61.1
         version: 1.61.1
@@ -123,6 +126,25 @@ importers:
         version: 8.1.3(@types/node@26.1.1)(esbuild@0.27.7)(jiti@2.7.0)
 
   apps/playground-diagram:
+    dependencies:
+      '@denovo/canvas':
+        specifier: workspace:*
+        version: link:../../packages/canvas
+      '@denovo/canvas-editor':
+        specifier: workspace:*
+        version: link:../../packages/editor
+      '@denovo/canvas-web':
+        specifier: workspace:*
+        version: link:../../packages/web
+    devDependencies:
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vite:
+        specifier: ^8.1.3
+        version: 8.1.3(@types/node@26.1.1)(esbuild@0.27.7)(jiti@2.7.0)
+
+  apps/playground-graph:
     dependencies:
       '@denovo/canvas':
         specifier: workspace:*
@@ -281,6 +303,9 @@ importers:
         specifier: workspace:*
         version: link:../core
     devDependencies:
+      '@denovo/canvas-worker':
+        specifier: workspace:*
+        version: link:../worker
       web-ifc:
         specifier: ^0.0.77
         version: 0.0.77
@@ -296,13 +321,16 @@ importers:
       '@denovo/canvas-web':
         specifier: workspace:*
         version: link:../web
+      '@denovo/canvas-worker':
+        specifier: workspace:*
+        version: link:../worker
+      '@denovo/react-canvas':
+        specifier: workspace:*
+        version: link:../react
       effect:
         specifier: 3.21.4
         version: 3.21.4
     devDependencies:
-      '@denovo/react-canvas':
-        specifier: workspace:*
-        version: link:../react
       '@tanstack/react-query':
         specifier: ^5.0.0
         version: 5.101.2(react@19.2.7)
@@ -330,12 +358,12 @@ importers:
 
   packages/react:
     devDependencies:
+      '@denovo/canvas':
+        specifier: workspace:*
+        version: link:../canvas
       '@denovo/canvas-core':
         specifier: workspace:*
         version: link:../core
-      '@denovo/canvas-web':
-        specifier: workspace:*
-        version: link:../web
       '@react-three/drei':
         specifier: ^10.7.7
         version: 10.7.7(@react-three/fiber@9.6.1(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(three@0.185.1))(@types/react@19.2.17)(@types/three@0.185.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(three@0.185.1)
@@ -370,24 +398,24 @@ importers:
 
   packages/solid-canvas:
     devDependencies:
+      '@denovo/canvas':
+        specifier: workspace:*
+        version: link:../canvas
       '@denovo/canvas-core':
         specifier: workspace:*
         version: link:../core
-      '@denovo/canvas-web':
-        specifier: workspace:*
-        version: link:../web
       solid-js:
         specifier: ^1.9.3
         version: 1.9.14
 
   packages/svelte-canvas:
     devDependencies:
+      '@denovo/canvas':
+        specifier: workspace:*
+        version: link:../canvas
       '@denovo/canvas-core':
         specifier: workspace:*
         version: link:../core
-      '@denovo/canvas-web':
-        specifier: workspace:*
-        version: link:../web
       svelte:
         specifier: ^5.19.0
         version: 5.56.6
@@ -410,12 +438,12 @@ importers:
 
   packages/vue-canvas:
     devDependencies:
+      '@denovo/canvas':
+        specifier: workspace:*
+        version: link:../canvas
       '@denovo/canvas-core':
         specifier: workspace:*
         version: link:../core
-      '@denovo/canvas-web':
-        specifier: workspace:*
-        version: link:../web
       vue:
         specifier: ^3.5.13
         version: 3.5.40(typescript@7.0.2)
@@ -2207,6 +2235,10 @@ packages:
   express@5.2.1:
     resolution: {integrity: sha512-hIS4idWWai69NezIdRt2xFVofaF4j+6INOpJlVOLDO8zXGpUVEVzIYk12UUi2JzjEzWL3IOAxcTubgz9Po0yXw==}
     engines: {node: '>= 18'}
+
+  fake-indexeddb@6.2.5:
+    resolution: {integrity: sha512-CGnyrvbhPlWYMngksqrSSUT1BAVP49dZocrHuK0SvtR0D5TMs5wP0o3j7jexDJW01KSadjBp1M/71o/KR3nD1w==}
+    engines: {node: '>=18'}
 
   fast-check@3.23.2:
     resolution: {integrity: sha512-h5+1OzzfCC3Ef7VbtKdcv7zsstUQwUDlYpUTvjeUsJAssPgLn7QzbboPtL5ro04Mq0rPOsMzl7q5hIbRs2wD1A==}
@@ -5125,6 +5157,8 @@ snapshots:
       vary: 1.1.2
     transitivePeerDependencies:
       - supports-color
+
+  fake-indexeddb@6.2.5: {}
 
   fast-check@3.23.2:
     dependencies:

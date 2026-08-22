@@ -31,7 +31,8 @@ import {
   type CanvasNodeTranslationConstraint,
   type CanvasScenePointRequestFor,
   type CanvasScenePointResultFor,
-  type NodeId
+  type NodeId,
+  type RenderLodOptions
 } from "@denovo/canvas-core";
 import {
   INSTANCE_NODE_IDS_USER_DATA_KEY,
@@ -53,6 +54,7 @@ import {
   Euler,
   Group,
   InstancedMesh,
+  LOD,
   LineBasicMaterial,
   LineSegments,
   Matrix4,
@@ -91,6 +93,7 @@ import type {
   CanvasNodeTransformRuntime,
   CanvasRenderStats,
   CanvasTarget,
+  Canvas3DSectionPlaneInput,
   CreateCanvasOptions
 } from "./types";
 
@@ -1452,6 +1455,36 @@ export function createCanvas3D(
     render();
   }
 
+  /**
+   * Sets or clears the renderer-level section plane. The plane clips every
+   * fragment on the negative side of `normal` offset by `constant` — a
+   * global cut, so authoring handles and overlays clip too while active.
+   * Hit testing is unaffected (clipped geometry stays pickable) in v1.
+   */
+  function setSectionPlane(section: Canvas3DSectionPlaneInput | null): void {
+    if (section === null) {
+      renderer.clippingPlanes = [];
+      render();
+      return;
+    }
+
+    const [nx, ny, nz] = section.normal;
+    const length = Math.hypot(nx, ny, nz);
+
+    if (!Number.isFinite(length) || length === 0) {
+      throw new Error("Section plane normal must be a non-zero vector.");
+    }
+
+    if (!Number.isFinite(section.constant)) {
+      throw new Error("Section plane constant must be finite.");
+    }
+
+    renderer.clippingPlanes = [
+      new Plane(new Vector3(nx / length, ny / length, nz / length), section.constant)
+    ];
+    render();
+  }
+
   function destroy() {
     runtime.stop();
     store.getState().setStatus("destroyed");
@@ -1508,6 +1541,7 @@ export function createCanvas3D(
     setAuthoringPreviews,
     setNodeTransformHandleTarget,
     setNodeTransformPreview,
+    setSectionPlane,
     start,
     stop,
     update
@@ -1626,6 +1660,7 @@ function applyScene(
   prevNodesById: Map<string, Canvas3DNode>,
   geometryStore?: CanvasGeometryStore
 ) {
+  const lod = sceneData.render.lod;
   const nextContent = new Group();
   const nextObjects = new Map<string, Object3D>();
   const nextHitTestObjects: Object3D[] = [];
@@ -1690,7 +1725,8 @@ function applyScene(
         prevNode && canvas3DNodeEqual(prevNode, node)
           ? objects.get(node.id)
           : undefined;
-      const object = reusedObject ?? createObject(node, colors, geometryStore);
+      const object =
+        reusedObject ?? createObject(node, colors, geometryStore, lod);
 
       if (reusedObject) {
         // Mark as reused so it is not disposed with removed nodes below.
@@ -2710,7 +2746,8 @@ function createBatchedBoxMesh(boxes: readonly BatchedBoxEntry[]): InstancedMesh 
 function createObject(
   node: Canvas3DNode,
   colors: Canvas3DContentColors,
-  geometryStore?: CanvasGeometryStore
+  geometryStore?: CanvasGeometryStore,
+  lod?: RenderLodOptions
 ): Object3D {
   switch (node.type) {
     case "box":
@@ -2719,6 +2756,10 @@ function createObject(
         createCanvas3DSurfaceMaterial(node.color)
       );
     case "sphere": {
+      if (lod?.enabled) {
+        return createSphereLod(node.radius, node.color, lod);
+      }
+
       const sphereGeometry = new SphereGeometry(node.radius, 48, 24);
       prepareGeometryBounds(sphereGeometry);
       return new Mesh(sphereGeometry, createCanvas3DSurfaceMaterial(node.color));
@@ -2794,6 +2835,38 @@ function prepareGeometryBounds(geometry: BufferGeometry): void {
     computeBoundsTree?: () => void;
   };
   withBvh.computeBoundsTree?.();
+}
+
+/**
+ * Segment counts per LOD level for sphere primitives, highest detail first.
+ * Boxes stay single-detail (a 12-triangle shared unit cube), meshes keep
+ * their authored tessellation, and instances already batch internally, so
+ * spheres are the primitive where distance-based reduction pays.
+ */
+const SPHERE_LOD_SEGMENTS: ReadonlyArray<readonly [number, number]> = [
+  [48, 24],
+  [16, 8],
+  [8, 4]
+];
+
+function createSphereLod(
+  radius: number,
+  color: string,
+  lod: RenderLodOptions
+): LOD {
+  const lodObject = new LOD();
+  const material = createCanvas3DSurfaceMaterial(color);
+
+  SPHERE_LOD_SEGMENTS.forEach(([widthSegments, heightSegments], index) => {
+    const geometry = new SphereGeometry(radius, widthSegments, heightSegments);
+    prepareGeometryBounds(geometry);
+    lodObject.addLevel(
+      new Mesh(geometry, material),
+      index === 0 ? 0 : (lod.distances[index - 1] ?? 60)
+    );
+  });
+
+  return lodObject;
 }
 
 function getUnitBoxGeometry(): BoxGeometry {

@@ -26,13 +26,13 @@
     "typecheck": "tsc --noEmit"
   },
   "peerDependencies": {
+    "@denovo/canvas": "workspace:*",
     "@denovo/canvas-core": "workspace:*",
-    "@denovo/canvas-web": "workspace:*",
     "svelte": ">=4.0.0"
   },
   "devDependencies": {
+    "@denovo/canvas": "workspace:*",
     "@denovo/canvas-core": "workspace:*",
-    "@denovo/canvas-web": "workspace:*",
     "svelte": "^5.19.0"
   }
 }

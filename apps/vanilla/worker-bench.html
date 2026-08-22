@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+  <head><meta charset="utf-8" /><title>worker-bench</title></head>
+  <body>
+    <script type="module">
+      import {
+        convertDenovoGeometry,
+        createWorkerTaskQueue
+      } from "@denovo/canvas/worker";
+
+      const queue = createWorkerTaskQueue({
+        createWorker: () =>
+          new Worker(new URL("./src/denovo-bench-worker.ts", import.meta.url), {
+            type: "module"
+          }),
+        size: 2
+      });
+
+      function percentile(sorted, q) {
+        if (sorted.length === 0) {
+          return 0;
+        }
+
+        const index = Math.min(
+          sorted.length - 1,
+          Math.max(0, Math.ceil(q * sorted.length) - 1)
+        );
+        return sorted[index];
+      }
+
+      function p50(values) {
+        return percentile([...values].sort((a, b) => a - b), 0.5);
+      }
+
+      function makePayload(floats) {
+        const triangles = Math.floor(floats / 9);
+        const positions = new Float32Array(triangles * 9);
+
+        for (let i = 0; i < positions.length; i += 1) {
+          positions[i] = Math.sin(i) * 100;
+        }
+
+        const indices = new Uint32Array(triangles * 3);
+
+        for (let t = 0; t < triangles; t += 1) {
+          indices[t * 3] = t * 3;
+          indices[t * 3 + 1] = t * 3 + 1;
+          indices[t * 3 + 2] = t * 3 + 2;
+        }
+
+        return { indices, positions };
+      }
+
+      async function measureRtt(floats, samples) {
+        // Warm-up (JIT + connection setup).
+        for (let i = 0; i < 3; i += 1) {
+          const payload = makePayload(floats);
+          await queue.request("denovo.geometry.convert", payload, [
+            payload.positions.buffer,
+            payload.indices.buffer
+          ]);
+        }
+
+        const rtts = [];
+
+        for (let i = 0; i < samples; i += 1) {
+          const payload = makePayload(floats);
+          const start = performance.now();
+          await queue.request("denovo.geometry.convert", payload, [
+            payload.positions.buffer,
+            payload.indices.buffer
+          ]);
+          rtts.push(performance.now() - start);
+        }
+
+        const sorted = [...rtts].sort((a, b) => a - b);
+        return { p50: percentile(sorted, 0.5), p95: percentile(sorted, 0.95) };
+      }
+
+      function measureMainThread(floats, samples) {
+        const durations = [];
+
+        for (let i = 0; i < samples; i += 1) {
+          const payload = makePayload(floats);
+          const start = performance.now();
+          convertDenovoGeometry(payload);
+          durations.push(performance.now() - start);
+        }
+
+        return p50(durations);
+      }
+
+      // rAF fires at the next frame unless the main thread is blocked; a late
+      // rAF during a conversion is the blocking signal we contrast against.
+      async function measureRafDelayDuring(runBlockingWork) {
+        let rafDelta;
+        const start = performance.now();
+        const work = runBlockingWork();
+        requestAnimationFrame(() => {
+          rafDelta = performance.now() - start;
+        });
+        await work;
+
+        while (rafDelta === undefined) {
+          await new Promise((resolve) => setTimeout(resolve, 1));
+        }
+
+        return rafDelta;
+      }
+
+      try {
+        const sizes = [3_000, 300_000, 3_000_000];
+        const results = [];
+
+        for (const floats of sizes) {
+          const rtt = await measureRtt(floats, 30);
+          const mainThread = measureMainThread(floats, 5);
+          results.push({
+            floats,
+            mainThreadP50Ms: Number(mainThread.toFixed(3)),
+            rttP50Ms: Number(rtt.p50.toFixed(3)),
+            rttP95Ms: Number(rtt.p95.toFixed(3))
+          });
+        }
+
+        const rafFloats = 3_000_000;
+
+        const rafPayload = makePayload(rafFloats);
+        const rafDuringWorker = await measureRafDelayDuring(() =>
+          queue.request("denovo.geometry.convert", rafPayload, [
+            rafPayload.positions.buffer,
+            rafPayload.indices.buffer
+          ])
+        );
+
+        const rafDuringMain = await measureRafDelayDuring(async () => {
+          convertDenovoGeometry(makePayload(rafFloats));
+        });
+
+        window.__workerBenchResult = {
+          rafDuringMainThreadConvertMs: Number(rafDuringMain.toFixed(2)),
+          rafDuringWorkerTaskMs: Number(rafDuringWorker.toFixed(2)),
+          sizes: results
+        };
+      } catch (cause) {
+        window.__workerBenchError = String(cause);
+      }
+    </script>
+  </body>
+</html>

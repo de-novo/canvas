@@ -9,9 +9,9 @@ import {
 } from "vue";
 import {
   createCanvas,
-  type CreateCanvasOptions,
-  type DynamicCanvasRuntime
-} from "@denovo/canvas-web";
+  type DenovoCanvasCommonConfig,
+  type DenovoCanvasRuntime
+} from "@denovo/canvas";
 import type { CanvasSceneInput } from "@denovo/canvas-core";
 
 /**
@@ -41,8 +41,8 @@ export const DenovoCanvas = defineComponent({
     },
     /** Options forwarded to `createCanvas`. Only read on mount. */
     options: {
-      type: Object as PropType<CreateCanvasOptions>,
-      default: () => ({}) as CreateCanvasOptions
+      type: Object as PropType<DenovoCanvasCommonConfig>,
+      default: () => ({}) as DenovoCanvasCommonConfig
     },
     /** Class binding for the host element. */
     hostClass: {
@@ -64,19 +64,22 @@ export const DenovoCanvas = defineComponent({
      * Emitted with the runtime after mount and with `null` before unmount.
      * Use this to reach the imperative runtime from a parent.
      */
-    runtimeChange: (runtime: DynamicCanvasRuntime | null) =>
+    runtimeChange: (runtime: DenovoCanvasRuntime | null) =>
       runtime === null || typeof runtime === "object"
   },
   setup(props, { emit, expose }) {
     const hostElement = shallowRef<HTMLDivElement | null>(null);
-    const runtime = shallowRef<DynamicCanvasRuntime | null>(null);
+    const runtime = shallowRef<DenovoCanvasRuntime | null>(null);
 
     onMounted(() => {
       if (!hostElement.value) {
         return;
       }
 
-      const created = createCanvas(hostElement.value, props.scene, props.options);
+      const created = createCanvas(hostElement.value, {
+        scene: props.scene,
+        ...(props.options ?? {})
+      });
       runtime.value = created;
       emit("runtimeChange", created);
     });
@@ -136,7 +139,7 @@ export type DenovoCanvasInstance = InstanceType<typeof DenovoCanvas>;
 
 export {
   createCanvas,
-  type CreateCanvasOptions,
-  type DynamicCanvasRuntime
-} from "@denovo/canvas-web";
+  type DenovoCanvasCommonConfig,
+  type DenovoCanvasRuntime
+} from "@denovo/canvas";
 export type { CanvasSceneInput } from "@denovo/canvas-core";

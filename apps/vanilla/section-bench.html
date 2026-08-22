@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+  <head><meta charset="utf-8" /><title>section-bench</title></head>
+  <body>
+    <div id="stage" style="position:fixed;inset:0;"></div>
+    <script type="module">
+      import { createCanvas } from "@denovo/canvas";
+
+      const nodes = [];
+
+      for (let i = 0; i < 200; i += 1) {
+        const column = i % 20;
+        const row = Math.floor(i / 20);
+        nodes.push({
+          color: "#38bdf8",
+          id: `box-${i}`,
+          layerId: "default",
+          position: [-19 + column * 2, -9 + row * 4, 0],
+          rotation: [0, 0, 0],
+          scale: [1, 1, 1],
+          type: "box"
+        });
+      }
+
+      try {
+        const runtime = createCanvas(document.getElementById("stage"), {
+          scene: {
+            background: "#111827",
+            camera: { fov: 50, position: [0, 0, 40], target: [0, 0, 0] },
+            id: "section-bench-scene",
+            layers: [{ id: "default", name: "Default" }],
+            mode: "3d",
+            nodes,
+            render: { frustumCulling: false }
+          }
+        });
+
+        await runtime.ready;
+
+        const BACKGROUND = [17, 24, 39];
+
+        function analyzeHalf(half) {
+          runtime.render();
+
+          const canvas = runtime.canvas;
+          const width = canvas.width;
+          const height = canvas.height;
+          const scratch = document.createElement("canvas");
+          scratch.width = width;
+          scratch.height = height;
+          const context = scratch.getContext("2d");
+          context.drawImage(canvas, 0, 0);
+
+          const rowStart = half === "upper" ? 0 : Math.floor(height / 2);
+          const rowEnd = half === "upper" ? Math.floor(height / 2) : height;
+          const image = context.getImageData(0, rowStart, width, rowEnd - rowStart);
+
+          let nonBackground = 0;
+
+          for (let index = 0; index < image.data.length; index += 4) {
+            const r = image.data[index];
+            const g = image.data[index + 1];
+            const b = image.data[index + 2];
+
+            if (
+              Math.abs(r - BACKGROUND[0]) >= 12 ||
+              Math.abs(g - BACKGROUND[1]) >= 12 ||
+              Math.abs(b - BACKGROUND[2]) >= 12
+            ) {
+              nonBackground += 1;
+            }
+          }
+
+          return nonBackground / ((image.data.length / 4) || 1);
+        }
+
+        // Fixed points land between the spaced boxes; ratio over the whole
+        // half is the robust observable.
+        function analyze() {
+          return {
+            lower: analyzeHalf("lower"),
+            upper: analyzeHalf("upper")
+          };
+        }
+
+        const GEOMETRY_RATIO = 0.01;
+
+        const base = analyze();
+        runtime.setSectionPlane({ constant: 0, normal: [0, -1, 0] });
+        const sectioned = analyze();
+        runtime.setSectionPlane(null);
+        const cleared = analyze();
+
+        window.__sectionBenchResult = {
+          base,
+          cleared,
+          renderStatsTriangles: runtime.getRenderStats()?.triangles ?? null,
+          sectioned,
+          verdict: {
+            baseUpperHasGeometry: base.upper > GEOMETRY_RATIO,
+            clearedRestoresGeometry: cleared.upper > GEOMETRY_RATIO,
+            sectionCutsUpper: sectioned.upper < GEOMETRY_RATIO,
+            sectionKeepsLower: sectioned.lower > GEOMETRY_RATIO
+          }
+        };
+      } catch (cause) {
+        window.__sectionBenchError = String(cause);
+      }
+    </script>
+  </body>
+</html>

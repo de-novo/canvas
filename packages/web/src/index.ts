@@ -22,6 +22,7 @@ import {
 import { createCanvas2D, type Canvas2DRuntime } from "./2d";
 import { createCanvas3D, type ThreeCanvasRuntime } from "./3d";
 import type {
+  Canvas3DSectionPlaneInput,
   CanvasNavigationInputRuntime,
   CanvasRenderStats,
   CanvasRuntimeChange,
@@ -72,6 +73,8 @@ export type DynamicCanvasRuntime = CanvasNavigationInputRuntime &
   setNodeTransformPreview: (
     preview: CanvasNodeTransformPreview | null
   ) => void;
+  /** Three.js runtime only. Sets/clears the renderer-level section plane. */
+  setSectionPlane?: (section: Canvas3DSectionPlaneInput | null) => void;
   start: () => void;
   stop: () => void;
   update: (scene: CanvasSceneInput) => CanvasScene;
@@ -204,6 +207,10 @@ export function createCanvas(
       navigationInputAllowed = enabled;
       current.setNavigationInputEnabled(enabled);
     },
+    setSectionPlane(section) {
+      // Optional capability: only the Three.js runtime implements it.
+      current.setSectionPlane?.(section);
+    },
     setNodeTransformHandleTarget(targetValue) {
       current.setNodeTransformHandleTarget(targetValue);
     },
@@ -319,10 +326,28 @@ function createRuntime(
 export { createCanvas2D } from "./2d";
 export { createCanvas3D } from "./3d";
 export {
+  CanvasSceneChunkCancelledError,
+  createSceneChunkLoader,
+  type CanvasSceneChunkLoader,
+  type CanvasSceneChunkLoaderOptions,
+  type CanvasSceneChunkProgress
+} from "./scene-chunks";
+export {
   resolveCanvas2DEdgeGeometry,
   resolveCanvas2DNodeWorldCenter
 } from "./2d/geometry";
 export { createCanvas2DSceneGraph } from "./2d/scene-graph";
+export {
+  canvasScreenPointSize,
+  renderCanvas2DPointField
+} from "./2d/point-field";
+export type {
+  Canvas2DPointFieldEdge,
+  Canvas2DPointFieldInput,
+  Canvas2DPointFieldPoint,
+  Canvas2DPointFieldRange,
+  Canvas2DPointFieldStats
+} from "./2d/point-field";
 export {
   Canvas2DWheelGesture,
   classifyCanvas2DWheelIntent,
@@ -347,6 +372,7 @@ export { connectCanvasSelection, connectCanvasToolInput } from "./selection";
 export type { Canvas2DObject, Canvas2DRuntime } from "./2d";
 export type { Canvas2DRectBounds, Canvas2DViewportSize, Canvas2DViewState, Canvas2DViewStateInput } from "./view2d";
 export type { Canvas2DRenderNode, Canvas2DRenderNodeContext } from "./types";
+export type { Canvas3DSectionPlaneInput } from "./types";
 export type { ThreeCanvasRuntime } from "./3d";
 export type {
   CanvasCameraControlsInput,

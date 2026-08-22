@@ -18,7 +18,7 @@ export { default as DenovoCanvas } from "./DenovoCanvas.svelte";
 
 export {
   createCanvas,
-  type CreateCanvasOptions,
-  type DynamicCanvasRuntime
-} from "@denovo/canvas-web";
+  type DenovoCanvasCommonConfig,
+  type DenovoCanvasRuntime
+} from "@denovo/canvas";
 export type { CanvasSceneInput } from "@denovo/canvas-core";

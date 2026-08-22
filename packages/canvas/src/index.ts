@@ -53,6 +53,7 @@ import {
   type CanvasNodeTransformRuntime,
   type CanvasPointerSelectionOptions,
   type CanvasRuntimeChangeRuntime,
+  type Canvas3DSectionPlaneInput,
   type CanvasTarget,
   type CreateCanvasOptions,
   type DynamicCanvasRuntime,
@@ -124,6 +125,8 @@ export {
   connectCanvasToolInput,
   createCanvas2D,
   createCanvas3D,
+  createSceneChunkLoader,
+  CanvasSceneChunkCancelledError,
   defineCanvas2DViewState,
   fitCanvas2DView,
   flyCanvas2DViewTo,
@@ -145,6 +148,7 @@ export type {
   Canvas2DOptions,
   Canvas2DRuntime,
   Canvas2DViewportRuntime,
+  Canvas3DSectionPlaneInput,
   CanvasCameraControlsInput,
   CanvasCameraControlsOptions,
   CanvasFrame,
@@ -157,6 +161,9 @@ export type {
   CanvasNodeTransformHandleRuntime,
   CanvasNodeTransformRuntime,
   CanvasPointerSelectionOptions,
+  CanvasSceneChunkLoader,
+  CanvasSceneChunkLoaderOptions,
+  CanvasSceneChunkProgress,
   CanvasTarget,
   CanvasToolInputTarget,
   CreateCanvasOptions,
@@ -286,7 +293,7 @@ export type CanvasThemeInput = {
   selectionColor?: string;
 };
 
-type DenovoCanvasCommonConfig = Omit<CreateCanvasOptions, "onFrame"> & {
+export type DenovoCanvasCommonConfig = Omit<CreateCanvasOptions, "onFrame"> & {
   className?: string;
   editable?: boolean;
   onFrame?: CreateCanvasOptions["onFrame"];
@@ -627,7 +634,8 @@ export function createCanvas(
     ...(config.onFrame === undefined ? {} : { onFrame: config.onFrame }),
     ...(config.geometryStore === undefined
       ? {}
-      : { geometryStore: config.geometryStore })
+      : { geometryStore: config.geometryStore }),
+    ...(config.renderNode === undefined ? {} : { renderNode: config.renderNode })
   };
   const customAdapter = resolveRendererAdapter(config.renderer);
   const runtime = createResolvedRendererRuntime(
@@ -814,6 +822,10 @@ export function createCanvas(
     },
     resize() {
       runtime.resize();
+    },
+    setSectionPlane(section: Canvas3DSectionPlaneInput | null) {
+      // Optional capability: only the Three.js runtime implements it.
+      runtime.setSectionPlane?.(section);
     },
     start() {
       runtime.start();

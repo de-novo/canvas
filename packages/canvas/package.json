@@ -18,6 +18,11 @@
       "import": "./dist/react.js",
       "require": "./dist/react.cjs"
     },
+    "./worker": {
+      "types": "./dist/worker.d.ts",
+      "import": "./dist/worker.js",
+      "require": "./dist/worker.cjs"
+    },
     "./indexed-db": {
       "types": "./dist/indexed-db.d.ts",
       "import": "./dist/indexed-db.js",
@@ -38,7 +43,7 @@
     "src/styles.css"
   ],
   "scripts": {
-    "build": "tsup src/index.ts src/react.ts src/indexed-db.ts src/react-query.ts --format esm,cjs --clean --external effect --external @denovo/canvas-core --external @denovo/canvas-editor --external @denovo/canvas-web --external @denovo/react-canvas --external @tanstack/react-query && tsc --emitDeclarationOnly",
+    "build": "tsup src/index.ts src/react.ts src/worker.ts src/indexed-db.ts src/react-query.ts --format esm,cjs --clean --external effect --external @denovo/canvas-core --external @denovo/canvas-editor --external @denovo/canvas-web --external @denovo/canvas-worker --external @denovo/react-canvas --external @tanstack/react-query && tsc --emitDeclarationOnly",
     "clean": "rm -rf dist .turbo",
     "typecheck": "tsc --noEmit"
   },
@@ -46,6 +51,7 @@
     "@denovo/canvas-core": "workspace:*",
     "@denovo/canvas-editor": "workspace:*",
     "@denovo/canvas-web": "workspace:*",
+    "@denovo/canvas-worker": "workspace:*",
     "effect": "3.21.4"
   },
   "peerDependencies": {
@@ -61,7 +67,6 @@
     }
   },
   "devDependencies": {
-    "@denovo/react-canvas": "workspace:*",
     "@tanstack/react-query": "^5.0.0"
   }
 }

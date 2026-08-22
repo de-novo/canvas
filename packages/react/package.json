@@ -19,21 +19,21 @@
   ],
   "sideEffects": false,
   "scripts": {
-    "build": "tsup src/index.tsx --format esm,cjs --clean --external react --external react/jsx-runtime --external three --external @react-three/fiber --external @react-three/drei --external @denovo/canvas-core --external @denovo/canvas-web && tsc --emitDeclarationOnly",
+    "build": "tsup src/index.tsx --format esm,cjs --clean --external react --external react/jsx-runtime --external three --external @react-three/fiber --external @react-three/drei --external @denovo/canvas --external @denovo/canvas-core && tsc --emitDeclarationOnly",
     "clean": "rm -rf dist .turbo",
     "typecheck": "tsc --noEmit"
   },
   "peerDependencies": {
+    "@denovo/canvas": "workspace:*",
     "@denovo/canvas-core": "workspace:*",
-    "@denovo/canvas-web": "workspace:*",
     "@react-three/drei": ">=10.0.0",
     "@react-three/fiber": ">=9.0.0",
     "react": ">=18.3.0 <20",
     "three": ">=0.185.1"
   },
   "devDependencies": {
+    "@denovo/canvas": "workspace:*",
     "@denovo/canvas-core": "workspace:*",
-    "@denovo/canvas-web": "workspace:*",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.6.1",
     "@types/react": "^19.2.17",

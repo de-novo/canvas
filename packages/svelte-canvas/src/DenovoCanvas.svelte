@@ -2,9 +2,9 @@
   import { onDestroy, onMount } from "svelte";
   import {
     createCanvas,
-    type CreateCanvasOptions,
-    type DynamicCanvasRuntime
-  } from "@denovo/canvas-web";
+    type DenovoCanvasCommonConfig,
+    type DenovoCanvasRuntime
+  } from "@denovo/canvas";
   import type { CanvasSceneInput } from "@denovo/canvas-core";
 
   /**
@@ -12,17 +12,20 @@
    */
   export let scene: CanvasSceneInput;
   /** Options forwarded to `createCanvas`. Only read on mount. */
-  export let options: CreateCanvasOptions | undefined = undefined;
+  export let options: DenovoCanvasCommonConfig | undefined = undefined;
   /** Class binding for the host element. */
   export let hostClass: string | undefined = undefined;
   /** Inline style binding for the host element (as a style object). */
   export let hostStyle: Record<string, string> | undefined = undefined;
 
   let hostElement: HTMLDivElement;
-  let runtime: DynamicCanvasRuntime | null = null;
+  let runtime: DenovoCanvasRuntime | null = null;
 
   onMount(() => {
-    runtime = createCanvas(hostElement, scene, options ?? {});
+    runtime = createCanvas(hostElement, {
+      scene,
+      ...(options ?? {})
+    });
   });
 
   onDestroy(() => {

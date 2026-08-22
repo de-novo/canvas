@@ -11,6 +11,10 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+// Installs a global `indexedDB` implementation so the browser-only IndexedDB
+// adapter can be exercised in Node alongside the memory/filesystem adapters.
+import "fake-indexeddb/auto";
+
 import {
   createMemoryGeometryStore,
   createMeshGeometryAssetRef,
@@ -26,6 +30,7 @@ import {
   createMemoryDocumentAdapter
 } from "../packages/server/dist/index.js";
 import { createFileSystemDocumentAdapter } from "../packages/server/dist/filesystem.js";
+import { createIndexedDbDocumentAdapter } from "../packages/web/dist/indexed-db.js";
 import { connectEditorToStorage, createEditor } from "../packages/editor/dist/index.js";
 import { createCheckRunner } from "./lib/checks.mjs";
 
@@ -603,6 +608,104 @@ const checks = [];
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
+}
+
+// 12. IndexedDB adapter (via fake-indexeddb) satisfies the same storage
+// contract as the memory and filesystem adapters.
+{
+  const adapter = createIndexedDbDocumentAdapter({
+    dbName: "denovo-canvas-verify"
+  });
+
+  const missing = await adapter.loadDocument("doc-indexed-missing");
+  assert.equal(missing, null);
+  checks.push("indexed-db loadDocument returns null for a missing document");
+
+  const saved = await adapter.saveDocument(baseDocument);
+  assert.equal(saved.ok, true);
+  assert.equal(saved.revision, 1);
+  const loaded = await adapter.loadDocument("doc-1");
+  assert.ok(loaded);
+  assert.equal(loaded.revision, 1);
+  checks.push("indexed-db saveDocument persists and bumps revision");
+
+  const conflict = await adapter.saveDocument(
+    { ...baseDocument, revision: 1 },
+    { baseRevision: 99 }
+  );
+  assert.equal(conflict.ok, false);
+  if (!conflict.ok) {
+    assert.equal(conflict.reason, "conflict");
+    assert.equal(conflict.serverRevision, 1);
+  }
+  checks.push("indexed-db detects conflicts via stored revision");
+
+  const applied = await adapter.applyCommands("doc-1", [
+    addBoxCommand("box-indexed", "#f97316", [1, 0, 0])
+  ]);
+  assert.equal(applied.ok, true);
+  if (applied.ok) {
+    assert.ok(applied.document.scene.nodes.some((node) => node.id === "box-indexed"));
+    assert.equal(applied.revision, 2);
+  }
+  checks.push("indexed-db applyCommands applies commands and bumps revision");
+
+  const stale = await adapter.applyCommands(
+    "doc-1",
+    [addBoxCommand("box-stale", "#ef4444", [2, 0, 0])],
+    { baseRevision: 1 }
+  );
+  assert.equal(stale.ok, false);
+  checks.push("indexed-db applyCommands detects stale baseRevision");
+
+  const listed = await adapter.listDocuments();
+  assert.ok(listed.some((summary) => summary.id === "doc-1"));
+  assert.equal(await adapter.deleteDocument("doc-1"), true);
+  assert.equal(await adapter.loadDocument("doc-1"), null);
+  checks.push("indexed-db listDocuments and deleteDocument round-trip");
+
+  const geometry = defineMeshGeometry({
+    schema: "denovo.mesh-geometry.v1",
+    positions: [0, 0, 0, 1, 0, 0, 0, 1, 0],
+    indices: [0, 1, 2]
+  });
+  const asset = createMeshGeometryAssetRef("mesh-geo-idb", geometry);
+  const geoDocument = defineDocument({
+    id: "doc-geo-idb",
+    assets: [asset],
+    scene: {
+      id: "geo-scene-idb",
+      layers: [{ id: "default", name: "Default" }],
+      mode: "3d",
+      nodes: [
+        {
+          color: "#9ca3af",
+          geometryAssetId: "mesh-geo-idb",
+          id: "asset-mesh-idb",
+          layerId: "default",
+          type: "mesh"
+        }
+      ]
+    }
+  });
+  const blobStore = createMemoryGeometryStore();
+  blobStore.set("mesh-geo-idb", geometry);
+  const withBlobs = await persistCanvasGeometryStore(
+    geoDocument,
+    blobStore,
+    adapter
+  );
+  const savedGeo = await adapter.saveDocument(withBlobs);
+  assert.equal(savedGeo.ok, true);
+  const loadedGeo = await adapter.loadDocument("doc-geo-idb");
+  assert.ok(loadedGeo);
+  assert.equal(loadedGeo.assets[0]?.type, "geometry");
+  const rehydrated = createMemoryGeometryStore();
+  await hydrateCanvasGeometryStore(loadedGeo, adapter, rehydrated);
+  const resolved = resolveCanvasMeshGeometry(loadedGeo.scene.nodes[0], rehydrated);
+  assert.deepEqual(resolved?.indices, [0, 1, 2]);
+  assert.deepEqual([...resolved.positions], [...geometry.positions]);
+  checks.push("indexed-db uploadAsset/loadAsset persist geometry blobs");
 }
 
 // `checks` above records the individual assertions that passed; the runner

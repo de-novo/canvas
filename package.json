@@ -13,17 +13,22 @@
     "verify:browser-rendering": "node scripts/verify-browser-rendering.mjs",
     "verify:browser-rendering-adapters": "node scripts/verify-browser-rendering-adapters.mjs",
     "verify:bim-rendering": "pnpm --filter @denovo/canvas-bim-example copy:wasm && ADAPTER_ONLY=Bim node scripts/verify-browser-rendering-adapters.mjs",
+    "verify:bim-worker": "node scripts/verify-bim-worker.mjs",
     "verify:diagram-rendering": "ADAPTER_ONLY=Diagram node scripts/verify-browser-rendering-adapters.mjs",
     "verify:document-schema": "node scripts/verify-document-schema.mjs",
     "verify:editor-core": "node scripts/verify-editor-core.mjs",
     "verify:hit-testing": "node scripts/verify-hit-testing.mjs",
+    "verify:m4-performance": "node scripts/verify-m4-performance.mjs",
     "verify:public-api": "node scripts/verify-public-api.mjs",
     "verify:performance": "node scripts/verify-performance.mjs",
-    "verify:server": "node scripts/verify-server.mjs"
+    "verify:point-field": "node scripts/verify-point-field.mjs",
+    "verify:server": "node scripts/verify-server.mjs",
+    "verify:worker-tasks": "node scripts/verify-worker-tasks.mjs"
   },
   "devDependencies": {
     "@tanstack/react-query": "^5.101.3",
     "@types/node": "^26.1.1",
+    "fake-indexeddb": "^6.2.5",
     "playwright": "^1.61.1",
     "tsup": "^8.5.1",
     "turbo": "^2.10.4",

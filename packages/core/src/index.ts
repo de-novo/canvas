@@ -400,11 +400,19 @@ export const CanvasNodeSchema = z.union([
   Canvas3DNodeSchema
 ]);
 
+export const RenderLodOptionsSchema = z
+  .object({
+    enabled: z.boolean().default(false),
+    distances: z.array(z.number().positive()).max(2).default([24, 60])
+  })
+  .strict();
+
 export const RenderOptionsSchema = z.object({
   loop: RenderLoopSchema.default("demand"),
   dpr: z.number().positive().max(4).default(1.5),
   frustumCulling: z.boolean().default(true),
-  batch: z.boolean().default(false)
+  batch: z.boolean().default(false),
+  lod: RenderLodOptionsSchema.default({ enabled: false, distances: [24, 60] })
 }).strict();
 
 const CanvasSceneBaseSchema = z
@@ -416,7 +424,8 @@ const CanvasSceneBaseSchema = z
       loop: "demand",
       dpr: 1.5,
       frustumCulling: true,
-      batch: false
+      batch: false,
+      lod: { enabled: false, distances: [24, 60] }
     }),
     camera: CameraSchema.default({
       position: [3, 2, 6],
@@ -1426,6 +1435,7 @@ export type CanvasMeasurementUnit = z.output<
 >;
 export type Camera = z.output<typeof CameraSchema>;
 export type RenderOptions = z.output<typeof RenderOptionsSchema>;
+export type RenderLodOptions = z.output<typeof RenderLodOptionsSchema>;
 export type Canvas2DGroupNode = z.output<typeof Canvas2DGroupNodeSchema>;
 export type Canvas3DGroupNode = z.output<typeof Canvas3DGroupNodeSchema>;
 export type Canvas2DMeasurementNode = z.output<

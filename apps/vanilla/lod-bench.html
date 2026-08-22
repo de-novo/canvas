@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+  <head><meta charset="utf-8" /><title>lod-bench</title></head>
+  <body>
+    <div id="stage" style="position:fixed;inset:0;"></div>
+    <script type="module">
+      import { createCanvas } from "@denovo/canvas";
+
+      const params = new URLSearchParams(location.search);
+      const lodEnabled = params.get("lod") === "1";
+      const sphereCount = Number(params.get("count") || "300");
+
+      const nodes = [];
+
+      for (let i = 0; i < sphereCount; i += 1) {
+        const column = i % 20;
+        const row = Math.floor(i / 20);
+        nodes.push({
+          color: "#38bdf8",
+          id: `sphere-${i}`,
+          layerId: "default",
+          position: [-38 + column * 4, -18 + row * 6, -60 + row * 14],
+          radius: 1,
+          rotation: [0, 0, 0],
+          scale: [1, 1, 1],
+          type: "sphere"
+        });
+      }
+
+      // A near sphere dead-center in front of the camera for hit testing.
+      nodes.push({
+        color: "#f97316",
+        id: "sphere-center",
+        layerId: "default",
+        position: [0, 0, 24],
+        radius: 1,
+        rotation: [0, 0, 0],
+        scale: [1, 1, 1],
+        type: "sphere"
+      });
+
+      try {
+        const runtime = createCanvas(document.getElementById("stage"), {
+          scene: {
+            background: "#111827",
+            camera: { fov: 50, position: [0, 0, 30], target: [0, 0, 0] },
+            id: "lod-bench-scene",
+            layers: [{ id: "default", name: "Default" }],
+            mode: "3d",
+            nodes,
+            render: {
+              frustumCulling: false,
+              lod: {
+                enabled: lodEnabled,
+                distances: [10, 20]
+              }
+            }
+          }
+        });
+
+        await runtime.ready;
+        runtime.render();
+
+        const stats = runtime.getRenderStats();
+        const size = runtime.canvas.getBoundingClientRect();
+        const hit = runtime.hitTest({
+          kind: "pointer",
+          point: [size.width / 2, size.height / 2]
+        });
+
+        window.__lodBenchResult = {
+          drawCalls: stats.drawCalls,
+          hitNodeId: hit && hit.kind === "node" ? hit.nodeId : null,
+          lodEnabled,
+          sphereCount,
+          triangles: stats.triangles
+        };
+      } catch (cause) {
+        window.__lodBenchError = String(cause);
+      }
+    </script>
+  </body>
+</html>

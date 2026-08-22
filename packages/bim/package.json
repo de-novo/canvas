@@ -17,6 +17,11 @@
       "types": "./dist/web-ifc-adapter.d.ts",
       "import": "./dist/web-ifc-adapter.js",
       "require": "./dist/web-ifc-adapter.cjs"
+    },
+    "./web-ifc-worker": {
+      "types": "./dist/web-ifc-worker.d.ts",
+      "import": "./dist/web-ifc-worker.js",
+      "require": "./dist/web-ifc-worker.cjs"
     }
   },
   "files": [
@@ -24,15 +29,19 @@
   ],
   "sideEffects": false,
   "scripts": {
-    "build": "tsup src/index.ts src/web-ifc-adapter.ts --format esm,cjs --clean --external @denovo/canvas-core --external web-ifc && tsc --emitDeclarationOnly",
+    "build": "tsup src/index.ts src/web-ifc-adapter.ts src/web-ifc-worker.ts src/worker-adapter.ts --format esm,cjs --clean --external @denovo/canvas-core --external @denovo/canvas-worker --external web-ifc && tsc --emitDeclarationOnly",
     "clean": "rm -rf dist .turbo",
     "typecheck": "tsc --noEmit"
   },
   "peerDependencies": {
     "@denovo/canvas-core": "workspace:*",
+    "@denovo/canvas-worker": "workspace:*",
     "web-ifc": ">=0.0.77"
   },
   "peerDependenciesMeta": {
+    "@denovo/canvas-worker": {
+      "optional": true
+    },
     "web-ifc": {
       "optional": true
     }
@@ -42,6 +51,7 @@
   },
   "devDependencies": {
     "@denovo/canvas-core": "workspace:*",
+    "@denovo/canvas-worker": "workspace:*",
     "web-ifc": "^0.0.77"
   }
 }

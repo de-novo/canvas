@@ -51,6 +51,20 @@ try {
   await rm(PERF_HTML, { force: true });
 }
 
+// Hard gate: the bench scene runs with `batch: true`, so every workload must
+// render through one batched draw call. Frame-time ceilings stay out of the
+// gate on purpose — headless numbers are machine-dependent baselines recorded
+// in docs/m4-performance-thresholds.md, not pass/fail budgets.
+for (const workload of report.workloads) {
+  if (workload.renderStats.drawCalls !== 1) {
+    throw new Error(
+      `[perf] batching gate failed for ${workload.label}: ` +
+        `expected drawCalls=1, got ${workload.renderStats.drawCalls}`
+    );
+  }
+}
+console.log("[perf] batching gate passed: drawCalls=1 across all workloads");
+
 await mkdir("artifacts/verification", { recursive: true });
 await writeFile(REPORT_PATH, JSON.stringify(report, null, 2) + "\n");
 console.log(`[perf] report written to ${REPORT_PATH}`);
@@ -244,7 +258,13 @@ async function startViteServer() {
     });
 
     const interval = setInterval(() => {
-      const match = output.match(/Local:\s+(http:\/\/127\.0\.0\.1:\d+\/)/);
+      // Vite 8 decorates its banner with ANSI escapes even when piped; strip
+      // them before matching the Local URL.
+      const clean = output.replace(
+        /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g,
+        ""
+      );
+      const match = clean.match(/Local:\s+(http:\/\/127\.0\.0\.1:\d+\/)/);
       if (match?.[1]) {
         clearInterval(interval);
         clearTimeout(timeout);

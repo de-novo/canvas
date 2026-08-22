@@ -11,9 +11,9 @@ import {
 } from "@denovo/canvas-core";
 import {
   createCanvas,
-  type CreateCanvasOptions,
-  type DynamicCanvasRuntime
-} from "@denovo/canvas-web";
+  type DenovoCanvasCommonConfig,
+  type DenovoCanvasRuntime
+} from "@denovo/canvas";
 import { Html, Line, OrbitControls } from "@react-three/drei";
 import {
   Canvas,
@@ -41,10 +41,10 @@ import {
 
 export type CanvasViewProps = {
   className?: string;
-  options?: CreateCanvasOptions;
+  options?: DenovoCanvasCommonConfig;
   scene: CanvasSceneInput;
   style?: CSSProperties;
-  onRuntime?: (runtime: DynamicCanvasRuntime | null) => void;
+  onRuntime?: (runtime: DenovoCanvasRuntime | null) => void;
 };
 
 export type CanvasStage3DProps = {
@@ -64,14 +64,17 @@ export function CanvasView({
   onRuntime
 }: CanvasViewProps) {
   const hostRef = useRef<HTMLDivElement>(null);
-  const runtimeRef = useRef<DynamicCanvasRuntime | null>(null);
+  const runtimeRef = useRef<DenovoCanvasRuntime | null>(null);
 
   useEffect(() => {
     if (!hostRef.current) {
       return;
     }
 
-    const runtime = createCanvas(hostRef.current, scene, options);
+    const runtime = createCanvas(hostRef.current, {
+      scene,
+      ...(options ?? {})
+    });
     runtimeRef.current = runtime;
     onRuntime?.(runtime);
 
@@ -462,4 +465,4 @@ function MeshNode({ frustumCulled, geometryStore, node }: MeshNodeProps) {
   );
 }
 
-export type { CreateCanvasOptions, DynamicCanvasRuntime };
+export type { DenovoCanvasCommonConfig, DenovoCanvasRuntime };

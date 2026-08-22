@@ -102,6 +102,10 @@ assert.ok(
   corePackage.exports?.["./effect"],
   "core must expose ./effect as the optional Effect-powered entrypoint"
 );
+assert.ok(
+  facadePackage.exports?.["./worker"],
+  "facade must expose ./worker as the opt-in performance/worker entrypoint"
+);
 
 // BIM package: contracts entry stays free of web-ifc; the parser is opt-in.
 assert.ok(bimPackage.exports?.["."], "bim must export the contract root");

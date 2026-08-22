@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: 2026-08-21.
+Last updated: 2026-08-22.
 
 This is the canonical project status index. Keep milestone definitions in
 [Vision and Milestones](./vision-and-milestones.md); keep chronological evidence
@@ -8,35 +8,24 @@ under [History](./history/README.md).
 
 ## Current Phase
 
-M0–M3.1 are verified (product contract, view runtime, editor core, authoring
-tools, surface placement). Later slices have landed but are **not milestone-
-verified** in the M0–M3.1 sense:
+M0–M8 are all milestone-verified: product contract, view runtime, editor
+core, authoring tools, surface placement (M0–M3.1), performance layer
+(M4), framework adapters (M5), persistence (M6), BIM extension (M7), and
+the diagram layer (M8). Verification completed 2026-08-22 across three
+entries:
 
-- **M4 Performance Layer (Phases A–B):** measurement, caching, BVH picking,
-  diff-based `applyScene`, opt-in box batching. Phase B recorded 1k boxes
-  158 ms → 48.60 ms. Re-measured 2026-08-21 at 1k p50 50.00 ms / 10k
-  116.60 ms with `drawCalls=1`. Remaining vision deliverables (LOD,
-  chunks, workers, 16 ms target) are not accepted.
-- **M5 Framework Adapters:** React, Vue, Svelte, and Solid view wrappers exist
-  and have adapter smoke coverage. They mount `@denovo/canvas-web`, not the
-  full facade/editor.
-- **M6 Persistence:** snapshot OCC, memory/filesystem/IndexedDB adapters, and
-  the editor storage bridge exist. All three adapters apply `applyCommands`
-  through `applyCommandsToStoredDocument`. Undo/redo emit `history.changed` so
-  `connectEditorToStorage` persists the restored snapshot. Conflict handling
-  does not rebase onto the server. Not a verified milestone.
-- **M7 BIM:** optional `web-ifc` importer produces `mesh` nodes that
-  reference `geometry` assets. Tessellation lives in a session
-  `CanvasGeometryStore`, not as unbounded `number[]` on each node.
-  View-scale sample only (5000-element cap, no workers/section planes).
-- **M8 Diagram:** `edge`/`text`/`html`, connector, routing, layout adapters,
-  and 2D UX slices have landed. The
-  [M8 Diagram Contract](./m8-diagram-contract.md) now freezes that
-  vocabulary in `0.2.0`. The milestone is not verified until the
-  contract's acceptance criteria run.
+- [2026-08-22 M5, M6, and M8 milestone verification](./history/2026-08-22-m5-m6-m8-milestone-verification.md)
+- [2026-08-22 M4 worker task queue + LOD controls, chunk loading, and batching gate](./history/2026-08-22-m4-lod-chunk-loading.md)
+- [2026-08-22 M7 worker parsing and section plane](./history/2026-08-22-m7-worker-parsing-section-plane.md)
 
-v1 focus is the framework-agnostic 2D/3D editor engine. Diagram and BIM stay
-optional packages, not a second product identity. See
+Recorded descopes inside those verdicts: the 16 ms frame-budget gate needs
+a pinned measurement environment; an OffscreenCanvas rendering path is not
+an M4 deliverable; the XKT/xeokit viewer adapter stays out of M7 (AGPL);
+mesh-surface-picked measurement endpoints are a future M3.1-contract
+extension.
+
+v1 focus remains the framework-agnostic 2D/3D editor engine. Diagram and
+BIM stay optional packages, not a second product identity. See
 [2026-08-17 review-hardening](./history/2026-08-17-review-hardening.md).
 
 ## Complete
@@ -180,6 +169,14 @@ optional packages, not a second product identity. See
   `any`, no convenience broad types when the domain is expressible, documented
   `unknown` boundaries, schema-derived contracts, and positive/negative
   consumer fixtures for every public type change.
+- React, Vue, Svelte, and Solid view wrappers mount the facade
+  `createCanvas(target, config)` instead of `@denovo/canvas-web`, expose
+  `DenovoCanvasRuntime` through their runtime callbacks, and accept the
+  exported `DenovoCanvasCommonConfig` as options. The facade exports
+  `DenovoCanvasCommonConfig` and forwards `renderNode`. Adapter → facade is
+  the only build-time dependency direction; the facade keeps
+  `@denovo/react-canvas` as an optional peer for its `./react` re-export.
+  See [2026-08-22 adapter facade mount](./history/2026-08-22-adapter-facade-mount.md).
 
 - Core uses canonical document schema `0.2.0`. Strict legacy `0.1.0` input is
   migrated deterministically; unknown versions fail. Layers, groups,
@@ -227,6 +224,12 @@ optional packages, not a second product identity. See
 
 - Review hardening landed on 2026-08-17. See
   [2026-08-17 review-hardening](./history/2026-08-17-review-hardening.md).
+- Product boundary (2026-08-22): advanced graph visuals in the
+  Obsidian-plugin sense (nebula glow, planetary classes, 3D star fields)
+  stay userland — the SDK ships performance primitives and extension
+  points (`renderNode`, custom renderer adapters, plugin nodes, worker
+  tasks), not decorative universes. Our work stops at performance
+  optimization.
 - Canonical schema stays `0.2.0`. `mesh` / `edge` / `text` / `html` are
   frozen as current `0.2.0` built-ins (no `0.3.0` bump). The repository
   is Apache-2.0. See
@@ -235,7 +238,8 @@ optional packages, not a second product identity. See
   on 2026-08-17, including a live-playground connector gesture on
   desktop and iPhone 14. M8 is contract-accepted, not a second product.
   The leftover vanilla M3 desktop/mobile suite re-ran on 2026-08-21.
-- M4–M8 remain landed-but-unverified as milestones.
+- M0–M8 fully verified as of 2026-08-22 (see Current Phase for the three
+  verification entries and recorded descopes).
 - Authoring preview materials no longer mutate the cached 3D surface
   material. `verify:browser-rendering` failed on stacked-box preview
   cleanup until ghosts cloned the cache. See
@@ -258,13 +262,24 @@ optional packages, not a second product identity. See
   `uploadAsset`/`loadAsset`, plus `persistCanvasGeometryStore` /
   `hydrateCanvasGeometryStore`. See
   [2026-08-17 geometry blob persistence](./history/2026-08-17-geometry-blob-persistence.md).
+- Adapter facade mount landed on 2026-08-22: all four framework wrappers
+  mount `@denovo/canvas`, verified with typecheck, uncached build,
+  public-api, and the full adapter browser smoke suite. See
+  [2026-08-22 adapter facade mount](./history/2026-08-22-adapter-facade-mount.md).
 
 ## Next
 
-1. **Milestone verification:** run the remaining M4–M8 acceptance suites
-   instead of leaving them landed-but-unverified.
-2. **Adapter host:** framework view wrappers should mount the facade, not
-   only `@denovo/canvas-web`.
+1. **Graph field throughput (not presentation):** time/relation layout
+   adapters and a packed 2D point field exist. Canvas stops at measured
+   10k-point draw cost and screen-size clamp. Hosts (for example haru)
+   own glow, cluster colour, and labels. See
+   [2026-08-22 graph field host presentation](./history/2026-08-22-graph-field-host-presentation.md).
+2. **Post-milestone planning:** with M0–M8 verified, pick the next
+   contract before new surface work — candidates from
+   [Vision](./vision-and-milestones.md): a WebGPU adapter milestone
+   (backend vocabulary is already reserved), the pinned-environment frame
+   budget gate, or mesh-surface-picked measurements as an M3.1-contract
+   extension.
 
 ## Blocked
 
@@ -272,28 +287,72 @@ optional packages, not a second product identity. See
 
 ## Evidence
 
-- `pnpm typecheck`: passed on 2026-08-21 (30/30 tasks).
-- `pnpm build`: passed on 2026-08-21 (20/20 packages and apps).
-- `pnpm verify:document-schema`: passed on 2026-08-21 (39 named checks),
-  including mesh `node.update` and `geometryAssetId` exclusive-or.
-- `pnpm verify:editor-core`: passed on 2026-08-21, including mesh update,
-  paste id remapping + single undo, delete of incident edges + single undo,
-  text ungroup world transform, `applyCommandsToDocument`,
-  `applyCommandsToStoredDocument` OCC/validation, and geometry-store
-  helper exports.
-- `pnpm verify:server`: passed on 2026-08-21 (30 assertions), including
-  conflict-does-not-overwrite, memory/filesystem `applyCommands`, undo/redo
-  `history.changed` persistence, and geometry blob upload/hydrate.
-- `pnpm verify:public-api`: passed on 2026-08-21, including
-  `applyCommandsToStoredDocument`, `history.changed`, geometry-store
-  fixtures, `CanvasResolvedBackend` rejecting `webgpu`, and
+- `pnpm typecheck`: passed on 2026-08-22 (32 tasks) after the worker task
+  queue slice; previously 30/30 after the adapter facade mount, and
+  30/30 on 2026-08-21.
+- `pnpm build`: passed on 2026-08-22 (21 packages/apps) after the worker
+  task queue slice; previously `--force` 20/20 after the adapter facade
+  mount.
+- `pnpm verify:public-api`: passed on 2026-08-22 after the worker task
+  queue slice, including the new facade `./worker` assertion and the
+  generated-declaration `any` audit. Previously passed after the adapter
+  facade mount with `applyCommandsToStoredDocument`, `history.changed`,
+  geometry-store fixtures, `CanvasResolvedBackend` rejecting `webgpu`, and
   `loadAsset` / `persistCanvasGeometryStore`.
-- `pnpm verify:hit-testing`: passed on 2026-08-17, including M8 edge path
+- `pnpm verify:m4-performance`: passed on 2026-08-22 (11 named checks) —
+  LOD schema defaults/validation/round-trip and chunk-loader ordering,
+  budget batching, cancellation, and recovery.
+- `pnpm verify:performance`: passed on 2026-08-22 with the new batching
+  gate (`drawCalls=1` per workload). Baselines: 100 boxes p50 16.5 ms,
+  1k 66.3 ms, 10k 143.1 ms (headless, machine-dependent).
+- LOD browser measurement via ego-browser on 2026-08-22: 301 spheres,
+  triangles 664,608 → 17,312 (−97.4%) at equal draw calls; hit testing
+  resolves through the active LOD level.
+- [2026-08-22 M4 LOD controls, chunk loading, and batching gate](./history/2026-08-22-m4-lod-chunk-loading.md)
+- `pnpm verify:bim-worker`: passed on 2026-08-22 (5 named checks) — real
+  web-ifc parse of the sample IFC through the worker queue, document
+  assembly with `__bim` provenance, property-set best-effort reads,
+  maxElements skip accounting, explicit non-IFC rejection.
+- Section plane verified in Chromium via ego-browser on 2026-08-22:
+  upper-half geometry ratio 0.0952 → 0 under
+  `setSectionPlane({normal:[0,-1,0], constant:0})`, lower half unchanged,
+  exact restore on clear. See
+  [2026-08-22 M7 worker parsing and section plane](./history/2026-08-22-m7-worker-parsing-section-plane.md).
+- `pnpm verify:bim-rendering`: passed on 2026-08-22 after the BIM adapter
+  refactor onto the shared parse core.
+- `pnpm verify:worker-tasks`: passed on 2026-08-22 (9 named checks) —
+  loopback-worker coverage of the task vocabulary, FIFO pool semantics,
+  error recovery, dispose, and unknown-task failures.
+- Worker RTT measured in Chromium via ego-browser on 2026-08-22:
+  p95 1.6/0.8/8.4 ms for 12 KB/1.2 MB/12 MB; rAF delay during a 12 MB
+  worker conversion 0.4 ms vs 86.2 ms on-main. See
+  [M4 Performance Thresholds](./m4-performance-thresholds.md).
+- `pnpm verify:browser-rendering-adapters`: passed on 2026-08-22 for React,
+  Vue, Svelte, Solid (render + resize + 3d→2d swap), Bim, and Diagram
+  including desktop/mobile connector gestures.
+- [2026-08-22 M4 worker task queue and OffscreenCanvas capability](./history/2026-08-22-m4-worker-task-queue.md)
+- `pnpm verify:document-schema`: passed on 2026-08-22 (39 named checks),
+  including edge endpoint/same-layer/port validation,
+  `m8-node-update-roundtrips-edge-text-html`, and deterministic `0.1.0` →
+  `0.2.0` migration. Previously passed on 2026-08-21.
+- `pnpm verify:editor-core`: passed on 2026-08-22, now including html
+  ungroup transform baking alongside mesh update, paste id remapping +
+  single undo, delete of incident edges + single undo, text ungroup world
+  transform, connector one-commit gesture, `applyCommandsToDocument`,
+  `applyCommandsToStoredDocument` OCC/validation, and geometry-store
+  helper exports. Previously passed on 2026-08-21.
+- `pnpm verify:server`: passed on 2026-08-22 (36 assertions), adding six
+  IndexedDB adapter checks (`fake-indexeddb`) to the existing
+  conflict-does-not-overwrite, memory/filesystem `applyCommands`, undo/redo
+  `history.changed` persistence, and geometry blob upload/hydrate coverage.
+  Previously passed on 2026-08-21 (30 assertions).
+- `pnpm verify:hit-testing`: passed on 2026-08-22, including M8 edge path
   resolution (`orthogonal` waypoints, quadratic control, ignored
-  `routing: "curved"`). Not re-run on 2026-08-21.
-- `pnpm verify:diagram-rendering`: passed on 2026-08-17 (desktop + iPhone
-  14), including overlay card, textContent probe, edge-follows-source,
-  and missing `flyToNode`. Not re-run on 2026-08-21.
+  `routing: "curved"`). Previously passed on 2026-08-17.
+- `pnpm verify:diagram-rendering`: passed on 2026-08-22 as part of the
+  adapter suite run (desktop + mobile connector gestures, overlay card,
+  textContent probe, edge-follows-source, missing `flyToNode`).
+- [2026-08-22 M5, M6, and M8 milestone verification](./history/2026-08-22-m5-m6-m8-milestone-verification.md)
 - `pnpm verify:browser-rendering`: passed on 2026-08-21 after cloning
   cached surface materials for authoring ghosts. Desktop mouse and
   iPhone 14 touch cover 2D/3D authoring, surface stacking, and demand

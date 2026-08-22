@@ -229,6 +229,11 @@ export {
   createDistributeAdapter,
   createGridLayoutAdapter
 } from "./layout/adapters.js";
+export {
+  canvasScreenPointRadius,
+  createRelationGraphLayoutAdapter,
+  createTimeGraphLayoutAdapter
+} from "./layout/graph-adapters.js";
 export type {
   CanvasAlignAxis,
   CanvasDistributeAxis,
@@ -237,6 +242,10 @@ export type {
   CanvasLayoutInput,
   CanvasLayoutResult
 } from "./layout/adapters.js";
+export type {
+  RelationGraphLayoutOptions,
+  TimeGraphLayoutOptions
+} from "./layout/graph-adapters.js";
 export {
   applyCommandsToDocument,
   applyCommandsToStoredDocument

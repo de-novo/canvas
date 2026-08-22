@@ -8,9 +8,9 @@ import {
 } from "solid-js";
 import {
   createCanvas,
-  type CreateCanvasOptions,
-  type DynamicCanvasRuntime
-} from "@denovo/canvas-web";
+  type DenovoCanvasCommonConfig,
+  type DenovoCanvasRuntime
+} from "@denovo/canvas";
 import type { CanvasSceneInput } from "@denovo/canvas-core";
 
 /**
@@ -20,13 +20,13 @@ export type DenovoCanvasProps = {
   /** Scene document to render. Reactive: changing it calls `runtime.update`. */
   scene: CanvasSceneInput;
   /** Options forwarded to `createCanvas`. Only read on mount. */
-  options?: CreateCanvasOptions;
+  options?: DenovoCanvasCommonConfig;
   /** Class binding for the host element. */
   hostClass?: string;
   /** Inline style binding for the host element (as a style object). */
   hostStyle?: JSX.CSSProperties;
   /** Called with the runtime after mount and with `null` before unmount. */
-  onRuntimeChange?: (runtime: DynamicCanvasRuntime | null) => void;
+  onRuntimeChange?: (runtime: DenovoCanvasRuntime | null) => void;
 };
 
 /**
@@ -46,14 +46,17 @@ export type DenovoCanvasProps = {
  */
 export const DenovoCanvas: Component<DenovoCanvasProps> = (props) => {
   let hostElement: HTMLDivElement | undefined;
-  let runtime: DynamicCanvasRuntime | null = null;
+  let runtime: DenovoCanvasRuntime | null = null;
 
   onMount(() => {
     if (!hostElement) {
       return;
     }
 
-    runtime = createCanvas(hostElement, props.scene, props.options ?? {});
+    runtime = createCanvas(hostElement, {
+      scene: props.scene,
+      ...(props.options ?? {})
+    });
     props.onRuntimeChange?.(runtime);
   });
 
@@ -90,7 +93,7 @@ export const DenovoCanvas: Component<DenovoCanvasProps> = (props) => {
 
 export {
   createCanvas,
-  type CreateCanvasOptions,
-  type DynamicCanvasRuntime
-} from "@denovo/canvas-web";
+  type DenovoCanvasCommonConfig,
+  type DenovoCanvasRuntime
+} from "@denovo/canvas";
 export type { CanvasSceneInput } from "@denovo/canvas-core";
