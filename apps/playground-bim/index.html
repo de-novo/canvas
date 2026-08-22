@@ -25,12 +25,22 @@
         </p>
         <div class="controls">
           <button id="reload" type="button">Reload sample</button>
+          <button
+            id="measure-surface"
+            type="button"
+            data-denovo-control="measure-surface"
+          >
+            Measure surface
+          </button>
         </div>
         <p class="status">
           Status: <output id="status">idle</output>
         </p>
         <p class="count">
           Elements: <output id="element-count">—</output>
+        </p>
+        <p class="count">
+          Measurements: <output id="measurement-count">0</output>
         </p>
       </aside>
     </main>
