@@ -68,6 +68,30 @@ Sprite stamping (`drawImage` blits instead of arcs) was considered and
 deferred — it changes anti-aliasing fidelity and adds API surface for a
 scale the current curve already covers inside one frame budget.
 
+### 100 M-point feasibility probe (2026-08-22, same day)
+
+Question: can the field scale to 100 million points? A standalone WebGL2
+probe (`apps/vanilla/webgl-points-ceiling.html`, one `gl.POINTS` draw of
+`count` vertices from typed arrays, no culling) measured in
+ego-browser/Chromium:
+
+- **Data layer: feasible.** 100M points as `Float32Array` positions +
+  `Uint8Array` colours ≈ 0.9–1.1 GB; one-time generation ≈ 1.7 s. No
+  GL errors at 100M vertices per draw call.
+- **Render ceiling: unresolvable in this environment.** Presented frame
+  deltas pinned at ~33 ms (2× vsync) for *every* count including 1M — the
+  compositor throttles drawn canvases to 30 fps here, so vertex
+  throughput cannot be isolated. Real-GPU Chrome numbers are needed
+  before any claim.
+- **Canvas2D path: hard no.** Object-array representation dies around
+  tens of millions (GC), and linear extrapolation puts 100M draws at
+  seconds per frame.
+
+Consequence for the roadmap: "1억 건 보유" is an architecture question,
+not a tuning question — it needs a typed-array GPU point-field layer with
+viewport culling (draw only what is visible), which is a new contract on
+the scale of the deferred WebGPU milestone, not an incremental tweak.
+
 ## Next action
 
 Keep measuring 1k / 10k draw cost. Do not add glow, dust, or cluster

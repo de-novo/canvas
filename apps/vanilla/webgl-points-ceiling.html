@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html>
+  <head><meta charset="utf-8" /><title>webgl-points-ceiling</title></head>
+  <body>
+    <canvas id="gl" width="1280" height="800"></canvas>
+    <script type="module">
+      // WebGL2 ceiling probe v2: measures PRESENTED frame deltas while the
+      // only work per frame is one gl.POINTS draw of `count` vertices.
+      // GPU-bound loads show up as rAF deltas far above the idle vsync base.
+      const canvas = document.getElementById("gl");
+      const gl = canvas.getContext("webgl2", { antialias: false, powerPreference: "high-performance" });
+
+      if (!gl) {
+        window.__ceilingError = "webgl2 unavailable";
+        throw new Error("no webgl2");
+      }
+
+      const vs = `#version 300 es
+        in vec2 aPos;
+        in vec3 aColor;
+        uniform vec2 uResolution;
+        uniform float uPointSize;
+        out vec3 vColor;
+        void main() {
+          vec2 clip = (aPos / uResolution) * 2.0 - 1.0;
+          gl_Position = vec4(clip * vec2(1.0, -1.0), 0.0, 1.0);
+          gl_PointSize = uPointSize;
+          vColor = aColor;
+        }`;
+      const fs = `#version 300 es
+        precision mediump float;
+        in vec3 vColor;
+        out vec4 fragColor;
+        void main() { fragColor = vec4(vColor, 1.0); }`;
+
+      function compile(type, source) {
+        const shader = gl.createShader(type);
+        gl.shaderSource(shader, source);
+        gl.compileShader(shader);
+
+        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+          throw new Error(gl.getShaderInfoLog(shader));
+        }
+
+        return shader;
+      }
+
+      const program = gl.createProgram();
+      gl.attachShader(program, compile(gl.VERTEX_SHADER, vs));
+      gl.attachShader(program, compile(gl.FRAGMENT_SHADER, fs));
+      gl.linkProgram(program);
+
+      if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+        window.__ceilingError = gl.getProgramInfoLog(program);
+        throw new Error(gl.getProgramInfoLog(program));
+      }
+
+      gl.useProgram(program);
+      gl.uniform2f(gl.getUniformLocation(program, "uResolution"), canvas.width, canvas.height);
+      gl.uniform1f(gl.getUniformLocation(program, "uPointSize"), 2.0);
+      gl.viewport(0, 0, canvas.width, canvas.height);
+
+      function nextFrame() {
+        return new Promise((resolve) => requestAnimationFrame(resolve));
+      }
+
+      async function measureIdleFrames(frames = 10) {
+        const deltas = [];
+        let previous = performance.now();
+
+        for (let i = 0; i < frames; i += 1) {
+          await nextFrame();
+          const now = performance.now();
+          deltas.push(now - previous);
+          previous = now;
+        }
+
+        deltas.sort((a, b) => a - b);
+        return deltas[Math.floor(deltas.length / 2)];
+      }
+
+      async function probe(count, idleBase) {
+        const genStart = performance.now();
+        const positions = new Float32Array(count * 2);
+        const colors = new Uint8Array(count * 3);
+
+        for (let i = 0; i < count; i += 1) {
+          positions[i * 2] = Math.random() * canvas.width;
+          positions[i * 2 + 1] = Math.random() * canvas.height;
+          const shade = (i & 255) / 255;
+          colors[i * 3] = 56 + shade * 100;
+          colors[i * 3 + 1] = 150;
+          colors[i * 3 + 2] = 200;
+        }
+
+        const generationMs = performance.now() - genStart;
+
+        const posBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
+        const aPos = gl.getAttribLocation(program, "aPos");
+        gl.enableVertexAttribArray(aPos);
+        gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+
+        const colorBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, colors, gl.STATIC_DRAW);
+        const aColor = gl.getAttribLocation(program, "aColor");
+        gl.enableVertexAttribArray(aColor);
+        gl.vertexAttribPointer(aColor, 3, gl.UNSIGNED_BYTE, true, 0, 0);
+
+        gl.clearColor(17 / 255, 24 / 255, 39 / 255, 1);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        gl.drawArrays(gl.POINTS, 0, count);
+
+        const drawError = gl.getError();
+
+        // Measure presented-frame deltas with this draw as the only work.
+        const deltas = [];
+        let previous = performance.now();
+        const frames = 40;
+
+        for (let i = 0; i < frames; i += 1) {
+          gl.clear(gl.COLOR_BUFFER_BIT);
+          gl.drawArrays(gl.POINTS, 0, count);
+          await nextFrame();
+          const now = performance.now();
+          deltas.push(now - previous);
+          previous = now;
+        }
+
+        deltas.sort((a, b) => a - b);
+        const p50 = deltas[Math.floor(frames / 2)];
+
+        gl.deleteBuffer(posBuffer);
+        gl.deleteBuffer(colorBuffer);
+
+        return {
+          count,
+          generationMs: Number(generationMs.toFixed(0)),
+          drawError,
+          idleFrameMs: Number(idleBase.toFixed(2)),
+          frameP50Ms: Number(p50.toFixed(2)),
+          gpuBound: p50 > idleBase * 1.5
+        };
+      }
+
+      try {
+        const results = [];
+        const idleBase = await measureIdleFrames();
+
+        for (const count of [1_000_000, 10_000_000, 50_000_000, 100_000_000]) {
+          const result = await probe(count, idleBase);
+          results.push(result);
+
+          // Stop climbing once a single draw cannot fit a 60 Hz frame.
+          if (!result.gpuBound || result.frameP50Ms <= 16.7 * 1.2) {
+            continue;
+          }
+        }
+
+        window.__ceilingResult = { idleBase, results };
+      } catch (cause) {
+        window.__ceilingError = String(cause);
+      }
+    </script>
+  </body>
+</html>
