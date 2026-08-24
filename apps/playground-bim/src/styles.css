@@ -102,7 +102,8 @@ code {
 
 #status,
 #element-count,
-#model-count {
+#model-count,
+#level-2-visible {
   color: #38bdf8;
   font-weight: 600;
 }

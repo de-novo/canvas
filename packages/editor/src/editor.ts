@@ -58,6 +58,12 @@ import {
   runEditorEffect
 } from "./runtime.js";
 import { takeAuthoringDeactivationCleanups } from "./authoring/coordinator.js";
+import {
+  applyNamedOperations,
+  parseNamedOperationList,
+  type NamedOperation,
+  type NamedOperationResult
+} from "./authoring/named-operations.js";
 
 export type CanvasEditorHistoryState = {
   readonly canRedo: boolean;
@@ -174,6 +180,13 @@ export type CanvasEditor = {
   canRedo: () => boolean;
   canUndo: () => boolean;
   cancelActiveToolSession: () => Promise<void>;
+  /**
+   * Applies named operations as one undoable transaction when they produce
+   * commands. Already-in-state operations do not grow history.
+   */
+  apply: (
+    operations: readonly NamedOperation[]
+  ) => Promise<NamedOperationResult>;
   /**
    * Runs a registered layout adapter, committing its placements as a single
    * undoable transaction.
@@ -1160,8 +1173,37 @@ export function createEditor(options: CreateCanvasEditorOptions): CanvasEditor {
     return added;
   }
 
+  function apply(
+    operations: readonly NamedOperation[]
+  ): Promise<NamedOperationResult> {
+    parseNamedOperationList(operations, "apply");
+    return applyParsedOperations(operations);
+  }
+
+  async function applyParsedOperations(
+    operations: readonly NamedOperation[]
+  ): Promise<NamedOperationResult> {
+    const result = applyNamedOperations(snapshot.document, operations);
+
+    if (result.commands.length === 1) {
+      await dispatch(result.commands[0]!);
+    } else if (result.commands.length > 1) {
+      await dispatch({
+        commands: [...result.commands],
+        type: "transaction"
+      });
+    }
+
+    return {
+      changed: result.changed,
+      commands: result.commands,
+      document: snapshot.document
+    };
+  }
+
   return {
     activateTool,
+    apply,
     canRedo: () => historyIndex < history.length,
     canUndo: () => historyIndex > 0,
     cancelActiveToolSession,

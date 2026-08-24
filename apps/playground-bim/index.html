@@ -39,6 +39,20 @@
           >
             Measure surface
           </button>
+          <button
+            id="hide-level-2"
+            type="button"
+            data-denovo-control="hide-level-2"
+          >
+            Hide Level 2
+          </button>
+          <button
+            id="show-level-2"
+            type="button"
+            data-denovo-control="show-level-2"
+          >
+            Show Level 2
+          </button>
         </div>
         <p class="status">
           Status: <output id="status">idle</output>
@@ -51,6 +65,10 @@
         </p>
         <p class="count">
           Measurements: <output id="measurement-count">0</output>
+        </p>
+        <p class="count">
+          Level 2:
+          <output id="level-2-visible" data-level-2-visible="true">visible</output>
         </p>
       </aside>
     </main>

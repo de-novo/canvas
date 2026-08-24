@@ -41,6 +41,8 @@ The default package must expose:
 - `createEditor`
 - `applyCommandsToDocument`
 - `applyCommandsToStoredDocument`
+- `applyNamedOperations`
+- `setLayerVisible`
 - `defineMeshGeometry`
 - `createMemoryGeometryStore`
 - `createMeshGeometryAssetRef`
@@ -495,6 +497,14 @@ hierarchy changes. Layer add/update/remove/reorder remain canonical serializable
 commands; non-empty layer removal requires an explicit target. Effective
 visibility and lock helpers include the node, ancestors, and layer, and batch
 operations fail atomically when a target is effectively locked.
+
+`setLayerVisible({ layerId, visible })` is a named operation: a pure function
+that compiles to one `layer.update` when the layer exists and the flag
+differs. `applyNamedOperations(document, […])` folds a list.
+`editor.apply([…])` applies that result as one transaction. Already-in-state
+returns `{ changed: false, commands: [] }` and does not grow history.
+Unknown ids fail with a typed domain error. See
+[Named Authoring Operations](./named-authoring-operations.md).
 
 `snapPointToGrid()` accepts only strict mode-correlated 2D or 3D grids. Active
 grids and snap markers are transient previews; only the snapped document

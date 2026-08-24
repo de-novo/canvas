@@ -67,6 +67,8 @@ export {
   CanvasEditorError,
   applyCommandsToDocument,
   applyCommandsToStoredDocument,
+  applyNamedOperations,
+  setLayerVisible,
   create2DShapeTool,
   create3DPrimitiveTool,
   create3DSurfacePlacementTool,
@@ -117,7 +119,10 @@ export type {
   CanvasPanOrbitToolOptions,
   CanvasSelectToolOptions,
   CanvasTransformToolOptions,
-  CreateCanvasEditorOptions
+  CreateCanvasEditorOptions,
+  NamedOperation,
+  NamedOperationResult,
+  SetLayerVisibleInput
 } from "@denovo/canvas-editor";
 export {
   canvasToScenePoint,

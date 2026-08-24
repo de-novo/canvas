@@ -247,6 +247,15 @@ export type {
   TimeGraphLayoutOptions
 } from "./layout/graph-adapters.js";
 export {
+  applyNamedOperations,
+  setLayerVisible
+} from "./authoring/named-operations.js";
+export type {
+  NamedOperation,
+  NamedOperationResult,
+  SetLayerVisibleInput
+} from "./authoring/named-operations.js";
+export {
   applyCommandsToDocument,
   applyCommandsToStoredDocument
 } from "./commands/apply-document.js";

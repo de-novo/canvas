@@ -5,6 +5,7 @@ import {
   createEditor,
   createPanOrbitTool,
   createSelectTool,
+  setLayerVisible,
   type CanvasDocument,
   type CanvasEditor
 } from "@denovo/canvas";
@@ -33,6 +34,9 @@ const reloadButton = requireElement<HTMLButtonElement>("#reload");
 const federateButton = requireElement<HTMLButtonElement>("#federate");
 const measureSurfaceButton =
   requireElement<HTMLButtonElement>("#measure-surface");
+const hideLevel2Button = requireElement<HTMLButtonElement>("#hide-level-2");
+const showLevel2Button = requireElement<HTMLButtonElement>("#show-level-2");
+const level2VisibleOutput = requireElement<HTMLOutputElement>("#level-2-visible");
 
 type Cleanup = () => void;
 
@@ -49,9 +53,17 @@ type BimFederationSnapshot = {
   uniqueNodeIds: boolean;
 };
 
+type BimNamedOpsSnapshot = {
+  changed: boolean;
+  layerIds: readonly string[];
+  undoDepth: number;
+  visible: boolean;
+};
+
 type PlaygroundHandle = {
   __bimEditor?: CanvasEditor | undefined;
   __bimFederation?: BimFederationSnapshot | undefined;
+  __bimNamedOps?: BimNamedOpsSnapshot | undefined;
 };
 
 let currentCleanup: Cleanup | null = null;
@@ -105,6 +117,29 @@ function snapshotFederation(document: CanvasDocument): BimFederationSnapshot {
     models: [...byModel.values()],
     uniqueNodeIds: new Set(ids).size === ids.length
   };
+}
+
+function isLevel2Layer(name: string): boolean {
+  return name === "Level 2" || name.endsWith(" / Level 2");
+}
+
+function level2Layers(document: CanvasDocument) {
+  return document.scene.layers.filter((layer) => isLevel2Layer(layer.name));
+}
+
+function publishLevel2(document: CanvasDocument, changed: boolean): BimNamedOpsSnapshot {
+  const layers = level2Layers(document);
+  const visible = layers.some((layer) => layer.visible);
+  const snapshot: BimNamedOpsSnapshot = {
+    changed,
+    layerIds: layers.map((layer) => layer.id),
+    undoDepth: editor?.getState().history.undoDepth ?? 0,
+    visible
+  };
+  level2VisibleOutput.textContent = visible ? "visible" : "hidden";
+  level2VisibleOutput.setAttribute("data-level-2-visible", String(visible));
+  playgroundWindow().__bimNamedOps = snapshot;
+  return snapshot;
 }
 
 function publishFederation(document: CanvasDocument): BimFederationSnapshot {
@@ -209,6 +244,7 @@ function mountImported(
   editor = nextEditor;
   playgroundWindow().__bimEditor = nextEditor;
   publishFederation(document);
+  publishLevel2(document, false);
   elementCountOutput.textContent = String(
     document.scene.nodes.filter((node) => node.type === "mesh").length
   );
@@ -300,5 +336,34 @@ federateButton.addEventListener("click", () => {
 measureSurfaceButton.addEventListener("click", () => {
   setMeasuring(!measuring);
 });
+
+hideLevel2Button.addEventListener("click", () => {
+  void setLevel2Visible(false);
+});
+
+showLevel2Button.addEventListener("click", () => {
+  void setLevel2Visible(true);
+});
+
+async function setLevel2Visible(visible: boolean): Promise<void> {
+  if (!editor) {
+    return;
+  }
+
+  const layers = level2Layers(editor.getState().document);
+  if (layers.length === 0) {
+    statusOutput.textContent = "Level 2 not found";
+    return;
+  }
+
+  const result = await editor.apply(
+    layers.map((layer) => setLayerVisible({ layerId: layer.id, visible }))
+  );
+  const snapshot = publishLevel2(editor.getState().document, result.changed);
+  const verb = visible ? "shown" : "hidden";
+  statusOutput.textContent = result.changed
+    ? `Level 2 ${verb} (${snapshot.layerIds.length})`
+    : `Level 2 already ${verb}`;
+}
 
 void loadSample();

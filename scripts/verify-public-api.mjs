@@ -381,6 +381,8 @@ for (const exportName of [
   "connectEditorToRuntime",
   "applyCommandsToDocument",
   "applyCommandsToStoredDocument",
+  "applyNamedOperations",
+  "setLayerVisible",
   "createMemoryGeometryStore",
   "createMeshGeometryAssetRef",
   "decodeMeshGeometry",
@@ -1975,6 +1977,8 @@ writeFileSync(
   createEditor,
   applyCommandsToDocument,
   applyCommandsToStoredDocument,
+  applyNamedOperations,
+  setLayerVisible,
   createGroupNodesCommand,
   createNodeUpdateCommand,
   CanvasPluginError,
@@ -2021,6 +2025,9 @@ writeFileSync(
   type CanvasFacadeRendererRuntime,
   type CanvasEditor,
   type CanvasPersistenceEvent,
+  type NamedOperation,
+  type NamedOperationResult,
+  type SetLayerVisibleInput,
   type CanvasStoredDocument,
   type CanvasHitResult,
   type CanvasHitTestInput,
@@ -2071,6 +2078,28 @@ const document = defineDocument({
   scene
 });
 const editor: CanvasEditor = createEditor({ document });
+const hideLayerInput: SetLayerVisibleInput = {
+  layerId: "main",
+  visible: false
+};
+const hideLayer: NamedOperation = setLayerVisible(hideLayerInput);
+const namedPreview: NamedOperationResult = applyNamedOperations(document, [
+  hideLayer
+]);
+const namedChanged: boolean = namedPreview.changed;
+const namedCommand = namedPreview.commands[0];
+if (!namedCommand || namedCommand.type !== "layer.update") {
+  throw new Error("setLayerVisible must compile to layer.update");
+}
+const namedCommandType: "layer.update" = namedCommand.type;
+void namedChanged;
+void namedCommandType;
+const namedApply = editor.apply([hideLayer]);
+void namedApply;
+// @ts-expect-error extra fields are rejected
+setLayerVisible({ layerId: "main", visible: false, extra: true });
+// @ts-expect-error visible must be boolean
+setLayerVisible({ layerId: "main", visible: "false" });
 const selectTool = createSelectTool();
 const navigationTool = createPanOrbitTool();
 const transformTool = createTransformTool();
@@ -2686,13 +2715,17 @@ writeFileSync(
   `import {
   CanvasEditorError,
   applyCommandsToStoredDocument,
+  applyNamedOperations,
   connectEditorToRuntime,
   createEditor,
   createPanOrbitTool,
   createSelectTool,
   createTransformTool,
+  setLayerVisible,
   type CanvasEditor,
-  type CanvasPersistenceEvent
+  type CanvasPersistenceEvent,
+  type NamedOperation,
+  type NamedOperationResult
 } from "@denovo/canvas-editor";
 
 const editor: CanvasEditor = createEditor({
@@ -2708,6 +2741,20 @@ const editor: CanvasEditor = createEditor({
   },
   tools: [createPanOrbitTool(), createSelectTool(), createTransformTool()]
 });
+const hideMain: NamedOperation = setLayerVisible({
+  layerId: "main",
+  visible: false
+});
+const preview: NamedOperationResult = applyNamedOperations(
+  editor.getState().document,
+  [hideMain]
+);
+void preview;
+void editor.apply([hideMain]);
+// @ts-expect-error extra fields are rejected
+setLayerVisible({ layerId: "main", visible: false, extra: true });
+// @ts-expect-error visible must be boolean
+setLayerVisible({ layerId: "main", visible: "false" });
 const disconnect = connectEditorToRuntime(editor, {
   update(scene) {
     void scene;

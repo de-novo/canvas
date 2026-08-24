@@ -111,3 +111,5 @@ Each entry should include:
 - [2026-08-23 BIM multi-model federation](./2026-08-23-bim-multi-model-federation.md)
 - [2026-08-23 BIM federated origin](./2026-08-23-bim-federated-origin.md)
 - [2026-08-24 BIM federation browser QA](./2026-08-24-bim-federation-browser.md)
+- [2026-08-24 Named authoring operations](./2026-08-24-named-authoring-operations.md)
+- [2026-08-24 Named operations setLayerVisible](./2026-08-24-named-operations-set-layer-visible.md)

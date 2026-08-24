@@ -27,6 +27,9 @@ Repository governance files live at the repo root:
 - [M3.1 Surface Placement and Stacking Contract](./m3-1-surface-placement-contract.md):
   exact world-aligned box-on-box surface placement, transient ghost, strict
   surface-query capability, lifecycle, no-fallback, and verification contract.
+- [Named Authoring Operations](./named-authoring-operations.md): sayable
+  helpers (`setLayerVisible`, `stackBox`, `listNodes`) that compile to
+  existing commands so host UI and agents share one function.
 - [M8 Diagram Contract](./m8-diagram-contract.md): 2D `edge` / `text` / `html`
   vocabulary frozen in `0.2.0`, port and path-style rules, graph paste/delete,
   overlay HTML (not `innerHTML`), connector tool, and explicit non-goals.

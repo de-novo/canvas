@@ -38,6 +38,10 @@ assert.equal(typeof facade.createSelectTool, "function");
 assert.equal(typeof facade.createTransformTool, "function");
 assert.equal(typeof editorCore.applyCommandsToDocument, "function");
 assert.equal(typeof facade.applyCommandsToDocument, "function");
+assert.equal(typeof editorCore.setLayerVisible, "function");
+assert.equal(typeof facade.setLayerVisible, "function");
+assert.equal(typeof editorCore.applyNamedOperations, "function");
+assert.equal(typeof facade.applyNamedOperations, "function");
 assert.equal(typeof editorCore.applyCommandsToStoredDocument, "function");
 assert.equal(typeof facade.applyCommandsToStoredDocument, "function");
 assert.equal(typeof facade.createMemoryGeometryStore, "function");
@@ -3930,6 +3934,126 @@ try {
     JSON.parse(JSON.stringify(graphEditor.getState().document.scene.nodes)),
     before,
     "one undo must restore the time-graph placements"
+  );
+}
+
+{
+  // Human-shaped and agent-shaped callers share this list. The playground
+  // Hide Level 2 button uses the same functions.
+  const document = {
+    id: "named-ops",
+    scene: {
+      id: "named-ops-scene",
+      layers: [
+        { id: "storey-1", name: "Level 1", visible: true },
+        { id: "storey-2", name: "Level 2", visible: true }
+      ],
+      mode: "3d",
+      nodes: []
+    }
+  };
+  const hideLevel2 = facade.setLayerVisible({
+    layerId: "storey-2",
+    visible: false
+  });
+  const preview = facade.applyNamedOperations(document, [hideLevel2]);
+  assert.equal(preview.changed, true);
+  assert.equal(preview.commands.length, 1);
+  assert.equal(preview.commands[0].type, "layer.update");
+  assert.equal(preview.commands[0].layerId, "storey-2");
+  assert.deepEqual(preview.commands[0].patch, { visible: false });
+  assert.equal(
+    preview.document.scene.layers.find((layer) => layer.id === "storey-2")
+      .visible,
+    false
+  );
+  assert.equal(
+    preview.document.scene.layers.find((layer) => layer.id === "storey-1")
+      .visible,
+    true
+  );
+
+  const alreadyHidden = facade.applyNamedOperations(preview.document, [
+    hideLevel2
+  ]);
+  assert.equal(alreadyHidden.changed, false);
+  assert.deepEqual(alreadyHidden.commands, []);
+  assert.equal(alreadyHidden.document, preview.document);
+
+  const editor = facade.createEditor({ document });
+  const applied = await editor.apply([hideLevel2]);
+  assert.equal(applied.changed, true);
+  assert.equal(
+    editor.getState().document.scene.layers.find((layer) => layer.id === "storey-2")
+      .visible,
+    false
+  );
+  assert.equal(editor.getState().history.undoDepth, 1);
+
+  const noop = await editor.apply([hideLevel2]);
+  assert.equal(noop.changed, false);
+  assert.deepEqual(noop.commands, []);
+  assert.equal(editor.getState().history.undoDepth, 1);
+
+  await editor.undo();
+  assert.equal(
+    editor.getState().document.scene.layers.find((layer) => layer.id === "storey-2")
+      .visible,
+    true
+  );
+
+  await assert.rejects(
+    async () =>
+      editor.apply([
+        facade.setLayerVisible({ layerId: "missing-storey", visible: false })
+      ]),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "layer-not-found"
+  );
+  assert.equal(editor.getState().history.undoDepth, 0);
+
+  assert.throws(
+    () =>
+      facade.setLayerVisible({
+        layerId: "storey-2",
+        visible: false,
+        extra: true
+      }),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "invalid-command"
+  );
+  assert.throws(
+    () => facade.applyNamedOperations(document, hideLevel2),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "invalid-command" &&
+      error.message.includes("list as the second argument")
+  );
+  assert.throws(
+    () => editor.apply(hideLevel2),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "invalid-command" &&
+      error.message.includes("editor.apply([setLayerVisible")
+  );
+
+  const twoLayers = await editor.apply([
+    facade.setLayerVisible({ layerId: "storey-1", visible: false }),
+    facade.setLayerVisible({ layerId: "storey-2", visible: false })
+  ]);
+  assert.equal(twoLayers.changed, true);
+  assert.equal(twoLayers.commands.length, 2);
+  assert.equal(editor.getState().history.undoDepth, 1);
+  assert.equal(
+    editor.getState().document.scene.layers.every((layer) => layer.visible === false),
+    true
+  );
+  await editor.undo();
+  assert.equal(
+    editor.getState().document.scene.layers.every((layer) => layer.visible === true),
+    true
   );
 }
 

@@ -278,12 +278,20 @@ BIM stay optional packages, not a second product identity. See
 
 ## Next
 
-1. **Graph field throughput (not presentation):** time/relation layout
+1. **Named authoring operations (slice 1 landed, slice 2 next):**
+   humans and agents share one function that compiles to existing
+   commands. Slice 1 ships `setLayerVisible`, `applyNamedOperations`, and
+   `editor.apply([…])`. Already-in-state does not grow history. Playground
+   Hide / Show Level 2 call the helper, not a raw `layer.update`. Next is
+   document-only `stackBox`, then `listNodes`. See
+   [Named Authoring Operations](./named-authoring-operations.md) and
+   [2026-08-24 named operations setLayerVisible](./history/2026-08-24-named-operations-set-layer-visible.md).
+2. **Graph field throughput (not presentation):** time/relation layout
    adapters and a packed 2D point field exist. Canvas stops at measured
    10k-point draw cost and screen-size clamp. Hosts (for example haru)
    own glow, cluster colour, and labels. See
    [2026-08-22 graph field host presentation](./history/2026-08-22-graph-field-host-presentation.md).
-2. **Next contract — mesh-surface measurement endpoints (complete):**
+3. **Next contract — mesh-surface measurement endpoints (complete):**
    the protocol extension landed 2026-08-22 —
    `resolveSurfacePoint` accepts `mesh` targets with correlated
    `mesh.triangle` hits (schema, Three resolver, facade; browser-verified) —
@@ -297,7 +305,7 @@ BIM stay optional packages, not a second product identity. See
    WebGPU adapter and a pinned-environment frame budget gate are
    explicitly deferred (rationale in
    [2026-08-22 next contract decision](./history/2026-08-22-next-contract-decision.md)).
-3. **B-item residual risks (complete):** storey layers (2026-08-22),
+4. **B-item residual risks (complete):** storey layers (2026-08-22),
    instance surface points (2026-08-22), and BIM multi-model federation
    (2026-08-23) have all landed. Federation: `loadModel` is additive,
    `toDocument()` merges staged models, `expressID` pairs with `modelId`,
@@ -316,15 +324,15 @@ BIM stay optional packages, not a second product identity. See
 
 ## Evidence
 
-- `pnpm typecheck`: passed on 2026-08-23 (32 tasks) after federated
-  origin; previously 32/32 after BIM federation and the 2026-08-22 worker
-  task queue slice.
-- `pnpm build`: passed on 2026-08-23 (21 packages/apps) after federated
-  origin; previously 21/21 after BIM federation.
-- `pnpm verify:public-api`: passed on 2026-08-23 after federated origin,
-  including bim-smoke fixtures for a 3-tuple `origin` and a rejected
-  2-tuple, plus required `modelId` / `BimElementRef` pairing. Previously
-  passed after BIM federation the same day.
+- `pnpm typecheck`: passed on 2026-08-24 (32 tasks) after named-operations
+  slice 1; previously 32/32 on 2026-08-23 after federated origin.
+- `pnpm build`: passed on 2026-08-24 (21 packages/apps) after
+  named-operations slice 1; previously 21/21 on 2026-08-23 after
+  federated origin.
+- `pnpm verify:public-api`: passed on 2026-08-24 after named-operations
+  slice 1, including `setLayerVisible` / `applyNamedOperations` function
+  exports and extra-field / non-boolean `visible` `@ts-expect-error`
+  fixtures. Previously passed on 2026-08-23 after federated origin.
 - `pnpm verify:m4-performance`: passed on 2026-08-22 (11 named checks) —
   LOD schema defaults/validation/round-trip and chunk-loader ordering,
   budget batching, cancellation, and recovery.
@@ -372,12 +380,16 @@ BIM stay optional packages, not a second product identity. See
   including edge endpoint/same-layer/port validation,
   `m8-node-update-roundtrips-edge-text-html`, and deterministic `0.1.0` →
   `0.2.0` migration. Previously passed on 2026-08-21.
-- `pnpm verify:editor-core`: passed on 2026-08-22, now including html
-  ungroup transform baking alongside mesh update, paste id remapping +
-  single undo, delete of incident edges + single undo, text ungroup world
-  transform, connector one-commit gesture, `applyCommandsToDocument`,
-  `applyCommandsToStoredDocument` OCC/validation, and geometry-store
-  helper exports. Previously passed on 2026-08-21.
+- `pnpm verify:editor-core`: passed on 2026-08-24, adding the named
+  operation recipe: `applyNamedOperations` and `editor.apply` hide the
+  same layer, already-in-state does not grow history, unknown `layerId`
+  is `layer-not-found`, a bare helper is rejected (list required), and
+  two ops commit as one undo. Previously passed on 2026-08-22.
+- `pnpm verify:named-operations`: passed on 2026-08-24 (2 named checks)
+  — the same list from a node caller, plus Chromium Hide Level 2
+  (`data-level-2-visible` true → false, second hide does not grow undo,
+  Show restores, screenshot
+  `artifacts/verification/named-ops-hide-level-2.png`).
 - `pnpm verify:server`: passed on 2026-08-22 (36 assertions), adding six
   IndexedDB adapter checks (`fake-indexeddb`) to the existing
   conflict-does-not-overwrite, memory/filesystem `applyCommands`, undo/redo
