@@ -16,14 +16,18 @@ import type { WorkerTaskQueue } from "@denovo/canvas-worker";
 
 import type {
   BimAdapter,
+  BimElementProperties,
+  BimElementRef,
   BimImportResult,
   BimModelMetadata,
-  BimModelSource,
-  BimPropertySet
+  BimModelOrigin,
+  BimModelSource
 } from "./index.js";
 import {
+  allocateModelId,
   assembleBimDocument,
-  DEFAULT_MAX_ELEMENTS
+  DEFAULT_MAX_ELEMENTS,
+  resolveModelOrigin
 } from "./web-ifc-parse.js";
 import type { BimParsedElement, BimSpatialHierarchy } from "./web-ifc-parse.js";
 import type { DenovoBimWorkerTaskMap } from "./web-ifc-worker.js";
@@ -32,7 +36,7 @@ export { DEFAULT_MAX_ELEMENTS };
 
 export type WorkerBimAdapterOptions = {
   /**
-   * Queue whose workers run `createBimWorkerHandler`. Only the two
+   * Queue whose workers run `createBimWorkerHandler`. Only the
    * `denovo.bim.*` task types are requested.
    */
   queue: WorkerTaskQueue<DenovoBimWorkerTaskMap>;
@@ -41,8 +45,11 @@ export type WorkerBimAdapterOptions = {
 };
 
 type StagedParse = {
+  elementCount: number;
   elements: BimParsedElement[];
   hierarchy?: BimSpatialHierarchy | undefined;
+  modelId: string;
+  origin?: BimModelOrigin | undefined;
   skippedElementCount: number;
   source: BimModelSource;
 };
@@ -56,30 +63,53 @@ export function createWorkerBimAdapter(
   options: WorkerBimAdapterOptions
 ): BimAdapter & {
   getElementProperties: (
-    expressIDs: readonly number[]
-  ) => Promise<Map<number, BimPropertySet[]>>;
+    refs: readonly BimElementRef[]
+  ) => Promise<readonly BimElementProperties[]>;
   getSkippedElementCount: () => number;
+  listModels: () => readonly BimModelMetadata[];
+  unloadModel: (modelId: string) => Promise<void>;
 } {
   const maxElements = options.maxElements ?? DEFAULT_MAX_ELEMENTS;
   const queue = options.queue;
   const geometryStore: CanvasGeometryStore = createMemoryGeometryStore();
-  let staged: StagedParse | null = null;
+  const staged = new Map<string, StagedParse>();
+
+  function listModels(): readonly BimModelMetadata[] {
+    return [...staged.values()].map(toModelMetadata);
+  }
 
   async function toDocument(): Promise<BimImportResult> {
-    if (!staged) {
+    if (staged.size === 0) {
       throw new Error(
         "createWorkerBimAdapter.toDocument called before loadModel resolved."
       );
     }
 
-    const assembled = assembleBimDocument(
-      staged.elements,
-      geometryStore,
-      staged.source.name ?? "ifc-scene",
-      staged.hierarchy
-    );
+    const models = [...staged.values()].map((entry) => ({
+      elements: entry.elements,
+      hierarchy: entry.hierarchy,
+      modelId: entry.modelId,
+      modelName: entry.source.name,
+      origin: entry.origin
+    }));
+    const sceneId =
+      models.length === 1
+        ? (models[0]?.modelName ?? "ifc-scene")
+        : "federated-ifc";
+    const assembled = assembleBimDocument(models, geometryStore, sceneId);
 
     return { document: assembled.document, geometryStore };
+  }
+
+  async function unloadModel(modelId: string): Promise<void> {
+    if (!staged.has(modelId)) {
+      throw new Error(
+        `createWorkerBimAdapter.unloadModel called with unknown model id "${modelId}".`
+      );
+    }
+
+    await queue.request("denovo.bim.closeModel", { modelId });
+    staged.delete(modelId);
   }
 
   return {
@@ -96,23 +126,29 @@ export function createWorkerBimAdapter(
         );
       }
 
-      const result = await queue.request("denovo.bim.parseIfc", {
-        data: source.data,
-        maxElements
-      }, [source.data]);
+      const origin = resolveModelOrigin(source.origin);
+      const modelId = allocateModelId(source.name, staged.keys());
+      const result = await queue.request(
+        "denovo.bim.parseIfc",
+        {
+          data: source.data,
+          maxElements,
+          modelId
+        },
+        [source.data]
+      );
 
-      staged = {
+      staged.set(modelId, {
+        elementCount: result.elements.length,
         elements: result.elements,
         hierarchy: result.hierarchy,
+        modelId,
+        origin,
         skippedElementCount: result.skippedElementCount,
         source
-      };
+      });
 
-      return {
-        id: staged.source.name ?? "ifc-model",
-        sourceType: staged.source.type,
-        elementCount: staged.elements.length
-      };
+      return toModelMetadata(staged.get(modelId)!);
     },
 
     getGeometryStore(): CanvasGeometryStore {
@@ -127,28 +163,81 @@ export function createWorkerBimAdapter(
     },
 
     async dispose(): Promise<void> {
-      staged = null;
+      const modelIds = [...staged.keys()];
+      staged.clear();
       geometryStore.clear();
+
+      for (const modelId of modelIds) {
+        try {
+          await queue.request("denovo.bim.closeModel", { modelId });
+        } catch {
+          // Best-effort close of each worker-side WASM model.
+        }
+      }
     },
 
+    unloadModel,
+
+    listModels,
+
     getSkippedElementCount(): number {
-      return staged?.skippedElementCount ?? 0;
+      let skipped = 0;
+
+      for (const entry of staged.values()) {
+        skipped += entry.skippedElementCount;
+      }
+
+      return skipped;
     },
 
     async getElementProperties(
-      expressIDs: readonly number[]
-    ): Promise<Map<number, BimPropertySet[]>> {
-      const record = await queue.request("denovo.bim.readPropertySets", {
-        expressIDs: [...expressIDs]
-      });
+      refs: readonly BimElementRef[]
+    ): Promise<readonly BimElementProperties[]> {
+      const grouped = new Map<string, number[]>();
 
-      const mapped = new Map<number, BimPropertySet[]>();
-
-      for (const expressID of expressIDs) {
-        mapped.set(expressID, record[String(expressID)] ?? []);
+      for (const ref of refs) {
+        const existing = grouped.get(ref.modelId) ?? [];
+        existing.push(ref.expressID);
+        grouped.set(ref.modelId, existing);
       }
 
-      return mapped;
+      const results: BimElementProperties[] = [];
+
+      for (const [modelId, expressIDs] of grouped) {
+        if (!staged.has(modelId)) {
+          throw new Error(
+            `createWorkerBimAdapter.getElementProperties referenced unknown model "${modelId}".`
+          );
+        }
+
+        const record = await queue.request("denovo.bim.readPropertySets", {
+          expressIDs,
+          modelId
+        });
+        const psetsById = new Map(
+          record.entries.map((entry) => [entry.expressID, entry.psets])
+        );
+
+        for (const expressID of expressIDs) {
+          results.push({
+            expressID,
+            modelId,
+            psets: psetsById.get(expressID) ?? []
+          });
+        }
+      }
+
+      return results;
     }
+  };
+}
+
+function toModelMetadata(entry: StagedParse): BimModelMetadata {
+  return {
+    elementCount: entry.elementCount,
+    id: entry.modelId,
+    ...(entry.source.name === undefined ? {} : { name: entry.source.name }),
+    ...(entry.origin === undefined ? {} : { origin: entry.origin }),
+    sourceType: entry.source.type
   };
 }

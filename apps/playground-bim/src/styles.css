@@ -101,7 +101,19 @@ code {
 }
 
 #status,
-#element-count {
+#element-count,
+#model-count {
   color: #38bdf8;
   font-weight: 600;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.controls button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }

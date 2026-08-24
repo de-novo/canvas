@@ -13,6 +13,7 @@
     "verify:browser-rendering": "node scripts/verify-browser-rendering.mjs",
     "verify:browser-rendering-adapters": "node scripts/verify-browser-rendering-adapters.mjs",
     "verify:bim-rendering": "pnpm --filter @denovo/canvas-bim-example copy:wasm && ADAPTER_ONLY=Bim node scripts/verify-browser-rendering-adapters.mjs",
+    "verify:bim-federation": "pnpm --filter @denovo/canvas-bim-example copy:wasm && node scripts/verify-bim-federation.mjs",
     "verify:bim-worker": "node scripts/verify-bim-worker.mjs",
     "verify:diagram-rendering": "ADAPTER_ONLY=Diagram node scripts/verify-browser-rendering-adapters.mjs",
     "verify:document-schema": "node scripts/verify-document-schema.mjs",

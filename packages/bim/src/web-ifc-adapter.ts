@@ -1,7 +1,7 @@
 /**
  * web-ifc-based {@link BimAdapter}. Parses an IFC `ArrayBuffer` into a Denovo
  * `CanvasScene` of `mesh` nodes (one per IFC element), grouped into layers by
- * IFC type category, with element provenance stored on `node.metadata`.
+ * building storey, with element provenance stored on `node.metadata`.
  *
  * Tessellation runs on the importing thread here; for large models prefer
  * `createWorkerBimAdapter` from `@denovo/canvas-bim/web-ifc-worker`, which
@@ -24,16 +24,22 @@ import type { BimImportResult } from "./index.js";
 import {
   BIM_METADATA_KEY,
   type BimAdapter,
+  type BimElementProperties,
+  type BimElementRef,
   type BimModelMetadata,
+  type BimModelOrigin,
   type BimModelSource,
-  type BimPropertySet,
   type WebIfcWasmConfig
 } from "./index.js";
 import {
   DEFAULT_MAX_ELEMENTS,
+  allocateModelId,
   assembleBimDocument,
   parseIfcModel,
-  readIfcPropertySets
+  readIfcPropertySets,
+  resolveModelOrigin,
+  type BimParsedElement,
+  type BimSpatialHierarchy
 } from "./web-ifc-parse.js";
 
 export { DEFAULT_MAX_ELEMENTS };
@@ -46,6 +52,17 @@ export type WebIfcAdapterOptions = {
    * elements are skipped. Default 5000.
    */
   maxElements?: number;
+};
+
+type StagedModel = {
+  elementCount: number;
+  elements: BimParsedElement[];
+  hierarchy?: BimSpatialHierarchy | undefined;
+  modelId: string;
+  origin?: BimModelOrigin | undefined;
+  skippedElementCount: number;
+  source: BimModelSource;
+  wasmModelID: number;
 };
 
 /**
@@ -85,9 +102,7 @@ function resolveLocateFile(
 export class WebIfcBimAdapter implements BimAdapter {
   private readonly wasm: WebIfcWasmConfig;
   private readonly maxElements: number;
-  private staged:
-    | { modelID: number; source: BimModelSource; skippedElementCount: number }
-    | null = null;
+  private readonly staged = new Map<string, StagedModel>();
   private readonly geometryStore: CanvasGeometryStore =
     createMemoryGeometryStore();
 
@@ -103,37 +118,51 @@ export class WebIfcBimAdapter implements BimAdapter {
       );
     }
 
+    const origin = resolveModelOrigin(source.origin);
     const api = await getIfcApi(this.wasm);
-    if (this.staged) {
-      try {
-        api.CloseModel(this.staged.modelID);
-      } catch {
-        // Best-effort: a failed close must not block loading the next model.
-      }
-      this.staged = null;
-    }
-    const modelID = api.OpenModel(new Uint8Array(source.data), {
+    const modelId = allocateModelId(source.name, this.staged.keys());
+    const wasmModelID = api.OpenModel(new Uint8Array(source.data), {
       COORDINATE_TO_ORIGIN: true
     });
-    api.StreamAllMeshes(modelID, () => {
+    api.StreamAllMeshes(wasmModelID, () => {
       // Stream to force geometry build.
     });
 
-    // Parse eagerly so loadModel's metadata reflects real element counts and
-    // toDocument() stays a pure assembly step.
-    const output = parseIfcModel(api, modelID, this.maxElements);
-    this.staged = {
-      modelID,
+    const output = parseIfcModel(api, wasmModelID, this.maxElements);
+    this.staged.set(modelId, {
+      elementCount: output.elements.length,
+      elements: output.elements,
+      hierarchy: output.hierarchy,
+      modelId,
+      origin,
       skippedElementCount: output.skippedElementCount,
-      source
-    };
+      source,
+      wasmModelID
+    });
 
-    const metadata: BimModelMetadata = {
-      id: source.name ?? `ifc-model-${modelID}`,
-      sourceType: source.type,
-      elementCount: output.elements.length
-    };
-    return metadata;
+    return toModelMetadata(this.staged.get(modelId)!);
+  }
+
+  async unloadModel(modelId: string): Promise<void> {
+    const staged = this.staged.get(modelId);
+
+    if (!staged) {
+      throw new Error(
+        `WebIfcBimAdapter.unloadModel called with unknown model id "${modelId}".`
+      );
+    }
+
+    const api = await getIfcApi(this.wasm);
+    try {
+      api.CloseModel(staged.wasmModelID);
+    } catch {
+      // Best-effort: a failed close must not leave the registry inconsistent.
+    }
+    this.staged.delete(modelId);
+  }
+
+  listModels(): readonly BimModelMetadata[] {
+    return [...this.staged.values()].map(toModelMetadata);
   }
 
   getGeometryStore(): CanvasGeometryStore {
@@ -141,23 +170,24 @@ export class WebIfcBimAdapter implements BimAdapter {
   }
 
   async toDocument(): Promise<BimImportResult> {
-    if (!this.staged) {
+    if (this.staged.size === 0) {
       throw new Error(
         "WebIfcBimAdapter.toDocument called before loadModel resolved."
       );
     }
 
-    const api = await getIfcApi(this.wasm);
-    const { modelID, source } = this.staged;
-    const output = parseIfcModel(api, modelID, this.maxElements);
-    this.staged = { ...this.staged, skippedElementCount: output.skippedElementCount };
-
-    const assembled = assembleBimDocument(
-      output.elements,
-      this.geometryStore,
-      source.name ?? "ifc-scene",
-      output.hierarchy
-    );
+    const models = [...this.staged.values()].map((staged) => ({
+      elements: staged.elements,
+      hierarchy: staged.hierarchy,
+      modelId: staged.modelId,
+      modelName: staged.source.name,
+      origin: staged.origin
+    }));
+    const sceneId =
+      models.length === 1
+        ? (models[0]?.modelName ?? "ifc-scene")
+        : "federated-ifc";
+    const assembled = assembleBimDocument(models, this.geometryStore, sceneId);
 
     return { document: assembled.document, geometryStore: this.geometryStore };
   }
@@ -168,36 +198,94 @@ export class WebIfcBimAdapter implements BimAdapter {
   }
 
   async dispose(): Promise<void> {
-    if (!this.staged) {
+    if (this.staged.size === 0) {
+      this.geometryStore.clear();
       return;
     }
+
     const api = await getIfcApi(this.wasm);
-    api.CloseModel(this.staged.modelID);
-    this.staged = null;
+
+    for (const staged of this.staged.values()) {
+      try {
+        api.CloseModel(staged.wasmModelID);
+      } catch {
+        // Best-effort close of each WASM model.
+      }
+    }
+
+    this.staged.clear();
     this.geometryStore.clear();
   }
 
-  /** Number of elements skipped past `maxElements` on the last parse. */
+  /** Sum of elements skipped past `maxElements` across staged models. */
   getSkippedElementCount(): number {
-    return this.staged?.skippedElementCount ?? 0;
+    let skipped = 0;
+
+    for (const staged of this.staged.values()) {
+      skipped += staged.skippedElementCount;
+    }
+
+    return skipped;
   }
 
   /**
    * Reads IFC property sets for staged elements. Best-effort by contract:
-   * elements without psets map to empty arrays.
+   * elements without psets map to empty arrays. Each ref must name its
+   * `modelId` — express ids are model-scoped.
    */
   async getElementProperties(
-    expressIDs: readonly number[]
-  ): Promise<Map<number, BimPropertySet[]>> {
-    if (!this.staged) {
-      throw new Error(
-        "WebIfcBimAdapter.getElementProperties called before loadModel resolved."
-      );
+    refs: readonly BimElementRef[]
+  ): Promise<readonly BimElementProperties[]> {
+    const api = await getIfcApi(this.wasm);
+    const grouped = groupRefsByModel(refs);
+    const results: BimElementProperties[] = [];
+
+    for (const [modelId, expressIDs] of grouped) {
+      const staged = this.staged.get(modelId);
+
+      if (!staged) {
+        throw new Error(
+          `WebIfcBimAdapter.getElementProperties referenced unknown model "${modelId}".`
+        );
+      }
+
+      const mapped = readIfcPropertySets(api, staged.wasmModelID, expressIDs);
+
+      for (const expressID of expressIDs) {
+        results.push({
+          expressID,
+          modelId,
+          psets: mapped.get(expressID) ?? []
+        });
+      }
     }
 
-    const api = await getIfcApi(this.wasm);
-    return readIfcPropertySets(api, this.staged.modelID, expressIDs);
+    return results;
   }
 }
 
 export { BIM_METADATA_KEY };
+
+function toModelMetadata(staged: StagedModel): BimModelMetadata {
+  return {
+    elementCount: staged.elementCount,
+    id: staged.modelId,
+    ...(staged.source.name === undefined ? {} : { name: staged.source.name }),
+    ...(staged.origin === undefined ? {} : { origin: staged.origin }),
+    sourceType: staged.source.type
+  };
+}
+
+function groupRefsByModel(
+  refs: readonly BimElementRef[]
+): Map<string, number[]> {
+  const grouped = new Map<string, number[]>();
+
+  for (const ref of refs) {
+    const existing = grouped.get(ref.modelId) ?? [];
+    existing.push(ref.expressID);
+    grouped.set(ref.modelId, existing);
+  }
+
+  return grouped;
+}

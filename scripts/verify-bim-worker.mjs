@@ -6,8 +6,10 @@
  * `@denovo/canvas-worker` queue using an in-process loopback worker, against
  * the playground's sample.ifc. Proves: parse task correctness (typed arrays,
  * metadata, category layers), document assembly via `createWorkerBimAdapter`,
- * maxElements skipping, property-set reads (best-effort contract), and
- * explicit failure for non-IFC sources.
+ * maxElements skipping, property-set reads (best-effort contract),
+ * explicit failure for non-IFC sources, and multi-model federation
+ * (additive load, namespaced ids, model-scoped property reads, unload)
+ * and federated origin placement (node.position + camera frame).
  */
 
 import assert from "node:assert/strict";
@@ -126,6 +128,7 @@ const sampleData = () =>
     assert.equal(typeof bimMeta.ifcGuid, "string");
     assert.match(bimMeta.ifcType, /^Ifc/);
     assert.equal(typeof bimMeta.expressID, "number");
+    assert.equal(bimMeta.modelId, metadata.id);
 
     // Geometry resolves from the store with valid triangle data.
     const resolved = resolveCanvasMeshGeometry(first, imported.geometryStore);
@@ -178,14 +181,17 @@ const sampleData = () =>
     check("bim-worker-parses-sample-ifc-end-to-end", () => {});
 
     // 2. Property sets follow the best-effort contract (empty is valid).
-    const expressIDs = nodes
-      .slice(0, 5)
-      .map((node) => node.metadata.__bim.expressID);
-    const psets = await adapter.getElementProperties(expressIDs);
-    assert.equal(psets.size, 5);
+    const refs = nodes.slice(0, 5).map((node) => ({
+      expressID: node.metadata.__bim.expressID,
+      modelId: node.metadata.__bim.modelId
+    }));
+    const psets = await adapter.getElementProperties(refs);
+    assert.equal(psets.length, 5);
 
-    for (const expressID of expressIDs) {
-      assert.ok(Array.isArray(psets.get(expressID)));
+    for (const entry of psets) {
+      assert.equal(entry.modelId, metadata.id);
+      assert.equal(typeof entry.expressID, "number");
+      assert.ok(Array.isArray(entry.psets));
     }
     check("bim-worker-property-reads-follow-best-effort-contract", () => {});
   } finally {
@@ -233,6 +239,165 @@ const sampleData = () =>
     /only supports IFC/
   );
   check("bim-worker-rejects-non-ifc-sources-explicitly", () => {});
+}
+
+// 5. Two staged models federate into one document without id collisions.
+{
+  const adapter = createWorkerBimAdapter({
+    queue: createWorkerTaskQueue({
+      createWorker: createBimLoopbackWorker,
+      size: 1
+    })
+  });
+
+  try {
+    const alpha = await adapter.loadModel({
+      data: sampleData(),
+      name: "alpha",
+      type: "ifc"
+    });
+    const beta = await adapter.loadModel({
+      data: sampleData(),
+      name: "beta",
+      type: "ifc"
+    });
+
+    assert.equal(alpha.id, "alpha");
+    assert.equal(beta.id, "beta");
+    assert.equal(adapter.listModels().length, 2);
+    assert.deepEqual(
+      adapter.listModels().map((model) => model.id),
+      ["alpha", "beta"]
+    );
+
+    const imported = await adapter.toDocument();
+    const nodes = imported.document.scene.nodes;
+    const expectedCount = (alpha.elementCount ?? 0) + (beta.elementCount ?? 0);
+    assert.equal(nodes.length, expectedCount);
+    assert.equal(imported.document.scene.id, "federated-ifc");
+
+    const ids = nodes.map((node) => node.id);
+    assert.equal(new Set(ids).size, ids.length, "federated node ids must be unique");
+
+    const alphaNodes = nodes.filter(
+      (node) => node.metadata?.__bim?.modelId === "alpha"
+    );
+    const betaNodes = nodes.filter(
+      (node) => node.metadata?.__bim?.modelId === "beta"
+    );
+    assert.equal(alphaNodes.length, alpha.elementCount);
+    assert.equal(betaNodes.length, beta.elementCount);
+    assert.match(alphaNodes[0].id, /^ifc-element-alpha-\d+$/);
+    assert.match(betaNodes[0].id, /^ifc-element-beta-\d+$/);
+
+    const storeyLayers = imported.document.scene.layers.filter((layer) =>
+      /^ifc-storey-/.test(layer.id)
+    );
+    assert.ok(
+      storeyLayers.some((layer) => layer.id.startsWith("ifc-storey-alpha-"))
+    );
+    assert.ok(
+      storeyLayers.some((layer) => layer.id.startsWith("ifc-storey-beta-"))
+    );
+    assert.ok(storeyLayers.some((layer) => layer.name.startsWith("alpha / ")));
+    assert.ok(storeyLayers.some((layer) => layer.name.startsWith("beta / ")));
+
+    const alphaProps = await adapter.getElementProperties([
+      {
+        expressID: alphaNodes[0].metadata.__bim.expressID,
+        modelId: "alpha"
+      }
+    ]);
+    assert.equal(alphaProps.length, 1);
+    assert.equal(alphaProps[0].modelId, "alpha");
+    assert.ok(Array.isArray(alphaProps[0].psets));
+
+    await adapter.unloadModel("beta");
+    assert.equal(adapter.listModels().length, 1);
+    assert.equal(adapter.listModels()[0].id, "alpha");
+
+    const remaining = await adapter.toDocument();
+    assert.equal(remaining.document.scene.nodes.length, alpha.elementCount);
+    assert.match(remaining.document.scene.nodes[0].id, /^ifc-element-\d+$/);
+    const remainingStoreys = remaining.document.scene.layers.filter((layer) =>
+      /^ifc-storey-\d+$/.test(layer.id)
+    );
+    assert.ok(remainingStoreys.length > 0);
+
+    await assert.rejects(
+      adapter.unloadModel("beta"),
+      /unknown model id "beta"/
+    );
+
+    check("bim-worker-federates-two-models-without-id-collision", () => {});
+  } finally {
+    await adapter.dispose();
+  }
+}
+
+// 6. A federated origin becomes node.position and widens the camera frame.
+{
+  const adapter = createWorkerBimAdapter({
+    queue: createWorkerTaskQueue({
+      createWorker: createBimLoopbackWorker,
+      size: 1
+    })
+  });
+
+  try {
+    await assert.rejects(
+      adapter.loadModel({
+        data: sampleData(),
+        origin: [Number.NaN, 0, 0],
+        type: "ifc"
+      }),
+      /3-tuple of finite numbers/
+    );
+
+    const alpha = await adapter.loadModel({
+      data: sampleData(),
+      name: "alpha",
+      type: "ifc"
+    });
+    const first = await adapter.toDocument();
+    const firstTargetX = first.document.scene.camera.target[0];
+
+    const origin = /** @type {const} */ ([40, 0, 0]);
+    const beta = await adapter.loadModel({
+      data: sampleData(),
+      name: "beta",
+      origin,
+      type: "ifc"
+    });
+    assert.deepEqual(beta.origin, origin);
+
+    const imported = await adapter.toDocument();
+    const betaNodes = imported.document.scene.nodes.filter(
+      (node) => node.metadata?.__bim?.modelId === "beta"
+    );
+    const alphaNodes = imported.document.scene.nodes.filter(
+      (node) => node.metadata?.__bim?.modelId === "alpha"
+    );
+    assert.equal(alphaNodes.length, alpha.elementCount);
+    assert.equal(betaNodes.length, beta.elementCount);
+
+    for (const node of alphaNodes) {
+      assert.deepEqual(node.position, [0, 0, 0]);
+    }
+    for (const node of betaNodes) {
+      assert.deepEqual(node.position, origin);
+    }
+
+    const targetX = imported.document.scene.camera.target[0];
+    assert.ok(
+      targetX > firstTargetX,
+      `origin must widen the camera frame (first ${firstTargetX}, federated ${targetX})`
+    );
+
+    check("bim-worker-federated-origin-offsets-nodes-and-camera", () => {});
+  } finally {
+    await adapter.dispose();
+  }
 }
 
 check("bim-worker-suite", () => {});

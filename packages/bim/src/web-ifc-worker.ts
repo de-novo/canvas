@@ -24,6 +24,7 @@ import { IfcAPI } from "web-ifc";
 import type { BimPropertySet } from "./index.js";
 import {
   DEFAULT_MAX_ELEMENTS,
+  allocateModelId,
   parseIfcModel,
   readIfcPropertySets,
   type BimParseOutput
@@ -34,25 +35,51 @@ export type BimIfcParseRequest = {
   /** Raw IFC bytes. Transferred in; neutered on the caller's side. */
   data: ArrayBuffer;
   maxElements?: number;
+  /** Caller-assigned model id. Replaces a previously staged model of the same id. */
+  modelId?: string;
+};
+
+export type BimIfcParseResult = BimParseOutput & {
+  modelId: string;
 };
 
 export type BimIfcReadPropertiesRequest = {
   expressIDs: number[];
+  modelId: string;
+};
+
+export type BimIfcReadPropertiesResult = {
+  entries: readonly {
+    expressID: number;
+    psets: readonly BimPropertySet[];
+  }[];
+};
+
+export type BimIfcCloseModelRequest = {
+  modelId: string;
+};
+
+export type BimIfcCloseModelResult = {
+  closed: boolean;
 };
 
 export type DenovoBimWorkerTaskMap = {
   "denovo.bim.parseIfc": WorkerTaskDefinition<
     BimIfcParseRequest,
-    BimParseOutput
+    BimIfcParseResult
   >;
   "denovo.bim.readPropertySets": WorkerTaskDefinition<
     BimIfcReadPropertiesRequest,
-    Record<string, BimPropertySet[]>
+    BimIfcReadPropertiesResult
+  >;
+  "denovo.bim.closeModel": WorkerTaskDefinition<
+    BimIfcCloseModelRequest,
+    BimIfcCloseModelResult
   >;
 };
 
 let apiPromise: Promise<IfcAPI> | null = null;
-let stagedModelID: number | null = null;
+const stagedModels = new Map<string, number>();
 
 /** Structural view of the WASM config so omission stays type-safe. */
 type WasmResolution = {
@@ -88,10 +115,30 @@ function resolveLocateFile(
   return null;
 }
 
+async function closeStagedModel(
+  api: IfcAPI,
+  modelId: string
+): Promise<boolean> {
+  const wasmModelID = stagedModels.get(modelId);
+
+  if (wasmModelID === undefined) {
+    return false;
+  }
+
+  try {
+    api.CloseModel(wasmModelID);
+  } catch {
+    // Best-effort close.
+  }
+
+  stagedModels.delete(modelId);
+  return true;
+}
+
 /**
- * Ready-to-install handler for {@link DenovoBimWorkerTaskMap}. The parsed
- * model stays staged inside the worker so property-set reads reuse the open
- * model; a new parse closes the previous one.
+ * Ready-to-install handler for {@link DenovoBimWorkerTaskMap}. Parsed models
+ * stay staged by `modelId` so property-set reads reuse the open WASM models.
+ * A parse with an already-staged `modelId` replaces that slot only.
  *
  * `wasm` may be omitted in runtimes where web-ifc resolves its own binary
  * (Node); browsers should point `wasmBaseUrl` at the copied WASM assets.
@@ -100,44 +147,56 @@ export function createBimWorkerHandler(
   options: { wasm?: WebIfcWasmConfig } = {}
 ): WorkerHandler<DenovoBimWorkerTaskMap> {
   return createWorkerHandler<DenovoBimWorkerTaskMap>({
-    "denovo.bim.parseIfc": async ({ data, maxElements }) => {
+    "denovo.bim.parseIfc": async ({ data, maxElements, modelId: requested }) => {
       const api = await getIfcApi((options.wasm ?? {}) as WasmResolution);
+      const modelId =
+        requested === undefined
+          ? allocateModelId(undefined, stagedModels.keys())
+          : requested;
 
-      if (stagedModelID !== null) {
-        try {
-          api.CloseModel(stagedModelID);
-        } catch {
-          // Best-effort close.
-        }
-        stagedModelID = null;
+      if (stagedModels.has(modelId)) {
+        await closeStagedModel(api, modelId);
       }
 
-      const modelID = api.OpenModel(new Uint8Array(data), {
+      const wasmModelID = api.OpenModel(new Uint8Array(data), {
         COORDINATE_TO_ORIGIN: true
       });
-      api.StreamAllMeshes(modelID, () => {
+      api.StreamAllMeshes(wasmModelID, () => {
         // Stream to force geometry build.
       });
-      stagedModelID = modelID;
+      stagedModels.set(modelId, wasmModelID);
 
-      return parseIfcModel(api, modelID, maxElements ?? DEFAULT_MAX_ELEMENTS);
+      const output = parseIfcModel(
+        api,
+        wasmModelID,
+        maxElements ?? DEFAULT_MAX_ELEMENTS
+      );
+
+      return { ...output, modelId };
     },
-    "denovo.bim.readPropertySets": async ({ expressIDs }) => {
-      if (stagedModelID === null) {
+    "denovo.bim.readPropertySets": async ({ expressIDs, modelId }) => {
+      const wasmModelID = stagedModels.get(modelId);
+
+      if (wasmModelID === undefined) {
         throw new Error(
-          "denovo.bim.readPropertySets requires a staged model; run denovo.bim.parseIfc first."
+          `denovo.bim.readPropertySets requires staged model "${modelId}"; run denovo.bim.parseIfc first.`
         );
       }
 
       const api = await getIfcApi((options.wasm ?? {}) as WasmResolution);
-      const mapped = readIfcPropertySets(api, stagedModelID, expressIDs);
-      const record: Record<string, BimPropertySet[]> = {};
+      const mapped = readIfcPropertySets(api, wasmModelID, expressIDs);
 
-      for (const [expressID, psets] of mapped) {
-        record[String(expressID)] = psets;
-      }
-
-      return record;
+      return {
+        entries: expressIDs.map((expressID) => ({
+          expressID,
+          psets: mapped.get(expressID) ?? []
+        }))
+      };
+    },
+    "denovo.bim.closeModel": async ({ modelId }) => {
+      const api = await getIfcApi((options.wasm ?? {}) as WasmResolution);
+      const closed = await closeStagedModel(api, modelId);
+      return { closed };
     }
   });
 }

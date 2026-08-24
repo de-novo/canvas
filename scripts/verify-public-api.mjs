@@ -2791,6 +2791,77 @@ client.request("geometry.bounds", { positions: [0, 1, 2] });
 );
 
 writeFileSync(
+  path.join(tmpDir, "bim-smoke.ts"),
+  `import type {
+  BimAdapter,
+  BimElementMetadata,
+  BimElementProperties,
+  BimElementRef,
+  BimModelMetadata
+} from "@denovo/canvas-bim";
+
+declare const adapter: BimAdapter;
+const metadata: BimModelMetadata = await adapter.loadModel({
+  data: new ArrayBuffer(0),
+  name: "alpha",
+  origin: [40, 0, 0],
+  type: "ifc"
+});
+const modelId: string = metadata.id;
+const placedOrigin: readonly [number, number, number] = metadata.origin ?? [0, 0, 0];
+void placedOrigin;
+
+await adapter.loadModel({
+  data: new ArrayBuffer(0),
+  // @ts-expect-error origin is a 3-tuple, not a 2-tuple.
+  origin: [40, 0],
+  type: "ifc"
+});
+const listed: readonly BimModelMetadata[] = adapter.listModels?.() ?? [];
+void listed;
+await adapter.unloadModel?.(modelId);
+
+const element: BimElementMetadata = {
+  expressID: 12,
+  ifcGuid: "guid",
+  ifcType: "IfcWall",
+  modelId
+};
+const ref: BimElementRef = {
+  expressID: element.expressID,
+  modelId: element.modelId
+};
+const properties: BimElementProperties = {
+  expressID: ref.expressID,
+  modelId: ref.modelId,
+  psets: []
+};
+void properties;
+const fetched = await adapter.getElementProperties?.([ref]);
+fetched?.[0]?.psets.length;
+
+// @ts-expect-error modelId is required provenance.
+const missingModel: BimElementMetadata = {
+  expressID: 12,
+  ifcGuid: "guid",
+  ifcType: "IfcWall"
+};
+// @ts-expect-error BimElementRef requires modelId next to expressID.
+const missingRef: BimElementRef = { expressID: 12 };
+const numericModel: BimElementMetadata = {
+  expressID: 12,
+  ifcGuid: "guid",
+  ifcType: "IfcWall",
+  // @ts-expect-error modelId is a string identifier, not a number.
+  modelId: 1
+};
+void missingModel;
+void missingRef;
+void numericModel;
+`
+);
+
+writeFileSync(
   path.join(tmpDir, "tsconfig.json"),
   JSON.stringify(
     {
@@ -2850,6 +2921,26 @@ writeFileSync(
   )
 );
 
+writeFileSync(
+  path.join(tmpDir, "bim-tsconfig.json"),
+  JSON.stringify(
+    {
+      extends: "../../tsconfig.base.json",
+      compilerOptions: {
+        lib: ["ES2022"],
+        noEmit: true,
+        paths: {
+          "@denovo/canvas-bim": ["../../packages/bim/dist/index.d.ts"],
+          "@denovo/canvas-core": ["../../packages/core/dist/index.d.ts"]
+        }
+      },
+      include: ["bim-smoke.ts"]
+    },
+    null,
+    2
+  )
+);
+
 try {
   execFileSync("pnpm", ["exec", "tsc", "-p", path.join(tmpDir, "tsconfig.json")], {
     cwd: root,
@@ -2866,6 +2957,14 @@ try {
   execFileSync(
     "pnpm",
     ["exec", "tsc", "-p", path.join(tmpDir, "worker-tsconfig.json")],
+    {
+      cwd: root,
+      stdio: "pipe"
+    }
+  );
+  execFileSync(
+    "pnpm",
+    ["exec", "tsc", "-p", path.join(tmpDir, "bim-tsconfig.json")],
     {
       cwd: root,
       stdio: "pipe"

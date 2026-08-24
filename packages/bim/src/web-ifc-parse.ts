@@ -30,14 +30,19 @@ import {
 
 import {
   BIM_METADATA_KEY,
+  type BimModelOrigin,
   type BimPropertySet
 } from "./index.js";
 import { resolveIfcCategory } from "./ifc-categories.js";
 
 export const DEFAULT_MAX_ELEMENTS = 5000;
 
+const ELEMENT_NODE_PREFIX = "ifc-element-";
+const STOREY_LAYER_PREFIX = "ifc-storey-";
+
 export type BimParsedElement = {
   color: string;
+  expressID: number;
   ifcGuid: string;
   ifcName?: string;
   ifcType: string;
@@ -47,6 +52,93 @@ export type BimParsedElement = {
   normals?: Float32Array;
   positions: Float32Array;
 };
+
+/**
+ * One staged IFC model ready for document assembly. Adapters keep a list of
+ * these; {@link assembleBimDocument} federates them.
+ */
+export type BimStagedModel = {
+  readonly elements: readonly BimParsedElement[];
+  readonly hierarchy?: BimSpatialHierarchy | undefined;
+  readonly modelId: string;
+  readonly modelName?: string | undefined;
+  readonly origin?: BimModelOrigin | undefined;
+};
+
+/**
+ * Allocates a document-safe model id. `requested` is sanitized; collisions
+ * against `taken` get a numeric suffix (`sample`, `sample-2`).
+ */
+export function allocateModelId(
+  requested: string | undefined,
+  taken: Iterable<string>
+): string {
+  const used = new Set(taken);
+  const base = sanitizeModelId(requested) ?? "ifc-model";
+
+  if (!used.has(base)) {
+    return base;
+  }
+
+  let suffix = 2;
+  let candidate = `${base}-${suffix}`;
+
+  while (used.has(candidate)) {
+    suffix += 1;
+    candidate = `${base}-${suffix}`;
+  }
+
+  return candidate;
+}
+
+/**
+ * Accepts a caller-supplied model origin or omits it. Non-finite values
+ * and tuples that are not length 3 fail explicitly.
+ */
+export function resolveModelOrigin(
+  origin: readonly number[] | undefined
+): BimModelOrigin | undefined {
+  if (origin === undefined) {
+    return undefined;
+  }
+
+  if (origin.length !== 3) {
+    throw new Error("Bim model origin must be a 3-tuple of finite numbers.");
+  }
+
+  const x = origin[0];
+  const y = origin[1];
+  const z = origin[2];
+
+  if (
+    x === undefined ||
+    y === undefined ||
+    z === undefined ||
+    !Number.isFinite(x) ||
+    !Number.isFinite(y) ||
+    !Number.isFinite(z)
+  ) {
+    throw new Error("Bim model origin must be a 3-tuple of finite numbers.");
+  }
+
+  return [x, y, z];
+}
+
+function sanitizeModelId(name: string | undefined): string | undefined {
+  if (name === undefined) {
+    return undefined;
+  }
+
+  const cleaned = name
+    .replace(/[^A-Za-z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+  if (cleaned.length === 0) {
+    return undefined;
+  }
+
+  return /^[A-Za-z]/.test(cleaned) ? cleaned : `m-${cleaned}`;
+}
 
 /**
  * Storey layers resolved from the IFC spatial structure. Layers are the
@@ -151,7 +243,7 @@ export function buildSpatialHierarchy(
         };
       }
 
-      const id = `ifc-storey-${expressID}`;
+      const id = `${STOREY_LAYER_PREFIX}${expressID}`;
       layerIdByStoreyId.set(expressID, id);
       storeyLayers.push({
         id,
@@ -269,12 +361,13 @@ function buildElement(
 
   return {
     color: category.color ?? "#9ca3af",
+    expressID,
     ifcGuid,
     ifcType,
     ...(ifcName === undefined ? {} : { ifcName }),
     indices: Uint32Array.from(indices),
     layerId: category.layerId,
-    nodeId: `ifc-element-${expressID}`,
+    nodeId: `${ELEMENT_NODE_PREFIX}${expressID}`,
     ...(hasNormals ? { normals: Float32Array.from(normals) } : {}),
     positions: Float32Array.from(positions)
   };
@@ -469,17 +562,19 @@ function attachPsetToElements(
 
 /** Builds the canonical `node.metadata[BIM_METADATA_KEY]` payload. */
 export function buildBimMetadata(element: {
-  ifcGuid: string;
-  ifcType: string;
-  ifcName?: string;
   expressID: number;
+  ifcGuid: string;
+  ifcName?: string;
+  ifcType: string;
+  modelId: string;
 }): Record<string, JsonValue> {
   return {
     [BIM_METADATA_KEY]: {
+      expressID: element.expressID,
       ifcGuid: element.ifcGuid,
-      ifcType: element.ifcType,
       ...(element.ifcName === undefined ? {} : { ifcName: element.ifcName }),
-      expressID: element.expressID
+      ifcType: element.ifcType,
+      modelId: element.modelId
     }
   };
 }
@@ -526,84 +621,114 @@ function layerNameForId(layerId: string): string {
 }
 
 /**
- * Assembles parsed elements into the canonical document + geometry store:
- * one `mesh` node per element, category layers (overridden by storey
- * layers when a spatial hierarchy is supplied), `AssetRef` geometry
- * references, and a camera framed on the imported bounds.
+ * Assembles one or more staged models into the canonical document +
+ * geometry store: one `mesh` node per element, storey layers (category
+ * layers for uncontained leftovers), `AssetRef` geometry references, and
+ * a camera framed on the combined bounds.
+ *
+ * A single model keeps unprefixed ids (`ifc-element-12`). Two or more
+ * models qualify element and storey ids with `modelId` so express ids
+ * cannot collide. Category layers stay shared.
  */
 export function assembleBimDocument(
-  elements: readonly BimParsedElement[],
+  models: readonly BimStagedModel[],
   geometryStore: CanvasGeometryStore,
-  sceneId: string,
-  hierarchy?: BimSpatialHierarchy | undefined
+  sceneId: string
 ): { document: CanvasDocument; nodes: Canvas3DNode[] } {
   geometryStore.clear();
 
   const layers = new Map<string, CanvasLayer>();
   const nodes: Canvas3DNode[] = [];
   const assets: AssetRef[] = [];
+  const federated = models.length > 1;
 
-  if (hierarchy) {
-    for (const storey of hierarchy.storeyLayers) {
-      layers.set(storey.id, {
-        id: storey.id,
-        name: storey.name,
-        visible: true,
-        locked: false,
-        metadata: {}
-      });
+  for (const model of models) {
+    const qualify = (kind: "element" | "storey", expressID: number): string => {
+      const prefix =
+        kind === "element" ? ELEMENT_NODE_PREFIX : STOREY_LAYER_PREFIX;
+      return federated
+        ? `${prefix}${model.modelId}-${expressID}`
+        : `${prefix}${expressID}`;
+    };
+
+    const storeyRemap = new Map<string, string>();
+
+    if (model.hierarchy) {
+      for (const storey of model.hierarchy.storeyLayers) {
+        const expressID = expressIdFromPrefixedId(storey.id, STOREY_LAYER_PREFIX);
+        const layerId = qualify("storey", expressID);
+        storeyRemap.set(storey.id, layerId);
+        layers.set(layerId, {
+          id: layerId,
+          locked: false,
+          metadata: {},
+          name: federated
+            ? `${model.modelName ?? model.modelId} / ${storey.name}`
+            : storey.name,
+          visible: true
+        });
+      }
     }
-  }
 
-  for (const element of elements) {
-    if (!layers.has(element.layerId)) {
-      layers.set(element.layerId, {
-        id: element.layerId,
-        name: layerNameForId(element.layerId),
-        visible: true,
+    for (const element of model.elements) {
+      const layerId = storeyRemap.get(element.layerId) ?? element.layerId;
+
+      if (!layers.has(layerId)) {
+        layers.set(layerId, {
+          id: layerId,
+          locked: false,
+          metadata: {},
+          name: layerNameForId(layerId),
+          visible: true
+        });
+      }
+
+      const nodeId = qualify("element", element.expressID);
+      const geometry = toMeshGeometry(element);
+      const assetId = `ifc-geometry-${nodeId}`;
+      const assetUri = federated
+        ? `ifc://model/${model.modelId}/element/${element.expressID}`
+        : `ifc://element/${element.expressID}`;
+
+      nodes.push({
+        color: element.color,
+        geometryAssetId: assetId,
+        id: nodeId,
+        layerId,
         locked: false,
-        metadata: {}
-      });
+        metadata: buildBimMetadata({
+          expressID: element.expressID,
+          ifcGuid: element.ifcGuid,
+          ifcType: element.ifcType,
+          modelId: model.modelId,
+          ...(element.ifcName === undefined ? {} : { ifcName: element.ifcName })
+        }),
+        parentId: null,
+        position: model.origin
+          ? [model.origin[0], model.origin[1], model.origin[2]]
+          : [0, 0, 0],
+        rotation: [0, 0, 0],
+        scale: [1, 1, 1],
+        type: "mesh",
+        visible: true,
+        wireframe: false
+      } as Canvas3DNode);
+      assets.push(
+        createMeshGeometryAssetRef(assetId, geometry, {
+          uri: assetUri
+        }) as AssetRef
+      );
+      geometryStore.set(assetId, geometry);
     }
-
-    const geometry = toMeshGeometry(element);
-    const assetId = `ifc-geometry-${element.nodeId}`;
-
-    nodes.push({
-      color: element.color,
-      geometryAssetId: assetId,
-      id: element.nodeId,
-      layerId: element.layerId,
-      locked: false,
-      metadata: buildBimMetadata({
-        expressID: expressIdFromNodeId(element.nodeId),
-        ifcGuid: element.ifcGuid,
-        ifcType: element.ifcType,
-        ...(element.ifcName === undefined ? {} : { ifcName: element.ifcName })
-      }),
-      parentId: null,
-      position: [0, 0, 0],
-      rotation: [0, 0, 0],
-      scale: [1, 1, 1],
-      visible: true,
-      wireframe: false,
-      type: "mesh"
-    } as Canvas3DNode);
-    assets.push(
-      createMeshGeometryAssetRef(assetId, geometry, {
-        uri: `ifc://element/${expressIdFromNodeId(element.nodeId)}`
-      }) as AssetRef
-    );
-    geometryStore.set(assetId, geometry);
   }
 
   if (layers.size === 0) {
     layers.set("default", {
       id: "default",
-      name: "Default",
-      visible: true,
       locked: false,
-      metadata: {}
+      metadata: {},
+      name: "Default",
+      visible: true
     });
   }
 
@@ -632,9 +757,8 @@ export function assembleBimDocument(
   };
 }
 
-function expressIdFromNodeId(nodeId: string): number {
-  const prefix = "ifc-element-";
-  const value = Number(nodeId.slice(prefix.length));
+function expressIdFromPrefixedId(id: string, prefix: string): number {
+  const value = Number(id.slice(prefix.length));
   return Number.isFinite(value) ? value : -1;
 }
 
@@ -664,10 +788,14 @@ function frameCameraForMeshes(
       continue;
     }
 
+    const ox = node.position[0] ?? 0;
+    const oy = node.position[1] ?? 0;
+    const oz = node.position[2] ?? 0;
+
     for (let index = 0; index + 2 < geometry.positions.length; index += 3) {
-      const x = geometry.positions[index] ?? 0;
-      const y = geometry.positions[index + 1] ?? 0;
-      const z = geometry.positions[index + 2] ?? 0;
+      const x = (geometry.positions[index] ?? 0) + ox;
+      const y = (geometry.positions[index + 1] ?? 0) + oy;
+      const z = (geometry.positions[index + 2] ?? 0) + oz;
       minX = Math.min(minX, x);
       minY = Math.min(minY, y);
       minZ = Math.min(minZ, z);

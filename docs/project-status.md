@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: 2026-08-22.
+Last updated: 2026-08-24.
 
 This is the canonical project status index. Keep milestone definitions in
 [Vision and Milestones](./vision-and-milestones.md); keep chronological evidence
@@ -266,6 +266,15 @@ BIM stay optional packages, not a second product identity. See
   mount `@denovo/canvas`, verified with typecheck, uncached build,
   public-api, and the full adapter browser smoke suite. See
   [2026-08-22 adapter facade mount](./history/2026-08-22-adapter-facade-mount.md).
+- BIM multi-model federation landed on 2026-08-23: adapters stage more
+  than one IFC at once, `toDocument()` emits one merged document, and
+  property reads are keyed by `{ modelId, expressID }`. Federated
+  `origin` writes `node.position` and widens the camera frame. Browser
+  QA: playground `Federate copy` plus `verify:bim-federation`. See
+  [2026-08-23 BIM multi-model federation](./history/2026-08-23-bim-multi-model-federation.md),
+  [2026-08-23 BIM federated origin](./history/2026-08-23-bim-federated-origin.md),
+  and
+  [2026-08-24 BIM federation browser QA](./history/2026-08-24-bim-federation-browser.md).
 
 ## Next
 
@@ -288,15 +297,18 @@ BIM stay optional packages, not a second product identity. See
    WebGPU adapter and a pinned-environment frame budget gate are
    explicitly deferred (rationale in
    [2026-08-22 next contract decision](./history/2026-08-22-next-contract-decision.md)).
-3. **B-item residual risks:** storey layers landed 2026-08-22 — the IFC
-   importer maps each `IfcBuildingStorey` to a layer ("Level 1", "Level 2")
-   and places contained elements there, giving native level isolation
-   (`artifacts/verification/bim-storey-isolation.png`); instance surface
-   points landed the same day — `resolveSurfacePoint` covers `"instances"`
-   with correlated `instances.instance` hits and the measurement tool
-   accepts them (browser-verified). Remaining: BIM multi-model federation.
-   See [2026-08-22 BIM storey layers](./history/2026-08-22-bim-storey-layers.md)
-   and [2026-08-22 mesh surface points](./history/2026-08-22-mesh-surface-points.md).
+3. **B-item residual risks (complete):** storey layers (2026-08-22),
+   instance surface points (2026-08-22), and BIM multi-model federation
+   (2026-08-23) have all landed. Federation: `loadModel` is additive,
+   `toDocument()` merges staged models, `expressID` pairs with `modelId`,
+   a single model keeps unprefixed ids, and `origin` places a model via
+   `node.position`. Browser proof: playground `Federate copy` plus
+   `verify:bim-federation`. See
+   [2026-08-22 BIM storey layers](./history/2026-08-22-bim-storey-layers.md),
+   [2026-08-22 mesh surface points](./history/2026-08-22-mesh-surface-points.md),
+   [2026-08-23 BIM multi-model federation](./history/2026-08-23-bim-multi-model-federation.md),
+   and
+   [2026-08-23 BIM federated origin](./history/2026-08-23-bim-federated-origin.md).
 
 ## Blocked
 
@@ -304,18 +316,15 @@ BIM stay optional packages, not a second product identity. See
 
 ## Evidence
 
-- `pnpm typecheck`: passed on 2026-08-22 (32 tasks) after the worker task
-  queue slice; previously 30/30 after the adapter facade mount, and
-  30/30 on 2026-08-21.
-- `pnpm build`: passed on 2026-08-22 (21 packages/apps) after the worker
-  task queue slice; previously `--force` 20/20 after the adapter facade
-  mount.
-- `pnpm verify:public-api`: passed on 2026-08-22 after the worker task
-  queue slice, including the new facade `./worker` assertion and the
-  generated-declaration `any` audit. Previously passed after the adapter
-  facade mount with `applyCommandsToStoredDocument`, `history.changed`,
-  geometry-store fixtures, `CanvasResolvedBackend` rejecting `webgpu`, and
-  `loadAsset` / `persistCanvasGeometryStore`.
+- `pnpm typecheck`: passed on 2026-08-23 (32 tasks) after federated
+  origin; previously 32/32 after BIM federation and the 2026-08-22 worker
+  task queue slice.
+- `pnpm build`: passed on 2026-08-23 (21 packages/apps) after federated
+  origin; previously 21/21 after BIM federation.
+- `pnpm verify:public-api`: passed on 2026-08-23 after federated origin,
+  including bim-smoke fixtures for a 3-tuple `origin` and a rejected
+  2-tuple, plus required `modelId` / `BimElementRef` pairing. Previously
+  passed after BIM federation the same day.
 - `pnpm verify:m4-performance`: passed on 2026-08-22 (11 named checks) —
   LOD schema defaults/validation/round-trip and chunk-loader ordering,
   budget batching, cancellation, and recovery.
@@ -326,10 +335,21 @@ BIM stay optional packages, not a second product identity. See
   triangles 664,608 → 17,312 (−97.4%) at equal draw calls; hit testing
   resolves through the active LOD level.
 - [2026-08-22 M4 LOD controls, chunk loading, and batching gate](./history/2026-08-22-m4-lod-chunk-loading.md)
-- `pnpm verify:bim-worker`: passed on 2026-08-22 (5 named checks) — real
-  web-ifc parse of the sample IFC through the worker queue, document
-  assembly with `__bim` provenance, property-set best-effort reads,
-  maxElements skip accounting, explicit non-IFC rejection.
+- `pnpm verify:bim-worker`: passed on 2026-08-23 (7 named checks) — the
+  2026-08-22 single-model suite, federation without id collision, and
+  `bim-worker-federated-origin-offsets-nodes-and-camera` (`beta` at
+  `[40, 0, 0]`, camera `target.x` greater than the single-model frame).
+  Previously 6 checks after federation, 5 on 2026-08-22.
+- `pnpm verify:bim-federation`: passed on 2026-08-24 (1 named check) —
+  Chromium click of playground `Federate copy` yields
+  `sample:115@[0,0,0]` + `copy:115@[40,0,0]`, unique ids, camera
+  `target.x` 8.219 → 28.219, screenshot
+  `artifacts/verification/bim-federation.png`.
+- `pnpm verify:bim-rendering`: passed on 2026-08-24 (76 colors, resize,
+  no errors) after the playground federate control landed.
+- [2026-08-23 BIM multi-model federation](./history/2026-08-23-bim-multi-model-federation.md)
+- [2026-08-23 BIM federated origin](./history/2026-08-23-bim-federated-origin.md)
+- [2026-08-24 BIM federation browser QA](./history/2026-08-24-bim-federation-browser.md)
 - Section plane verified in Chromium via ego-browser on 2026-08-22:
   upper-half geometry ratio 0.0952 → 0 under
   `setSectionPlane({normal:[0,-1,0], constant:0})`, lower half unchanged,

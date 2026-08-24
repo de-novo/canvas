@@ -26,6 +26,13 @@
         <div class="controls">
           <button id="reload" type="button">Reload sample</button>
           <button
+            id="federate"
+            type="button"
+            data-denovo-control="federate-copy"
+          >
+            Federate copy
+          </button>
+          <button
             id="measure-surface"
             type="button"
             data-denovo-control="measure-surface"
@@ -35,6 +42,9 @@
         </div>
         <p class="status">
           Status: <output id="status">idle</output>
+        </p>
+        <p class="count">
+          Models: <output id="model-count" data-bim-models="0">—</output>
         </p>
         <p class="count">
           Elements: <output id="element-count">—</output>

@@ -108,3 +108,6 @@ Each entry should include:
 - [2026-08-22 BIM storey layers](./2026-08-22-bim-storey-layers.md)
 - [2026-08-22 graph layout adapters](./2026-08-22-graph-layout-adapters.md)
 - [2026-08-22 graph field host presentation](./2026-08-22-graph-field-host-presentation.md)
+- [2026-08-23 BIM multi-model federation](./2026-08-23-bim-multi-model-federation.md)
+- [2026-08-23 BIM federated origin](./2026-08-23-bim-federated-origin.md)
+- [2026-08-24 BIM federation browser QA](./2026-08-24-bim-federation-browser.md)
