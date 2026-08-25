@@ -18,6 +18,8 @@ import {
   addLayer,
   listNodes,
   reorderLayer,
+  setLayerLocked,
+  setLayerVisible,
   stackBox,
   defineCanvasPlugin,
   defineDocument,
@@ -185,6 +187,9 @@ const NAMED_STACK_ID = "named-stack-plus-y";
 
 type VanillaNamedOpsSnapshot = {
   changed: boolean;
+  layerId: string;
+  layerLocked: boolean;
+  layerVisible: boolean;
   on: string | null;
   position: readonly [number, number, number] | null;
   stackedId: string;
@@ -219,10 +224,30 @@ function findNamedStackTarget(document: CanvasDocument) {
   return node;
 }
 
+function readAuthoringLayerFlags(document: CanvasDocument): {
+  layerId: string;
+  layerLocked: boolean;
+  layerVisible: boolean;
+} {
+  const layer = document.scene.layers.find(
+    (candidate) => candidate.id === AUTHORING_LAYER_ID
+  );
+
+  return {
+    layerId: AUTHORING_LAYER_ID,
+    layerLocked: layer?.locked ?? false,
+    layerVisible: layer?.visible ?? true
+  };
+}
+
 function publishNamedStack(document: CanvasDocument, changed: boolean): VanillaNamedOpsSnapshot {
   const stacked = document.scene.nodes.find((node) => node.id === NAMED_STACK_ID);
+  const layer = readAuthoringLayerFlags(document);
   const snapshot: VanillaNamedOpsSnapshot = {
     changed,
+    layerId: layer.layerId,
+    layerLocked: layer.layerLocked,
+    layerVisible: layer.layerVisible,
     on: findNamedStackTarget(document)?.id ?? null,
     position:
       stacked?.type === "box"
@@ -240,6 +265,8 @@ function publishNamedStack(document: CanvasDocument, changed: boolean): VanillaN
   canvasStage.dataset.denovoNamedStackChanged = String(changed);
   canvasStage.dataset.denovoNamedStackPosition =
     snapshot.position?.join(",") ?? "none";
+  canvasStage.dataset.denovoAuthoringVisible = String(layer.layerVisible);
+  canvasStage.dataset.denovoAuthoringLocked = String(layer.layerLocked);
   playgroundWindow().__vanillaNamedOps = snapshot;
   return snapshot;
 }
@@ -1109,24 +1136,26 @@ reorderLayerButton.addEventListener("click", () => {
 toggleLayerVisibleButton.addEventListener("click", () => {
   enqueueEditorAction(async () => {
     const layer = requireAuthoringLayer();
-    const command: CanvasCommand = {
-      layerId: layer.id,
-      patch: { visible: !layer.visible },
-      type: "layer.update"
-    };
-    await editor.dispatch(command);
+    const result = await editor.apply([
+      setLayerVisible({
+        layerId: layer.id,
+        visible: !layer.visible
+      })
+    ]);
+    publishNamedStack(editor.getState().document, result.changed);
   });
 });
 
 toggleLayerLockedButton.addEventListener("click", () => {
   enqueueEditorAction(async () => {
     const layer = requireAuthoringLayer();
-    const command: CanvasCommand = {
-      layerId: layer.id,
-      patch: { locked: !layer.locked },
-      type: "layer.update"
-    };
-    await editor.dispatch(command);
+    const result = await editor.apply([
+      setLayerLocked({
+        layerId: layer.id,
+        locked: !layer.locked
+      })
+    ]);
+    publishNamedStack(editor.getState().document, result.changed);
   });
 });
 

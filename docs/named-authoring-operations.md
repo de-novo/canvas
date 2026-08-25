@@ -344,7 +344,9 @@ Annotation and HTML stay off this helper.
   geometry; `listLayers` returns `ListedLayer[]` without metadata;
   extra fields and illegal unions are `@ts-expect-error`;
 - playground storey isolation calls `setLayerVisible` and reads Level 2
-  through `listNodes`, not a hand-built `layer.update`.
+  through `listNodes`, not a hand-built `layer.update`. Vanilla layer
+  toggles call `setLayerVisible` / `setLayerLocked`, not a hand-built
+  `layer.update`.
 
 `pnpm typecheck`, `pnpm build`, `pnpm verify:public-api`,
 `pnpm verify:editor-core`.

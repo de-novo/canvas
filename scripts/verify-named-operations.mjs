@@ -422,7 +422,7 @@ try {
 
 const vanilla = await startApp("@denovo/canvas-vanilla-example", 5190);
 try {
-  await check("named-ops-vanilla-stack-plus-y-uses-the-helper", async () => {
+  await check("named-ops-vanilla-stack-and-layer-toggles-use-the-helpers", async () => {
     const browser = await chromium.launch();
     try {
       const page = await browser.newPage({
@@ -512,6 +512,39 @@ try {
       assert.equal(again?.changed, false);
       assert.equal(again?.undoDepth, stacked.undoDepth);
       assert.deepEqual(again?.position, [0, 1.2, 0]);
+
+      await page.locator('[data-denovo-control="toggle-layer-visible"]').click();
+      await page.waitForFunction(
+        () => window.__vanillaNamedOps?.layerVisible === false,
+        undefined,
+        { timeout: 10_000 }
+      );
+      const hidden = await page.evaluate(() => window.__vanillaNamedOps);
+      assert.equal(hidden?.changed, true);
+      assert.equal(hidden?.layerId, "authoring");
+      assert.equal(hidden?.layerVisible, false);
+      assert.equal(hidden?.layerLocked, false);
+      assert.equal(hidden?.undoDepth, again.undoDepth + 1);
+      assert.equal(
+        await page.locator("#stage").getAttribute("data-denovo-authoring-visible"),
+        "false"
+      );
+
+      await page.locator('[data-denovo-control="toggle-layer-locked"]').click();
+      await page.waitForFunction(
+        () => window.__vanillaNamedOps?.layerLocked === true,
+        undefined,
+        { timeout: 10_000 }
+      );
+      const locked = await page.evaluate(() => window.__vanillaNamedOps);
+      assert.equal(locked?.changed, true);
+      assert.equal(locked?.layerVisible, false);
+      assert.equal(locked?.layerLocked, true);
+      assert.equal(locked?.undoDepth, hidden.undoDepth + 1);
+      assert.equal(
+        await page.locator("#stage").getAttribute("data-denovo-authoring-locked"),
+        "true"
+      );
 
       assert.deepEqual(consoleErrors, []);
     } finally {

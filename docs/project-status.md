@@ -403,6 +403,11 @@ service map in `apps/playground-network`. See
 
 ## Evidence
 
+- Vanilla layer toggles (2026-08-25). Hide and lock call
+  `setLayerVisible` / `setLayerLocked` instead of raw `layer.update`.
+  `pnpm verify:named-operations` 3/3.
+  `pnpm verify:docs` 152 Markdown files, 489/489 local targets. See
+  [2026-08-25 vanilla layer named ops](./history/2026-08-25-vanilla-layer-named-ops.md).
 - Named operations `setText` (2026-08-25). Compiles to `node.update`
   of `text` on a 2D `text` node. Non-text is `invalid-command`.
   `pnpm typecheck` 36/36. `pnpm build` 25/25.

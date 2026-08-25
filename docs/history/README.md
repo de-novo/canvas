@@ -142,5 +142,6 @@ Each entry should include:
 - [2026-08-25 Named operations setLayerName](./2026-08-25-named-operations-set-layer-name.md)
 - [2026-08-25 Named operations setNodeLayer](./2026-08-25-named-operations-set-node-layer.md)
 - [2026-08-25 Named operations setText](./2026-08-25-named-operations-set-text.md)
+- [2026-08-25 Vanilla layer named ops](./2026-08-25-vanilla-layer-named-ops.md)
 - [2026-08-25 Explicit WebGPU 3D](./2026-08-25-webgpu-explicit-3d.md)
 - [2026-08-25 WebGPU section plane](./2026-08-25-webgpu-section-plane.md)
