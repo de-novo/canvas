@@ -40,4 +40,5 @@ First shipped named authoring helper. Humans and agents share
 
 ## Next action
 
-Implement document-only `stackBox` against the named-operations contract.
+Done for slice 1. Slice 2 evidence is in
+[2026-08-24 named operations stackBox](./2026-08-24-named-operations-stack-box.md).

@@ -11,13 +11,22 @@ Repository governance files live at the repo root:
 
 ## Core Documents
 
-- [Agent Operating Policy](./agent-operating-policy.md): how agents manage
-  goals, project status, documentation, verification, decisions, and history.
-- [Agent Rules](./agent-rules.md): enforceable repository rules for agents
-  changing code, public contracts, rendering, persistence, dependencies, and
-  documentation.
+- [Contributor Operating Policy](./contributor-operating-policy.md): how human
+  and automated contributors manage scope, project status, documentation,
+  verification, decisions, history, review, and handoff.
+- [Contributor Rules](./contributor-rules.md): enforceable repository rules for
+  code, public contracts, rendering, persistence, dependencies, verification,
+  documentation, and review.
+- [Contributor Automation](./contributor-automation.md): ownership and discovery
+  rules for `AGENTS.md`, repository skills, deterministic verifiers, status,
+  and history evidence.
 - [Project Status](./project-status.md): the canonical status index for current
   phase, completed work, active work, blockers, and evidence.
+- [Product Identity](./product-identity.md): the facade we are — open-source
+  impressiveness restated as our documents, not hosted upstream rooms.
+- [Framework Surface](./framework-surface.md): kinds, properties, and
+  operations humans and agents write; engines and backends stay off that
+  path.
 - [M0 Product Contract](./m0-product-contract.md): the first stable public
   contract for packages, documents, commands, storage, extension, styling, and
   the default facade.
@@ -28,7 +37,10 @@ Repository governance files live at the repo root:
   exact world-aligned box-on-box surface placement, transient ghost, strict
   surface-query capability, lifecycle, no-fallback, and verification contract.
 - [Named Authoring Operations](./named-authoring-operations.md): sayable
-  helpers (`setLayerVisible`, `stackBox`, `listNodes`) that compile to
+  helpers (`setLayerVisible`, `setLayerLocked`, `stackBox`, `listNodes`,
+  `listLayers`, `setNodeVisible`, `setNodeLocked`, `removeNode`,
+  `removeEdge`, `removeLayer`, `addLayer`, `reorderLayer`,
+  `setSparklineStyle`, `setLayerName`, `setNodeLayer`, `setText`) that compile to
   existing commands so host UI and agents share one function.
 - [M8 Diagram Contract](./m8-diagram-contract.md): 2D `edge` / `text` / `html`
   vocabulary frozen in `0.2.0`, port and path-style rules, graph paste/delete,
@@ -37,7 +49,7 @@ Repository governance files live at the repo root:
   policy, default import shape, backend config, and smoke verification.
 - [Architecture](./architecture.md): package layers and runtime boundaries.
 - [Rendering Backend Strategy](./rendering-backend-strategy.md): implemented
-  Canvas2D/WebGL2 backends, reserved WebGPU vocabulary, strict explicit
+  Canvas2D/WebGL2 `auto` backends, explicit 3D WebGPU, strict explicit
   selection, and capability detection.
 - [Vision and Milestones](./vision-and-milestones.md): what the SDK should be
   able to express and the staged roadmap.
@@ -56,7 +68,7 @@ Repository governance files live at the repo root:
   Auth does for auth/database ecosystems.
 - [History](./history/README.md): chronological evidence for durable project
   changes, including the M3 authoring implementation, earlier verified M3
-  slices, public type-contract hardening, and agent-rule enforcement.
+  slices, public type-contract hardening, and contributor-rule enforcement.
 
 ## Product Rule
 
@@ -68,3 +80,7 @@ The product should make common 2D/3D view/edit workflows easier than using
 Three.js, React Three Fiber, Canvas2D, xeokit, web-ifc, and related libraries
 directly. Depending on those libraries is acceptable; exposing their complexity
 to every app developer is the problem.
+
+Who we are, the absorption test, and the first showcases live in
+[Product Identity](./product-identity.md). Engines may stay. Their catalogs
+must not become ours.

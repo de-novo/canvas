@@ -2,6 +2,11 @@
 
 ## Product Vision
 
+Identity — the facade, the absorption test, and the first showcases — is
+defined in [Product Identity](./product-identity.md). The user-facing
+kind and property layer is [Framework Surface](./framework-surface.md).
+This file keeps expression targets and the staged roadmap.
+
 Denovo Canvas is a framework-agnostic web SDK for viewing, editing, storing, and
 extending 2D/3D canvas documents.
 
@@ -34,8 +39,8 @@ project.
 This does not mean avoiding dependencies. Denovo should depend on strong
 libraries where appropriate and turn them into a simpler product-facing SDK.
 
-Implemented rendering backends are WebGL2 and Canvas2D. WebGPU stays in the
-backend vocabulary as a future adapter milestone; `auto` does not select it.
+Implemented `auto` backends are WebGL2 and Canvas2D. Explicit
+`backend: "webgpu"` is a 3D built-in; `auto` does not select it.
 The document model should describe what a scene is, while runtime adapters
 decide how it is rendered on the current device. Explicit backend requests are
 strict; only `auto` may choose among genuinely implemented, compatible

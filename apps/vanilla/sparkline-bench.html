@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+  <head><meta charset="utf-8" /><title>sparkline-bench</title></head>
+  <body>
+    <div id="stage" style="position:fixed;inset:0;"></div>
+    <script type="module">
+      import {
+        connectEditorToCanvas,
+        createCanvas,
+        createEditor,
+        createSelectTool,
+        defineDocument,
+        listNodes,
+        setSparklineStyle
+      } from "@denovo/canvas";
+
+      const STROKE = [34, 197, 94];
+      const MARKER = [100, 116, 139];
+
+      const documentModel = defineDocument({
+        id: "sparkline-bench",
+        scene: {
+          background: "#111827",
+          id: "sparkline-bench-scene",
+          layers: [{ id: "main", name: "Main" }],
+          mode: "2d",
+          nodes: [
+            {
+              id: "spark",
+              layerId: "main",
+              position: [40, 40],
+              props: {
+                fill: "none",
+                height: 80,
+                stroke: "#22c55e",
+                style: "linear",
+                values: [2, 8, 3, 12, 6, 14, 4],
+                width: 240
+              },
+              type: "plugin.denovo.sparkline"
+            }
+          ]
+        }
+      });
+
+      const host = document.getElementById("stage");
+      const runtime = createCanvas(host, { document: documentModel });
+      const editor = createEditor({ document: documentModel });
+      connectEditorToCanvas(editor, runtime);
+      editor.registerTool(createSelectTool({ id: "spark.select" }));
+      editor.activateTool("spark.select");
+
+      function countColor(image, target) {
+        let count = 0;
+        for (let index = 0; index < image.data.length; index += 4) {
+          if (
+            Math.abs(image.data[index] - target[0]) < 18 &&
+            Math.abs(image.data[index + 1] - target[1]) < 18 &&
+            Math.abs(image.data[index + 2] - target[2]) < 18
+          ) {
+            count += 1;
+          }
+        }
+        return count;
+      }
+
+      function sample(runtime) {
+        runtime.render();
+        const canvas = runtime.canvas;
+        const scratch = document.createElement("canvas");
+        scratch.width = canvas.width;
+        scratch.height = canvas.height;
+        const context = scratch.getContext("2d");
+        context.drawImage(canvas, 0, 0);
+        const image = context.getImageData(0, 0, scratch.width, scratch.height);
+        return {
+          marker: countColor(image, MARKER),
+          stroke: countColor(image, STROKE)
+        };
+      }
+
+      try {
+        await runtime.ready;
+        const listed = listNodes(editor.getState().document);
+        const linear = sample(runtime);
+        await editor.apply([
+          setSparklineStyle({ nodeId: "spark", style: "step" })
+        ]);
+        const stepped = sample(runtime);
+        window.__sparklineBench = {
+          iframeCount: document.querySelectorAll("iframe").length,
+          listedType: listed.find((node) => node.id === "spark")?.type ?? null,
+          linearStroke: linear.stroke,
+          linearMarker: linear.marker,
+          stepStroke: stepped.stroke,
+          stepMarker: stepped.marker,
+          style: editor.getState().document.scene.nodes[0]?.props?.style ?? null,
+          undoDepth: editor.getState().history.undoDepth
+        };
+      } catch (error) {
+        window.__sparklineBenchError = String(error);
+      }
+    </script>
+  </body>
+</html>

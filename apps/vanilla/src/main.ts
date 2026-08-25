@@ -15,6 +15,10 @@ import {
   createSelectTool,
   createTransformTool,
   createUngroupNodesCommand,
+  addLayer,
+  listNodes,
+  reorderLayer,
+  stackBox,
   defineCanvasPlugin,
   defineDocument,
   definePluginCommand,
@@ -93,6 +97,8 @@ const undoControl = requireElement<HTMLButtonElement>("#undo");
 const redoControl = requireElement<HTMLButtonElement>("#redo");
 const reloadDocumentJsonButton =
   requireElement<HTMLButtonElement>("#reload-document-json");
+const stackPlusYControl =
+  requireElement<HTMLButtonElement>("#stack-box-plus-y");
 const statusOutput = requireElement<HTMLElement>("#selection-status");
 const toolOutput = requireElement<HTMLElement>("#tool-status");
 const AUTHORING_LAYER_ID = "authoring";
@@ -137,6 +143,7 @@ const actionButtons = [
   groupLastTwoControl,
   redoControl,
   reloadDocumentJsonButton,
+  stackPlusYControl,
   reorderLayerButton,
   resetViewControl,
   swapButton,
@@ -173,6 +180,69 @@ const createAuthoringId: CanvasCreateId = ({ mode, type }) => {
   authoringIdSequence += 1;
   return `authoring-${mode}-${type}-${authoringIdSequence}`;
 };
+
+const NAMED_STACK_ID = "named-stack-plus-y";
+
+type VanillaNamedOpsSnapshot = {
+  changed: boolean;
+  on: string | null;
+  position: readonly [number, number, number] | null;
+  stackedId: string;
+  undoDepth: number;
+};
+
+function playgroundWindow(): { __vanillaNamedOps?: VanillaNamedOpsSnapshot } {
+  return window as unknown as { __vanillaNamedOps?: VanillaNamedOpsSnapshot };
+}
+
+function findNamedStackTarget(document: CanvasDocument) {
+  const boxes = listNodes(document).filter(
+    (node) => node.type === "box" && node.visible && !node.locked
+  );
+  const preferred =
+    boxes.find((node) => node.id === "static-box") ?? boxes[0];
+
+  if (!preferred) {
+    return null;
+  }
+
+  const node = document.scene.nodes.find((candidate) => candidate.id === preferred.id);
+  if (
+    !node ||
+    node.type !== "box" ||
+    node.parentId != null ||
+    node.rotation.some((component) => component !== 0)
+  ) {
+    return null;
+  }
+
+  return node;
+}
+
+function publishNamedStack(document: CanvasDocument, changed: boolean): VanillaNamedOpsSnapshot {
+  const stacked = document.scene.nodes.find((node) => node.id === NAMED_STACK_ID);
+  const snapshot: VanillaNamedOpsSnapshot = {
+    changed,
+    on: findNamedStackTarget(document)?.id ?? null,
+    position:
+      stacked?.type === "box"
+        ? [
+            stacked.position[0],
+            stacked.position[1],
+            stacked.position[2]
+          ]
+        : null,
+    stackedId: NAMED_STACK_ID,
+    undoDepth: editor.getState().history.undoDepth
+  };
+  canvasStage.dataset.denovoNamedStackId = stacked?.id ?? "none";
+  canvasStage.dataset.denovoNamedStackOn = snapshot.on ?? "none";
+  canvasStage.dataset.denovoNamedStackChanged = String(changed);
+  canvasStage.dataset.denovoNamedStackPosition =
+    snapshot.position?.join(",") ?? "none";
+  playgroundWindow().__vanillaNamedOps = snapshot;
+  return snapshot;
+}
 
 function provideAnnotationDraft() {
   const text = annotationTextControl.value.trim();
@@ -502,6 +572,10 @@ const sceneCommandPlugin = defineCanvasPlugin({
   }
 });
 
+const requestedBackend = new URLSearchParams(window.location.search).get(
+  "backend"
+);
+
 runtime = createCanvas(canvasStage, {
   controls: {
     enablePan: true,
@@ -511,10 +585,15 @@ runtime = createCanvas(canvasStage, {
     minDistance: 1
   },
   document: initialDocument,
+  ...(requestedBackend === "webgpu"
+    ? { renderer: { backend: "webgpu" as const } }
+    : {}),
   plugins: [sceneCommandPlugin],
-  onFrame: ({ elapsed }) => {
+  onFrame: ({ elapsed, render: renderStats }) => {
     const frameCount = Number(canvasStage.dataset.denovoFrameCount ?? "0") + 1;
     canvasStage.dataset.denovoFrameCount = String(frameCount);
+    canvasStage.dataset.denovoDrawCalls = String(renderStats?.drawCalls ?? 0);
+    canvasStage.dataset.denovoTriangles = String(renderStats?.triangles ?? 0);
     const current = runtime.current;
 
     if (
@@ -725,10 +804,8 @@ function createPropertyEditCommand(node: CanvasNode): CanvasCommand {
       return createNodeUpdateCommand(node, {
         html: node.html === "" ? "edited" : `${node.html} · edited`
       });
-    default: {
-      const exhaustiveNode: never = node;
-      return exhaustiveNode;
-    }
+    default:
+      return createNodeUpdateCommand(node, { visible: !node.visible });
   }
 }
 
@@ -763,6 +840,8 @@ function syncControlAvailability(document: CanvasDocument) {
   resetViewControl.disabled =
     interactionsBlocked ||
     !(currentRuntime.mode === "2d" && "resetViewState" in currentRuntime);
+  stackPlusYControl.disabled =
+    interactionsBlocked || document.scene.mode !== "3d";
 }
 
 function syncEditorStatus() {
@@ -998,18 +1077,12 @@ ungroupCurrentControl.addEventListener("click", () => {
 
 addLayerControl.addEventListener("click", () => {
   enqueueEditorAction(async () => {
-    const document = editor.getState().document;
-    const command: CanvasCommand = {
-      index: document.scene.layers.length,
-      layer: {
-        id: EXTRA_LAYER_ID,
-        locked: false,
-        name: "Authoring Extra",
-        visible: true
-      },
-      type: "layer.add"
-    };
-    await editor.dispatch(command);
+    await editor.apply([
+      addLayer({
+        layerId: EXTRA_LAYER_ID,
+        name: "Authoring Extra"
+      })
+    ]);
   });
 });
 
@@ -1024,12 +1097,12 @@ reorderLayerButton.addEventListener("click", () => {
       throw new Error("The explicit authoring layer is missing.");
     }
 
-    const command: CanvasCommand = {
-      index: currentIndex === 0 ? document.scene.layers.length - 1 : 0,
-      layerId: AUTHORING_LAYER_ID,
-      type: "layer.reorder"
-    };
-    await editor.dispatch(command);
+    await editor.apply([
+      reorderLayer({
+        index: currentIndex === 0 ? document.scene.layers.length - 1 : 0,
+        layerId: AUTHORING_LAYER_ID
+      })
+    ]);
   });
 });
 
@@ -1088,6 +1161,26 @@ reloadDocumentJsonButton.addEventListener("click", () => {
       documentReloadResult = "error";
       throw error;
     }
+  });
+});
+
+stackPlusYControl.addEventListener("click", () => {
+  enqueueEditorAction(async () => {
+    const document = editor.getState().document;
+    const target = findNamedStackTarget(document);
+
+    if (!target) {
+      throw new Error("No world-aligned box to stack on.");
+    }
+
+    const result = await editor.apply([
+      stackBox({
+        createId: () => NAMED_STACK_ID,
+        face: "+y",
+        on: target.id
+      })
+    ]);
+    publishNamedStack(editor.getState().document, result.changed);
   });
 });
 

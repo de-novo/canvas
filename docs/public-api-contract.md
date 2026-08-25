@@ -30,6 +30,12 @@ The default package must expose:
 - `defineCanvasConfig`
 - `defineCanvasPlugin`
 - `definePluginCommand`
+- `definePluginNodeKind`
+- `registerPluginNodeKind`
+- `getPluginNodeKind`
+- `parsePluginNodeProps`
+- `pluginNodeKindSupportsMode`
+- `isPluginNodeType`
 - `defineScene`
 - `defineDocument`
 - `define2DEdge`
@@ -39,10 +45,39 @@ The default package must expose:
 - `createCanvas2D`
 - `createCanvas3D`
 - `createEditor`
+- `createRelationGraphLayoutAdapter`
+- `createTimeGraphLayoutAdapter`
 - `applyCommandsToDocument`
 - `applyCommandsToStoredDocument`
 - `applyNamedOperations`
 - `setLayerVisible`
+- `setLayerLocked`
+- `setLayerName`
+- `setNodeLayer`
+- `setText`
+- `stackBox`
+- `listNodes`
+- `listLayers`
+- `setFieldPattern`
+- `setNodeVisible`
+- `setNodeLocked`
+- `removeNode`
+- `removeEdge`
+- `removeLayer`
+- `addLayer`
+- `reorderLayer`
+- `DENOVO_FIELD_NODE_TYPE`
+- `denovoFieldInstanceCount`
+- `isDenovoFieldNode`
+- `isDenovoFieldType`
+- `parseDenovoFieldProps`
+- `DENOVO_SPARKLINE_NODE_TYPE`
+- `denovoSparklinePoints`
+- `denovoSparklineSize`
+- `isDenovoSparklineNode`
+- `isDenovoSparklineType`
+- `parseDenovoSparklineProps`
+- `setSparklineStyle`
 - `defineMeshGeometry`
 - `createMemoryGeometryStore`
 - `createMeshGeometryAssetRef`
@@ -170,15 +205,16 @@ The facade reports resolved backend information through
 `canvas.config.renderer`. `auto` selects only an implemented backend compatible
 with the document mode and detected runtime capabilities. The current built-ins
 resolve 3D to the WebGL2-backed web runtime and 2D to Canvas2D. `resolved` is
-`CanvasResolvedBackend` (`canvas2d` | `webgl2` | `custom`). WebGPU is reserved
-vocabulary (`CanvasUnimplementedBackend`) and is not a current `auto` result.
+`CanvasResolvedBackend` (`canvas2d` | `webgl2` | `webgpu` | `custom`).
+Explicit `backend: "webgpu"` is a 3D built-in. It is not an `auto` result.
+`offscreen-canvas2d` stays reserved (`CanvasUnimplementedBackend`).
 
-All explicit backend choices are strict. `webgpu` and
-`offscreen-canvas2d` currently throw `CanvasBackendResolutionError` with
-`backend-unimplemented`; unavailable Canvas2D or WebGL2 throws
-`capability-unavailable`; mode mismatch throws `mode-mismatch`; and `custom`
-without an adapter throws `adapter-required`. No explicit request silently
-selects a different backend.
+All explicit backend choices are strict. `offscreen-canvas2d` throws
+`CanvasBackendResolutionError` with `backend-unimplemented`. A 2D scene
+with `webgpu` throws `mode-mismatch`. Unavailable Canvas2D, WebGL2, or
+WebGPU throws `capability-unavailable`. `custom` without an adapter throws
+`adapter-required`. No explicit request silently selects a different
+backend. Three.js must not substitute WebGL2 when `webgpu` was requested.
 
 ## Camera Controls Contract
 
@@ -424,6 +460,33 @@ built-in node schema. It provides field autocomplete and value types, and makes
 provide the same identity. Runtime application verifies that the current node
 still matches it before validating the merged node through its concrete schema.
 
+Plugin node types use `plugin.<owner>.<kind>` (`PluginNodeType`). Kind
+schemas are registered with `definePluginNodeKind` / `registerPluginNodeKind`
+and declare `mode: "2d" | "3d" | "both"`. Unregistered types fail closed
+at parse. A single-mode kind is rejected in the other scene. `both` uses
+the 2D shell in a 2D scene and the 3D shell in a 3D scene.
+`props` is a JSON object at the document union; the registered kind
+schema is the concrete contract. `Canvas2DPluginNode` is the 2D shell
+(2D transform). `Canvas3DPluginNode` is the 3D shell. A plugin without
+an official drawer paints a selectable marker in that scene.
+
+The official kind `plugin.denovo.field` is pre-registered. Its `props` are
+`DenovoFieldProps`: `pattern` is `"streaks" | "letters"`, and `brightness`,
+`density`, `hue`, and `speed` are finite ranges. `setFieldPattern` compiles
+to `node.update`. The official drawer reads only those properties.
+
+The official 2D kind `plugin.denovo.sparkline` is pre-registered. Its
+`props` are `DenovoSparklineProps`: `style` is `"linear" | "step"`,
+`values` is 2–64 finite numbers, `width` / `height` are ranges, and
+`stroke` / `fill` are lowercase `#rrggbb` (`fill` may be `"none"`).
+`setSparklineStyle` compiles to `node.update`. The official 2D drawer
+reads only those properties. Other 2D plugin kinds still draw as the
+48×48 marker.
+
+`createRelationGraphLayoutAdapter` and `createTimeGraphLayoutAdapter`
+register with `editor.registerLayoutAdapter`. `editor.applyLayout` commits
+placements as one undoable transaction of `node.update` commands.
+
 Plugin command identifiers use the `plugin.${string}` namespace. A
 `CanvasPluginCommandDescriptor` correlates each identifier with the concrete
 output of its payload parser and the matching handler argument. Custom facade
@@ -500,10 +563,40 @@ operations fail atomically when a target is effectively locked.
 
 `setLayerVisible({ layerId, visible })` is a named operation: a pure function
 that compiles to one `layer.update` when the layer exists and the flag
-differs. `applyNamedOperations(document, […])` folds a list.
-`editor.apply([…])` applies that result as one transaction. Already-in-state
-returns `{ changed: false, commands: [] }` and does not grow history.
-Unknown ids fail with a typed domain error. See
+differs. A locked layer rejects visibility changes.
+`setLayerLocked({ layerId, locked })` compiles to one `layer.update` of
+that field. Unlocking the layer itself is allowed.
+`setLayerName({ layerId, name })` compiles to one `layer.update` of
+`name`. A locked layer rejects the rename.
+`setNodeLayer({ nodeId, layerId })` compiles to one `node.update` of
+`layerId`. A locked node or locked target layer is rejected.
+`setText({ nodeId, text })` compiles to one `node.update` of `text` on
+a 2D `text` node. Empty string is allowed. A non-text node is rejected.
+`setNodeVisible({ nodeId, visible })` and
+`setNodeLocked({ nodeId, locked })` compile to one `node.update`. A locked
+node rejects visibility changes. Unlocking the node itself is allowed when
+the lock is not from a parent or layer. `stackBox({ on, face, createId })`
+compiles to one `node.add` using
+M3.1 analytic box-face offset; the source must be a world-aligned root
+`box`. `listNodes(document, { layerId? })` is a read-only summary of
+`{ id, type, layerId, visible, locked }` using effective state; it does
+not return geometry arrays. `listLayers(document)` is a read-only
+summary of `{ id, name, visible, locked }` in document order; it does
+not return metadata. `removeNode({ nodeId })` compiles to one
+`node.remove`. It fails on a missing, locked, edge-referenced, or
+non-empty group node. `removeEdge({ nodeId })` compiles to one
+`node.remove` of an `edge`. It fails when the node is not an edge.
+`removeLayer({ layerId, targetLayerId })` compiles to one
+`layer.remove`. An empty layer requires `targetLayerId: null`; a
+non-empty layer requires an explicit other layer.
+`addLayer({ layerId, name, index? })` compiles to one `layer.add`.
+Omit `index` to append. A duplicate id is `layer-already-exists`.
+`reorderLayer({ layerId, index })` compiles to one `layer.reorder`.
+Already at that index does not grow history.
+`applyNamedOperations(document, […])` folds a
+list. `editor.apply([…])` applies that result as one transaction.
+Already-in-state returns `{ changed: false, commands: [] }` and does not
+grow history. Unknown ids fail with a typed domain error. See
 [Named Authoring Operations](./named-authoring-operations.md).
 
 `snapPointToGrid()` accepts only strict mode-correlated 2D or 3D grids. Active

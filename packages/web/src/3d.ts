@@ -10,6 +10,8 @@ import {
   CanvasScenePointResultSchema,
   createCanvasStore,
   defineScene,
+  isDenovoFieldNode,
+  isPluginNodeType,
   resolveCanvasMeshGeometry,
   type CanvasAuthoringPreviewForMode,
   type CanvasGeometryStore,
@@ -36,10 +38,13 @@ import {
 } from "@denovo/canvas-core";
 import {
   INSTANCE_NODE_IDS_USER_DATA_KEY,
+  createDenovoFieldObject,
   createInstancedMeshBatch,
   createThreeHitTester,
   intersectThreeUnitBoxSurface,
-  installMeshBvhRaycast
+  installMeshBvhRaycast,
+  isDenovoFieldObject,
+  tickDenovoFieldObject
 } from "@denovo/canvas-three";
 import {
   AmbientLight,
@@ -156,6 +161,19 @@ type Canvas3DContentColors = {
   readonly foreground: string;
 };
 
+export type Canvas3DGpuRenderer = {
+  clippingPlanes: Array<{ constant: number }>;
+  dispose(): void;
+  info: {
+    memory: { geometries: number; textures: number };
+    programs?: Array<unknown> | null;
+    render: { calls: number; triangles: number };
+  };
+  render(scene: Scene, camera: PerspectiveCamera): void;
+  setPixelRatio(value: number): void;
+  setSize(width: number, height: number, updateStyle?: boolean): void;
+};
+
 export type ThreeCanvasRuntime = Omit<CanvasHitTestRuntime<"3d">, "mode"> &
   CanvasAuthoringRuntime<"3d"> &
   Canvas3DSurfacePointRuntime &
@@ -166,7 +184,7 @@ export type ThreeCanvasRuntime = Omit<CanvasHitTestRuntime<"3d">, "mode"> &
   readonly camera: PerspectiveCamera;
   readonly controls: OrbitControls | null;
   readonly objects: ReadonlyMap<string, Object3D>;
-  readonly renderer: WebGLRenderer;
+  readonly renderer: Canvas3DGpuRenderer;
   readonly scene: Scene;
 };
 
@@ -191,10 +209,16 @@ export function createCanvas3D(
 
   const store = createCanvasStore<"3d">(initialScene);
   const resolved = resolveCanvas(target);
-  const renderer = new WebGLRenderer({
-    antialias: options.antialias ?? true,
-    canvas: resolved.canvas
-  });
+  const requestedGpuBackend =
+    options.gpuBackend === "webgpu" ? "webgpu" : "webgl2";
+  let renderer: Canvas3DGpuRenderer | null =
+    requestedGpuBackend === "webgl2"
+      ? new WebGLRenderer({
+          antialias: options.antialias ?? true,
+          canvas: resolved.canvas
+        })
+      : null;
+  let gpuDestroyed = false;
   const scene = new Scene();
   const camera = new PerspectiveCamera(initialScene.camera.fov, 1, 0.1, 1000);
   const controls = createCameraControls(
@@ -273,6 +297,8 @@ export function createCanvas3D(
   let frameId: number | null = null;
   let previousTime = 0;
   let runtime: ThreeCanvasRuntime;
+  let sectionClipRoot: Canvas3DSectionClipRoot | null = null;
+  let pendingSection: Canvas3DSectionPlaneInput | null | undefined;
   let resizeState = {
     height: 0,
     pixelRatio: 0,
@@ -352,11 +378,25 @@ export function createCanvas3D(
   }
 
   function render() {
+    if (!renderer) {
+      return;
+    }
+
     syncTransformHandles();
+    const elapsedMs = previousTime === 0 ? 0 : previousTime;
+    for (const object of objects.values()) {
+      if (isDenovoFieldObject(object)) {
+        tickDenovoFieldObject(object, elapsedMs);
+      }
+    }
     renderer.render(scene, camera);
   }
 
-  function captureRenderStats(): CanvasRenderStats {
+  function captureRenderStats(): CanvasRenderStats | undefined {
+    if (!renderer) {
+      return undefined;
+    }
+
     const info = renderer.info;
     const programs = info.programs?.length;
     return {
@@ -1494,12 +1534,13 @@ export function createCanvas3D(
     previousTime = time;
 
     runtime.render();
+    const renderStats = captureRenderStats();
     options.onFrame?.(
       {
         delta,
         elapsed: time,
         scene: currentScene,
-        render: captureRenderStats()
+        ...(renderStats === undefined ? {} : { render: renderStats })
       },
       runtime
     );
@@ -1542,6 +1583,10 @@ export function createCanvas3D(
   }
 
   function resize() {
+    if (!renderer) {
+      return;
+    }
+
     const rect = getRenderRect(resolved.canvas, resolved.host);
     const width = Math.max(1, Math.floor(rect.width));
     const height = Math.max(1, Math.floor(rect.height));
@@ -1573,30 +1618,35 @@ export function createCanvas3D(
    * Hit testing is unaffected (clipped geometry stays pickable) in v1.
    */
   function setSectionPlane(section: Canvas3DSectionPlaneInput | null): void {
-    if (section === null) {
-      renderer.clippingPlanes = [];
-      render();
+    const plane = parseSectionPlane(section);
+
+    if (requestedGpuBackend === "webgpu" && !sectionClipRoot) {
+      pendingSection = section;
       return;
     }
 
-    const [nx, ny, nz] = section.normal;
-    const length = Math.hypot(nx, ny, nz);
-
-    if (!Number.isFinite(length) || length === 0) {
-      throw new Error("Section plane normal must be a non-zero vector.");
+    if (!renderer && requestedGpuBackend !== "webgpu") {
+      return;
     }
 
-    if (!Number.isFinite(section.constant)) {
-      throw new Error("Section plane constant must be finite.");
+    applySectionPlane(plane);
+  }
+
+  function applySectionPlane(plane: Plane | null): void {
+    if (sectionClipRoot) {
+      sectionClipRoot.clippingPlanes = plane ? [plane] : [];
+      sectionClipRoot.enabled = plane !== null;
     }
 
-    renderer.clippingPlanes = [
-      new Plane(new Vector3(nx / length, ny / length, nz / length), section.constant)
-    ];
+    if (renderer && requestedGpuBackend !== "webgpu") {
+      renderer.clippingPlanes = plane ? [plane] : [];
+    }
+
     render();
   }
 
   function destroy() {
+    gpuDestroyed = true;
     runtime.stop();
     store.getState().setStatus("destroyed");
     resizeScheduler.cancel();
@@ -1613,7 +1663,12 @@ export function createCanvas3D(
     nodeStates.clear();
     scene.remove(authoringPreviewRoot);
     scene.remove(transformHandles);
-    renderer.dispose();
+    if (sectionClipRoot) {
+      scene.remove(sectionClipRoot);
+      sectionClipRoot = null;
+    }
+    renderer?.dispose();
+    renderer = null;
 
     if (resolved.removeOnDestroy) {
       resolved.canvas.remove();
@@ -1635,8 +1690,40 @@ export function createCanvas3D(
     camera,
     controls,
     objects,
-    ready: Promise.resolve(),
-    renderer,
+    ready:
+      requestedGpuBackend === "webgpu"
+        ? createWebGpuRenderer(resolved.canvas, options.antialias ?? true).then(
+            (created) => {
+              if (gpuDestroyed) {
+                created.renderer.dispose();
+                return;
+              }
+
+              renderer = created.renderer;
+              sectionClipRoot = created.createClipRoot();
+              scene.remove(content);
+              scene.remove(authoringPreviewRoot);
+              scene.remove(transformHandles);
+              sectionClipRoot.add(content);
+              sectionClipRoot.add(authoringPreviewRoot);
+              sectionClipRoot.add(transformHandles);
+              scene.add(sectionClipRoot);
+              if (pendingSection !== undefined) {
+                applySectionPlane(parseSectionPlane(pendingSection));
+                pendingSection = undefined;
+              }
+              runtime.resize();
+              runtime.render();
+            }
+          )
+        : Promise.resolve(),
+    get renderer() {
+      if (!renderer) {
+        throw new Error("Canvas3D WebGPU renderer is not ready.");
+      }
+
+      return renderer;
+    },
     scene,
     store,
     destroy,
@@ -1673,14 +1760,85 @@ export function createCanvas3D(
     options.geometryStore
   );
   syncCameraControls(controls, currentScene);
-  runtime.resize();
-  runtime.render();
+
+  if (renderer) {
+    runtime.resize();
+    runtime.render();
+  }
 
   if (options.autoStart ?? true) {
     runtime.start();
   }
 
   return runtime;
+}
+
+type Canvas3DSectionClipRoot = Group & {
+  clippingPlanes: Plane[];
+  enabled: boolean;
+};
+
+type WebGpuRendererHandle = Canvas3DGpuRenderer & {
+  backend?: { isWebGPUBackend?: boolean };
+  init(): Promise<unknown>;
+};
+
+function parseSectionPlane(
+  section: Canvas3DSectionPlaneInput | null
+): Plane | null {
+  if (section === null) {
+    return null;
+  }
+
+  const [nx, ny, nz] = section.normal;
+  const length = Math.hypot(nx, ny, nz);
+
+  if (!Number.isFinite(length) || length === 0) {
+    throw new Error("Section plane normal must be a non-zero vector.");
+  }
+
+  if (!Number.isFinite(section.constant)) {
+    throw new Error("Section plane constant must be finite.");
+  }
+
+  return new Plane(
+    new Vector3(nx / length, ny / length, nz / length),
+    section.constant
+  );
+}
+
+async function createWebGpuRenderer(
+  canvas: HTMLCanvasElement,
+  antialias: boolean
+): Promise<{
+  createClipRoot: () => Canvas3DSectionClipRoot;
+  renderer: Canvas3DGpuRenderer;
+}> {
+  const webgpu = await import("three/webgpu");
+  const nextRenderer = new webgpu.WebGPURenderer({
+    alpha: false,
+    antialias,
+    canvas,
+    forceWebGL: false
+  }) as unknown as WebGpuRendererHandle;
+
+  await nextRenderer.init();
+
+  if (nextRenderer.backend?.isWebGPUBackend !== true) {
+    nextRenderer.dispose();
+    throw new Error(
+      "Canvas backend webgpu is unavailable in the current environment."
+    );
+  }
+
+  if (!Array.isArray(nextRenderer.clippingPlanes)) {
+    nextRenderer.clippingPlanes = [];
+  }
+
+  return {
+    createClipRoot: () => new webgpu.ClippingGroup() as Canvas3DSectionClipRoot,
+    renderer: nextRenderer
+  };
 }
 
 function resolveProjectedCoordinates(
@@ -2463,10 +2621,8 @@ function isCanvas3DTransformNode(
     case "measurement":
     case "annotation":
       return false;
-    default: {
-      const exhaustive: never = node;
-      return exhaustive;
-    }
+    default:
+      return isPluginNodeType(node.type);
   }
 }
 
@@ -2917,10 +3073,17 @@ function createObject(
       return createMeasurementObject(node, colors);
     case "annotation":
       return createAnnotationObject(node, colors);
-    default: {
-      const exhaustive: never = node;
-      throw new Error(`Unsupported 3D canvas node: ${JSON.stringify(exhaustive)}`);
-    }
+    default:
+      if (isDenovoFieldNode(node)) {
+        return createDenovoFieldObject(node.props);
+      }
+      if (isPluginNodeType(node.type)) {
+        return new Mesh(
+          getUnitBoxGeometry(),
+          createCanvas3DSurfaceMaterial("#64748b")
+        );
+      }
+      throw new Error(`Unsupported 3D canvas node: ${JSON.stringify(node)}`);
   }
 }
 

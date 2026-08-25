@@ -1,134 +1,96 @@
-# Agent Guide
+# Automated Contributor Guide
 
-This file is the first operating guide for agents working in this repository.
-Read it before changing code or documentation.
+This file adds automation-specific safeguards to the repository's shared
+contribution rules. Human and automated contributors follow the same product,
+quality, and verification contracts; automation reads this file first because
+it also needs workspace-preservation and handoff rules.
 
-## Mission
+## Shared Source Of Truth
 
-Build a general-purpose web SDK that makes 2D/3D canvas viewing, editing,
-storage, extension, and performance work easier than wiring low-level rendering
-libraries directly.
+After this file, read the shared documents in this order:
 
-The product is not React-only and not Next.js-only. React, Next.js, R3F, Vue,
-Svelte, Solid, Astro, workers, servers, BIM, and future renderers are adapters
-around a framework-agnostic document model.
+1. [Contributing](./CONTRIBUTING.md)
+2. [Contributor Operating Policy](./docs/contributor-operating-policy.md)
+3. [Contributor Rules](./docs/contributor-rules.md)
+4. [Contributor Automation](./docs/contributor-automation.md)
+5. [Project Status](./docs/project-status.md)
+6. [Documentation Index](./docs/README.md)
+7. The contract or architecture document governing the requested surface
 
-The library name may change before release. Treat the stable contract as the
-facade API shape, package boundaries, document schemas, renderer backend
-vocabulary, and verification policy, not the current package name.
+The shared rulebook is canonical for product invariants, package boundaries,
+public type safety, verification, and documentation. Do not restate those rules
+here. When documents conflict, update the narrower stale document or record a
+decision instead of allowing duplicate claims to drift.
 
-## Source Of Truth
+## Automation Startup
 
-Use these documents in order:
+Before non-trivial work:
 
-1. [Agent Operating Policy](./docs/agent-operating-policy.md)
-2. [Agent Rules](./docs/agent-rules.md)
-3. [Project Status](./docs/project-status.md)
-4. [Documentation Index](./docs/README.md)
-5. [M0 Product Contract](./docs/m0-product-contract.md)
-6. [Public API Contract](./docs/public-api-contract.md)
-7. [Vision and Milestones](./docs/vision-and-milestones.md)
+1. inspect the worktree and preserve existing changes;
+2. identify the active milestone, requested outcome, and acceptance criteria;
+3. determine whether the work changes a public contract, package boundary,
+   document schema, renderer backend, persistence format, or governance policy;
+4. read the closest applicable `AGENTS.md` and relevant canonical documents;
+5. state any assumption that would materially affect scope before relying on
+   it.
 
-When documents conflict, update the narrower stale document or record a
-decision. Do not let duplicate status claims drift.
+## Task-Specific Skills
 
-## Work Loop
+Repository skills live under `.agents/skills` and are loaded only when their
+task matches. Use the narrowest applicable skill for public contract changes,
+editor-core changes, browser rendering verification, or governance work.
+
+Skills route to canonical documents and risk-matched commands. They do not
+override the shared contributor policy or authorize broader side effects. The
+catalog and ownership rules live in
+[Contributor Automation](./docs/contributor-automation.md).
+
+## Automation Safeguards
+
+- MUST keep edits inside the requested scope and avoid unrelated cleanup.
+- MUST preserve human and other contributor changes. Do not overwrite or remove
+  work merely because it is uncommitted or unfamiliar.
+- MUST NOT run destructive Git, filesystem, data, publication, or deployment
+  operations unless the request clearly authorizes the exact action and target.
+- MUST use read-only inspection to resolve ambiguous targets before mutation.
+- MUST stop and ask when a missing decision would materially change the public
+  contract, compatibility, data, release, or security outcome.
+- MUST treat generated output, credentials, tokens, network bodies, and local
+  machine state according to repository policy; do not expose secrets in logs
+  or handoffs.
+- SHOULD use existing repository scripts and patterns before adding new
+  automation or structure.
+
+## Automated Work Loop
 
 For every non-trivial task:
 
-1. Identify the active milestone and acceptance criteria.
-2. Apply the [Agent Rules](./docs/agent-rules.md) relevant to the task.
-3. Make the smallest coherent change.
-4. Verify with commands appropriate to the risk.
-5. Update project status when the phase changes.
-6. Add a history entry for durable decisions, completed milestones, or verified
-   contract changes.
+1. define the smallest coherent change;
+2. inspect the current implementation and its verification path;
+3. make the change without disturbing unrelated worktree state;
+4. run the risk-matched checks in the shared contributor policy;
+5. update status only when status changed, and add history for durable rule,
+   contract, boundary, milestone, or verification changes;
+6. inspect the final diff and worktree state;
+7. report changed files, exact checks and outcomes, unmeasured scope, residual
+   risk, and the next action if one remains.
 
-## Public Type Safety Gate
+Never describe a phase, contract, or milestone as verified when its acceptance
+criteria did not run.
 
-Apply this gate to every exported facade, adapter, plugin, callback, authoring
-helper, and protocol type before considering the work complete.
+## Code Review Rules
 
-- MUST NOT expose explicit `any` in generated package declarations.
-- MUST NOT use `unknown`, `Record<string, ...>`, or an unconstrained `string` as
-  a convenience when a schema-derived type, discriminated union, template
-  literal, mapped type, or generic relationship can express the contract.
-- MAY use `unknown` only at a genuine untrusted-input, validation, error-cause,
-  intentionally erased heterogeneous-registry, or undeclared dynamic-protocol
-  boundary. Narrow or translate it immediately after that boundary and document
-  the reason when it remains public.
-- MUST give authoring helpers concrete input types. Reserve `unknown` inputs for
-  `safeDefine*`, parse, decode, and validation APIs that actually validate
-  external values.
-- MUST give callbacks concrete return types and correlate protocol keys with
-  their payload and result types. Plugin-owned identifiers MUST use their
-  documented namespace instead of a general `string`.
-- MUST derive public input/output types from the canonical schema or domain
-  union where one exists. Do not maintain a broader handwritten shadow type.
-- MUST add positive consumer inference fixtures and negative
-  `@ts-expect-error` fixtures for a changed public type, then inspect generated
-  `.d.ts` files for broad-type leakage.
-- MUST run `pnpm typecheck`, `pnpm build`, and `pnpm verify:public-api` after a
-  public type change. A type contract is not verified by runtime tests alone.
+Review the changed contract and behavior before style. Flag:
 
-The canonical detailed rules and rationale live in
-[Agent Rules](./docs/agent-rules.md) and
-[Public API Contract](./docs/public-api-contract.md).
+- contradictions with the canonical contributor or product contracts;
+- public declaration broadening, leaked implementation types, or missing
+  positive and negative consumer fixtures;
+- silent renderer, schema, persistence, or capability fallback;
+- verification claims that exceed the commands and counts actually reported;
+- project-status drift or missing history for a durable rule, contract,
+  boundary, milestone, or verified regression change;
+- unrelated refactors or generated-file noise that obscure the requested
+  outcome.
 
-## Verification Baseline
-
-M0 public API work should pass:
-
-```sh
-pnpm typecheck
-pnpm build
-pnpm verify:public-api
-python3 ~/.agents/skills/doc-governance/scripts/doc-governance-audit.py --root .
-```
-
-M2 editor-core work must also pass:
-
-```sh
-pnpm verify:editor-core
-```
-
-Browser-facing rendering work must also include Playwright screenshot or pixel
-checks across relevant desktop and mobile viewports. Use:
-
-```sh
-pnpm verify:browser-rendering
-```
-
-## Documentation Rules
-
-Repository Markdown files are the source of truth. Keep them inside this repo.
-Do not symlink them to an external vault. Use Obsidian CLI only for inspection
-and link audits.
-
-Status belongs in [Project Status](./docs/project-status.md). Durable
-chronological evidence belongs under [History](./docs/history/README.md).
-
-### Project Status hygiene (mandatory)
-
-`docs/project-status.md` is the canonical status index and an agent's first
-read. Drift here is high-leverage trust failure, so every non-trivial change
-MUST keep it internally consistent. Before considering status work done:
-
-- **Update `Last updated:`** at the top to today's date.
-- **Keep `## Current Phase` and `## Active` in agreement.** `Current Phase`
-  must describe what the project is working on right now; `Active` must not
-  claim a milestone as "landed/done" that `Current Phase` still calls "next",
-  and vice versa. If a milestone slice ships, move it out of "next" in both
-  sections in the same change.
-- **Re-count the evidence.** Update package/task counts, dates, and the
-  `verify:*` list to reflect what actually ran. Do not leave stale counts from
-  before a package was added.
-- **Refresh `## Evidence`** with the `verify:*` results and the date they ran.
-- **Add a [History](./docs/history/README.md) entry** for the durable change
-  and link it from Evidence.
-- **Do not call a milestone "verified"** unless its acceptance criteria ran.
-  Landed-but-unverified work goes in `Active` with an explicit "not yet
-  verified" note (as M4–M6 do now).
-
-When documents conflict, update the narrower stale document or record a
-decision. Do not let duplicate status claims drift.
+Do not use review prose as a substitute for a deterministic repository gate.
+When a safe path or documented exception exists, identify it with the finding.

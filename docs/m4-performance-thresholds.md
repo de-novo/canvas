@@ -8,7 +8,7 @@ optimizations must hold against. It exists because
 performance APIs are added.
 
 Thresholds are captured against the **WebGL2 baseline** (Three.js
-`WebGLRenderer`). WebGPU is a future adapter; per
+`WebGLRenderer`). Explicit WebGPU is a later measurement surface; per
 [Rendering Backend Strategy](./rendering-backend-strategy.md), useful
 performance features must stay available on WebGL2 where possible.
 

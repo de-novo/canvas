@@ -25,6 +25,7 @@ import {
   CanvasScenePointResultSchema,
   CanvasToolInputSchema,
   CircleNodeSchema,
+  isPluginNodeType,
   NodeIdSchema,
   RectNodeSchema,
   SelectionStateSchema,
@@ -247,13 +248,47 @@ export type {
   TimeGraphLayoutOptions
 } from "./layout/graph-adapters.js";
 export {
+  addLayer,
   applyNamedOperations,
-  setLayerVisible
+  listLayers,
+  listNodes,
+  removeEdge,
+  removeLayer,
+  removeNode,
+  reorderLayer,
+  setFieldPattern,
+  setSparklineStyle,
+  setLayerLocked,
+  setLayerName,
+  setLayerVisible,
+  setNodeLayer,
+  setNodeLocked,
+  setNodeVisible,
+  setText,
+  stackBox
 } from "./authoring/named-operations.js";
 export type {
+  AddLayerInput,
+  ListedLayer,
+  ListedNode,
+  ListNodesOptions,
   NamedOperation,
   NamedOperationResult,
-  SetLayerVisibleInput
+  RemoveEdgeInput,
+  RemoveLayerInput,
+  RemoveNodeInput,
+  ReorderLayerInput,
+  SetFieldPatternInput,
+  SetSparklineStyleInput,
+  SetLayerLockedInput,
+  SetLayerNameInput,
+  SetLayerVisibleInput,
+  SetNodeLayerInput,
+  SetNodeLockedInput,
+  SetNodeVisibleInput,
+  SetTextInput,
+  StackBoxFace,
+  StackBoxInput
 } from "./authoring/named-operations.js";
 export {
   applyCommandsToDocument,
@@ -1307,8 +1342,8 @@ function create2DUngroupPatch(
         parentId: group.parentId
       };
     default: {
-      const exhaustive: never = child;
-      return exhaustive;
+      const transform = compose2DTransforms(group, child);
+      return { ...transform, parentId: group.parentId };
     }
   }
 }
@@ -1337,10 +1372,12 @@ function create3DUngroupPatch(
         anchor: transformPoint3(group, child.anchor),
         parentId: group.parentId
       };
-    default: {
-      const exhaustive: never = child;
-      return exhaustive;
-    }
+    default:
+      if (isPluginNodeType(child.type)) {
+        const transform = compose3DTransforms(group, child);
+        return { ...transform, parentId: group.parentId };
+      }
+      return child as never;
   }
 }
 

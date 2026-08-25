@@ -382,7 +382,32 @@ for (const exportName of [
   "applyCommandsToDocument",
   "applyCommandsToStoredDocument",
   "applyNamedOperations",
+  "addLayer",
+  "reorderLayer",
+  "listNodes",
+  "listLayers",
+  "setFieldPattern",
+  "setSparklineStyle",
+  "setLayerLocked",
+  "setLayerName",
   "setLayerVisible",
+  "setNodeLayer",
+  "setNodeLocked",
+  "setNodeVisible",
+  "setText",
+  "removeNode",
+  "removeEdge",
+  "removeLayer",
+  "stackBox",
+  "denovoFieldInstanceCount",
+  "isDenovoFieldNode",
+  "isDenovoFieldType",
+  "parseDenovoFieldProps",
+  "denovoSparklinePoints",
+  "denovoSparklineSize",
+  "isDenovoSparklineNode",
+  "isDenovoSparklineType",
+  "parseDenovoSparklineProps",
   "createMemoryGeometryStore",
   "createMeshGeometryAssetRef",
   "decodeMeshGeometry",
@@ -401,6 +426,8 @@ for (const exportName of [
   "createCanvas3D",
   "createDistanceMeasurementTool",
   "createEditor",
+  "createRelationGraphLayoutAdapter",
+  "createTimeGraphLayoutAdapter",
   "createGroupNodesCommand",
   "createNodeUpdateCommand",
   "createPanOrbitTool",
@@ -410,6 +437,13 @@ for (const exportName of [
   "defineCanvasConfig",
   "defineCanvasPlugin",
   "definePluginCommand",
+  "definePluginNodeKind",
+  "getPluginNodeKind",
+  "isCanvas2DPluginNode",
+  "isPluginNodeType",
+  "parsePluginNodeProps",
+  "pluginNodeKindSupportsMode",
+  "registerPluginNodeKind",
   "define2DEdge",
   "defineDocument",
   "defineHitResult",
@@ -519,6 +553,12 @@ const strictBackendScene = facadeModule.defineScene({
   mode: "2d",
   nodes: []
 });
+const strictBackend3dScene = facadeModule.defineScene({
+  id: "strict-backend-3d-scene",
+  layers: [{ id: "main", name: "Main" }],
+  mode: "3d",
+  nodes: []
+});
 assert.throws(
   () =>
     facadeModule.createCanvas(customTarget, {
@@ -529,15 +569,16 @@ assert.throws(
     error instanceof TypeError &&
     error.message.includes("requires an explicit renderer adapter")
 );
-for (const [renderer, code] of [
-  ["webgpu", "backend-unimplemented"],
-  ["offscreen-canvas2d", "backend-unimplemented"]
+for (const [renderer, scene, code] of [
+  ["webgpu", strictBackendScene, "mode-mismatch"],
+  ["offscreen-canvas2d", strictBackendScene, "backend-unimplemented"],
+  ["webgpu", strictBackend3dScene, "capability-unavailable"]
 ]) {
   assert.throws(
     () =>
       facadeModule.createCanvas(customTarget, {
         renderer,
-        scene: strictBackendScene
+        scene
       }),
     (error) =>
       error instanceof facadeModule.CanvasBackendResolutionError &&
@@ -1975,10 +2016,38 @@ writeFileSync(
   createConnectorTool,
   createDistanceMeasurementTool,
   createEditor,
+  createRelationGraphLayoutAdapter,
+  createTimeGraphLayoutAdapter,
   applyCommandsToDocument,
   applyCommandsToStoredDocument,
+  addLayer,
   applyNamedOperations,
+  listLayers,
+  listNodes,
+  reorderLayer,
+  setFieldPattern,
+  setSparklineStyle,
+  setLayerLocked,
+  setLayerName,
   setLayerVisible,
+  setNodeLayer,
+  setNodeLocked,
+  setNodeVisible,
+  setText,
+  removeNode,
+  removeEdge,
+  removeLayer,
+  stackBox,
+  denovoFieldInstanceCount,
+  isDenovoFieldNode,
+  isDenovoFieldType,
+  parseDenovoFieldProps,
+  denovoSparklinePoints,
+  denovoSparklineSize,
+  isDenovoSparklineNode,
+  isDenovoSparklineType,
+  parseDenovoSparklineProps,
+  DENOVO_SPARKLINE_NODE_TYPE,
   createGroupNodesCommand,
   createNodeUpdateCommand,
   CanvasPluginError,
@@ -1988,7 +2057,15 @@ writeFileSync(
   defineCanvasConfig,
   defineCanvasPlugin,
   definePluginCommand,
+  definePluginNodeKind,
+  getPluginNodeKind,
+  isCanvas2DPluginNode,
+  isPluginNodeType,
+  parsePluginNodeProps,
+  pluginNodeKindSupportsMode,
+  registerPluginNodeKind,
   define2DEdge,
+  DENOVO_FIELD_NODE_TYPE,
   defineDocument,
   defineMeshGeometry,
   decodeMeshGeometry,
@@ -2025,9 +2102,33 @@ writeFileSync(
   type CanvasFacadeRendererRuntime,
   type CanvasEditor,
   type CanvasPersistenceEvent,
+  type ListedLayer,
+  type ListedNode,
+  type ListNodesOptions,
+  type AddLayerInput,
+  type ReorderLayerInput,
   type NamedOperation,
   type NamedOperationResult,
+  type RelationGraphLayoutOptions,
+  type TimeGraphLayoutOptions,
+  type DenovoFieldPattern,
+  type DenovoFieldProps,
+  type DenovoSparklineProps,
+  type DenovoSparklineStyle,
+  type SetFieldPatternInput,
+  type SetSparklineStyleInput,
+  type SetLayerLockedInput,
+  type SetLayerNameInput,
   type SetLayerVisibleInput,
+  type SetNodeLayerInput,
+  type SetTextInput,
+  type RemoveEdgeInput,
+  type RemoveLayerInput,
+  type RemoveNodeInput,
+  type SetNodeLockedInput,
+  type SetNodeVisibleInput,
+  type StackBoxFace,
+  type StackBoxInput,
   type CanvasStoredDocument,
   type CanvasHitResult,
   type CanvasHitTestInput,
@@ -2035,6 +2136,11 @@ writeFileSync(
   type CanvasNodeByType,
   type CanvasNodeIdentity,
   type CanvasNodePatch,
+  type Canvas2DPluginNode,
+  type Canvas3DPluginNode,
+  type PluginNodeKindMode,
+  type PluginNodeType,
+  type PluginSceneMode,
   type CanvasPluginToolId,
   type SelectionStateInput,
   type CanvasTarget,
@@ -2049,16 +2155,18 @@ import { parseSceneEffect } from "@denovo/canvas-core/effect";
 
 const backend: CanvasBackend = "auto";
 const implementedBackend: CanvasImplementedBackend = "webgl2";
-const reservedBackend: CanvasUnimplementedBackend = "webgpu";
+const reservedBackend: CanvasUnimplementedBackend = "offscreen-canvas2d";
 const resolvedBackend: CanvasResolvedBackend = "canvas2d";
-// @ts-expect-error WebGPU is reserved and cannot be a resolved built-in.
-const invalidResolvedWebgpu: CanvasResolvedBackend = "webgpu";
+const resolvedWebgpu: CanvasResolvedBackend = "webgpu";
+// @ts-expect-error auto still does not resolve to WebGPU
+const invalidImplementedWebgpu: CanvasImplementedBackend = "webgpu";
 // @ts-expect-error auto is a selector, not a resolved backend.
 const invalidResolvedAuto: CanvasResolvedBackend = "auto";
 void implementedBackend;
 void reservedBackend;
 void resolvedBackend;
-void invalidResolvedWebgpu;
+void resolvedWebgpu;
+void invalidImplementedWebgpu;
 void invalidResolvedAuto;
 const controls: CanvasCameraControlsOptions = {
   enablePan: true,
@@ -2100,6 +2208,167 @@ void namedApply;
 setLayerVisible({ layerId: "main", visible: false, extra: true });
 // @ts-expect-error visible must be boolean
 setLayerVisible({ layerId: "main", visible: "false" });
+const lockLayerInput: SetLayerLockedInput = {
+  layerId: "main",
+  locked: true
+};
+const lockLayer: NamedOperation = setLayerLocked(lockLayerInput);
+void lockLayer;
+// @ts-expect-error extra fields are rejected
+setLayerLocked({ extra: true, layerId: "main", locked: true });
+// @ts-expect-error locked must be boolean
+setLayerLocked({ layerId: "main", locked: "true" });
+const renameLayerInput: SetLayerNameInput = {
+  layerId: "main",
+  name: "Notes"
+};
+const renameLayer: NamedOperation = setLayerName(renameLayerInput);
+void renameLayer;
+// @ts-expect-error extra fields are rejected
+setLayerName({ extra: true, layerId: "main", name: "Notes" });
+// @ts-expect-error name must be a string
+setLayerName({ layerId: "main", name: 1 });
+const moveNodeInput: SetNodeLayerInput = {
+  layerId: "main",
+  nodeId: "box-1"
+};
+const moveNode: NamedOperation = setNodeLayer(moveNodeInput);
+void moveNode;
+// @ts-expect-error extra fields are rejected
+setNodeLayer({ extra: true, layerId: "main", nodeId: "box-1" });
+// @ts-expect-error layerId must be a string
+setNodeLayer({ layerId: 1, nodeId: "box-1" });
+const renameTextInput: SetTextInput = {
+  nodeId: "label",
+  text: "Done"
+};
+const renameText: NamedOperation = setText(renameTextInput);
+void renameText;
+// @ts-expect-error extra fields are rejected
+setText({ extra: true, nodeId: "label", text: "Done" });
+// @ts-expect-error text must be a string
+setText({ nodeId: "label", text: 1 });
+const hideNodeInput: SetNodeVisibleInput = {
+  nodeId: "box-1",
+  visible: false
+};
+const hideNode: NamedOperation = setNodeVisible(hideNodeInput);
+void hideNode;
+const lockNodeInput: SetNodeLockedInput = {
+  locked: true,
+  nodeId: "box-1"
+};
+const lockNode: NamedOperation = setNodeLocked(lockNodeInput);
+void lockNode;
+// @ts-expect-error extra fields are rejected
+setNodeVisible({ extra: true, nodeId: "box-1", visible: false });
+// @ts-expect-error visible must be boolean
+setNodeVisible({ nodeId: "box-1", visible: "false" });
+// @ts-expect-error extra fields are rejected
+setNodeLocked({ extra: true, locked: true, nodeId: "box-1" });
+// @ts-expect-error locked must be boolean
+setNodeLocked({ locked: "true", nodeId: "box-1" });
+const removeNodeInput: RemoveNodeInput = { nodeId: "box-1" };
+const dropNode: NamedOperation = removeNode(removeNodeInput);
+void dropNode;
+// @ts-expect-error extra fields are rejected
+removeNode({ extra: true, nodeId: "box-1" });
+// @ts-expect-error nodeId must be a string
+removeNode({ nodeId: 1 });
+const removeEdgeInput: RemoveEdgeInput = { nodeId: "edge-1" };
+const dropEdge: NamedOperation = removeEdge(removeEdgeInput);
+void dropEdge;
+// @ts-expect-error extra fields are rejected
+removeEdge({ extra: true, nodeId: "edge-1" });
+// @ts-expect-error nodeId must be a string
+removeEdge({ nodeId: 1 });
+const removeLayerInput: RemoveLayerInput = {
+  layerId: "extra",
+  targetLayerId: null
+};
+const dropLayer: NamedOperation = removeLayer(removeLayerInput);
+void dropLayer;
+// @ts-expect-error extra fields are rejected
+removeLayer({ extra: true, layerId: "extra", targetLayerId: null });
+// @ts-expect-error targetLayerId is required
+removeLayer({ layerId: "extra" });
+// @ts-expect-error targetLayerId must be a layer id or null
+removeLayer({ layerId: "extra", targetLayerId: 1 });
+const addLayerInput: AddLayerInput = {
+  layerId: "notes",
+  name: "Notes"
+};
+const insertLayer: NamedOperation = addLayer(addLayerInput);
+void insertLayer;
+// @ts-expect-error extra fields are rejected
+addLayer({ extra: true, layerId: "notes", name: "Notes" });
+// @ts-expect-error name is required
+addLayer({ layerId: "notes" });
+// @ts-expect-error index must be a number
+addLayer({ index: "0", layerId: "notes", name: "Notes" });
+const reorderLayerInput: ReorderLayerInput = {
+  index: 0,
+  layerId: "extra"
+};
+const moveLayer: NamedOperation = reorderLayer(reorderLayerInput);
+void moveLayer;
+// @ts-expect-error extra fields are rejected
+reorderLayer({ extra: true, index: 0, layerId: "extra" });
+// @ts-expect-error index is required
+reorderLayer({ layerId: "extra" });
+// @ts-expect-error index must be a number
+reorderLayer({ index: "0", layerId: "extra" });
+const stackInput: StackBoxInput = {
+  createId: () => "stacked-box",
+  face: "+y",
+  on: "box-1"
+};
+const stackFace: StackBoxFace = stackInput.face;
+const stackOp: NamedOperation = stackBox(stackInput);
+void stackFace;
+void stackOp;
+// @ts-expect-error extra fields are rejected
+stackBox({ createId: () => "stacked-box", extra: true, face: "+y", on: "box-1" });
+// @ts-expect-error face is a closed axis union
+stackBox({ createId: () => "stacked-box", face: "+w", on: "box-1" });
+const listed: readonly ListedNode[] = listNodes(document);
+const listedOptions: ListNodesOptions = { layerId: "main" };
+void listed;
+void listNodes(document, listedOptions);
+declare const listedNode: ListedNode;
+const listedVisible: boolean = listedNode.visible;
+const listedLocked: boolean = listedNode.locked;
+void listedVisible;
+void listedLocked;
+// @ts-expect-error listed nodes omit geometry arrays
+listedNode.positions;
+// @ts-expect-error extra fields are rejected
+listNodes(document, { extra: true, layerId: "main" });
+const listedLayers: readonly ListedLayer[] = listLayers(document);
+declare const listedLayer: ListedLayer;
+const listedLayerName: string = listedLayer.name;
+void listedLayers;
+void listedLayerName;
+// @ts-expect-error listed layers omit metadata
+listedLayer.metadata;
+// @ts-expect-error listLayers does not take a filter
+listLayers(document, { extra: true });
+const timeLayoutOptions: TimeGraphLayoutOptions = {
+  columnGap: 88,
+  origin: [80, 160]
+};
+const relationLayoutOptions: RelationGraphLayoutOptions = {
+  layerGap: 220,
+  laneGap: 110
+};
+const timeLayout = createTimeGraphLayoutAdapter(timeLayoutOptions);
+const relationLayout = createRelationGraphLayoutAdapter(relationLayoutOptions);
+void timeLayout.name;
+void relationLayout.name;
+// @ts-expect-error columnGap is a finite number
+createTimeGraphLayoutAdapter({ columnGap: "wide" });
+// @ts-expect-error extra fields are rejected
+createRelationGraphLayoutAdapter({ extra: true, layerGap: 80 });
 const selectTool = createSelectTool();
 const navigationTool = createPanOrbitTool();
 const transformTool = createTransformTool();
@@ -2175,6 +2444,116 @@ const invalidPositionPatch: CanvasNodePatch = { position: "1,2,3" };
 // @ts-expect-error selection inputs expose their actual field types.
 const invalidSelection: SelectionStateInput = { primaryId: 42 };
 
+const pluginType: PluginNodeType = "plugin.denovo.field";
+const pluginIsKind: boolean = isPluginNodeType(pluginType);
+void pluginIsKind;
+// @ts-expect-error plugin type needs owner.kind
+const invalidPluginType: PluginNodeType = "plugin.field";
+void invalidPluginType;
+const pluginNode: Canvas3DPluginNode = {
+  id: "field",
+  layerId: "main",
+  locked: false,
+  metadata: {},
+  parentId: null,
+  position: [0, 0, 0],
+  props: { pattern: "streaks", speed: 15 },
+  rotation: [0, 0, 0],
+  scale: [1, 1, 1],
+  type: "plugin.denovo.field",
+  visible: true
+};
+const pluginNodeType: PluginNodeType = pluginNode.type;
+void pluginNodeType;
+const pluginNode2d: Canvas2DPluginNode = {
+  id: "card",
+  layerId: "main",
+  locked: false,
+  metadata: {},
+  parentId: null,
+  position: [0, 0],
+  props: { label: "hero" },
+  rotation: 0,
+  scale: [1, 1],
+  type: "plugin.test.card",
+  visible: true
+};
+const pluginNode2dType: PluginNodeType = pluginNode2d.type;
+void pluginNode2dType;
+const invalidPlugin2dRotation: Canvas2DPluginNode = {
+  ...pluginNode2d,
+  // @ts-expect-error 2D plugin nodes use a number rotation, not a 3D vector.
+  rotation: [0, 0, 0]
+};
+void invalidPlugin2dRotation;
+const fieldProps: DenovoFieldProps = {
+  brightness: 1,
+  density: 0.6,
+  hue: 0,
+  pattern: "streaks",
+  speed: 15
+};
+const fieldPattern: DenovoFieldPattern = fieldProps.pattern;
+void fieldPattern;
+void denovoFieldInstanceCount(fieldProps.density);
+void isDenovoFieldType(DENOVO_FIELD_NODE_TYPE);
+void isDenovoFieldNode({ props: fieldProps, type: "plugin.denovo.field" });
+void parseDenovoFieldProps(fieldProps);
+// @ts-expect-error field pattern is a closed union
+const invalidFieldPattern: DenovoFieldProps = { ...fieldProps, pattern: "wave" };
+void invalidFieldPattern;
+const fieldPatternInput: SetFieldPatternInput = {
+  nodeId: "field",
+  pattern: "letters"
+};
+const changePattern: NamedOperation = setFieldPattern(fieldPatternInput);
+void changePattern;
+// @ts-expect-error extra fields are rejected
+setFieldPattern({ nodeId: "field", pattern: "letters", extra: true });
+// @ts-expect-error pattern is a closed union
+setFieldPattern({ nodeId: "field", pattern: "wave" });
+const sparklineProps: DenovoSparklineProps = {
+  fill: "none",
+  height: 80,
+  stroke: "#22c55e",
+  style: "linear",
+  values: [2, 8, 3, 12],
+  width: 240
+};
+const sparklineStyle: DenovoSparklineStyle = sparklineProps.style;
+void sparklineStyle;
+void denovoSparklineSize(sparklineProps);
+void denovoSparklinePoints(sparklineProps);
+void isDenovoSparklineType(DENOVO_SPARKLINE_NODE_TYPE);
+void isDenovoSparklineNode({
+  props: sparklineProps,
+  type: "plugin.denovo.sparkline"
+});
+void parseDenovoSparklineProps(sparklineProps);
+// @ts-expect-error sparkline style is a closed union
+const invalidSparklineStyle: DenovoSparklineProps = { ...sparklineProps, style: "spline" };
+void invalidSparklineStyle;
+const sparklineStyleInput: SetSparklineStyleInput = {
+  nodeId: "spark",
+  style: "step"
+};
+const changeSparkline: NamedOperation = setSparklineStyle(sparklineStyleInput);
+void changeSparkline;
+// @ts-expect-error extra fields are rejected
+setSparklineStyle({ extra: true, nodeId: "spark", style: "step" });
+// @ts-expect-error style is a closed union
+setSparklineStyle({ nodeId: "spark", style: "spline" });
+const pluginKindBoth: PluginNodeKindMode = "both";
+const pluginScene3d: PluginSceneMode = "3d";
+void pluginNodeKindSupportsMode(pluginKindBoth, pluginScene3d);
+// @ts-expect-error plugin kind mode is 2d, 3d, or both
+const invalidPluginKindMode: PluginNodeKindMode = "4d";
+void invalidPluginKindMode;
+void definePluginNodeKind;
+void getPluginNodeKind;
+void isCanvas2DPluginNode;
+void parsePluginNodeProps;
+void registerPluginNodeKind;
 const typedRect: CanvasNodeByType<"2d", "rect"> = {
   fill: "#22c55e",
   id: "typed-rect",
@@ -2714,18 +3093,50 @@ writeFileSync(
   path.join(tmpDir, "editor-smoke.ts"),
   `import {
   CanvasEditorError,
+  addLayer,
   applyCommandsToStoredDocument,
   applyNamedOperations,
+  reorderLayer,
   connectEditorToRuntime,
   createEditor,
   createPanOrbitTool,
   createSelectTool,
   createTransformTool,
+  listLayers,
+  listNodes,
+  setFieldPattern,
+  setSparklineStyle,
+  setLayerLocked,
+  setLayerName,
   setLayerVisible,
+  setNodeLayer,
+  setNodeLocked,
+  setNodeVisible,
+  setText,
+  removeNode,
+  removeEdge,
+  removeLayer,
+  stackBox,
+  type AddLayerInput,
+  type ReorderLayerInput,
   type CanvasEditor,
   type CanvasPersistenceEvent,
+  type ListedLayer,
+  type ListedNode,
   type NamedOperation,
-  type NamedOperationResult
+  type NamedOperationResult,
+  type SetFieldPatternInput,
+  type SetSparklineStyleInput,
+  type RemoveEdgeInput,
+  type RemoveLayerInput,
+  type RemoveNodeInput,
+  type SetLayerLockedInput,
+  type SetLayerNameInput,
+  type SetNodeLayerInput,
+  type SetNodeLockedInput,
+  type SetNodeVisibleInput,
+  type SetTextInput,
+  type StackBoxInput
 } from "@denovo/canvas-editor";
 
 const editor: CanvasEditor = createEditor({
@@ -2751,10 +3162,189 @@ const preview: NamedOperationResult = applyNamedOperations(
 );
 void preview;
 void editor.apply([hideMain]);
+const lockLayerInput: SetLayerLockedInput = {
+  layerId: "main",
+  locked: true
+};
+const lockLayer: NamedOperation = setLayerLocked(lockLayerInput);
+void lockLayer;
+// @ts-expect-error extra fields are rejected
+setLayerLocked({ extra: true, layerId: "main", locked: true });
+// @ts-expect-error locked must be boolean
+setLayerLocked({ layerId: "main", locked: "true" });
+const renameLayerInput: SetLayerNameInput = {
+  layerId: "main",
+  name: "Notes"
+};
+const renameLayer: NamedOperation = setLayerName(renameLayerInput);
+void renameLayer;
+// @ts-expect-error extra fields are rejected
+setLayerName({ extra: true, layerId: "main", name: "Notes" });
+// @ts-expect-error name must be a string
+setLayerName({ layerId: "main", name: 1 });
+const moveNodeInput: SetNodeLayerInput = {
+  layerId: "main",
+  nodeId: "box-1"
+};
+const moveNode: NamedOperation = setNodeLayer(moveNodeInput);
+void moveNode;
+// @ts-expect-error extra fields are rejected
+setNodeLayer({ extra: true, layerId: "main", nodeId: "box-1" });
+// @ts-expect-error layerId must be a string
+setNodeLayer({ layerId: 1, nodeId: "box-1" });
+const renameTextInput: SetTextInput = {
+  nodeId: "label",
+  text: "Done"
+};
+const renameText: NamedOperation = setText(renameTextInput);
+void renameText;
+// @ts-expect-error extra fields are rejected
+setText({ extra: true, nodeId: "label", text: "Done" });
+// @ts-expect-error text must be a string
+setText({ nodeId: "label", text: 1 });
+const stackInput: StackBoxInput = {
+  createId: () => "stacked-box",
+  face: "+y",
+  on: "box-1"
+};
+const stackOp: NamedOperation = stackBox(stackInput);
+void stackOp;
+const fieldPatternInput: SetFieldPatternInput = {
+  nodeId: "field",
+  pattern: "letters"
+};
+const changePattern: NamedOperation = setFieldPattern(fieldPatternInput);
+void changePattern;
+const hideNode: NamedOperation = setNodeVisible({
+  nodeId: "box-1",
+  visible: false
+});
+void hideNode;
+const lockNodeInput: SetNodeLockedInput = {
+  locked: true,
+  nodeId: "box-1"
+};
+const lockNode: NamedOperation = setNodeLocked(lockNodeInput);
+void lockNode;
+const hideNodeInput: SetNodeVisibleInput = {
+  nodeId: "box-1",
+  visible: false
+};
+void hideNodeInput;
+// @ts-expect-error extra fields are rejected
+setNodeVisible({ extra: true, nodeId: "box-1", visible: false });
+// @ts-expect-error visible must be boolean
+setNodeVisible({ nodeId: "box-1", visible: "false" });
+// @ts-expect-error extra fields are rejected
+setNodeLocked({ extra: true, locked: true, nodeId: "box-1" });
+// @ts-expect-error locked must be boolean
+setNodeLocked({ locked: "true", nodeId: "box-1" });
+const dropNode: NamedOperation = removeNode({ nodeId: "box-1" });
+void dropNode;
+const removeNodeInput: RemoveNodeInput = { nodeId: "box-1" };
+void removeNodeInput;
+// @ts-expect-error extra fields are rejected
+removeNode({ extra: true, nodeId: "box-1" });
+// @ts-expect-error nodeId must be a string
+removeNode({ nodeId: 1 });
+const dropEdge: NamedOperation = removeEdge({ nodeId: "edge-1" });
+void dropEdge;
+const removeEdgeInput: RemoveEdgeInput = { nodeId: "edge-1" };
+void removeEdgeInput;
+// @ts-expect-error extra fields are rejected
+removeEdge({ extra: true, nodeId: "edge-1" });
+// @ts-expect-error nodeId must be a string
+removeEdge({ nodeId: 1 });
+const dropLayer: NamedOperation = removeLayer({
+  layerId: "extra",
+  targetLayerId: null
+});
+void dropLayer;
+const removeLayerInput: RemoveLayerInput = {
+  layerId: "extra",
+  targetLayerId: null
+};
+void removeLayerInput;
+// @ts-expect-error extra fields are rejected
+removeLayer({ extra: true, layerId: "extra", targetLayerId: null });
+// @ts-expect-error targetLayerId is required
+removeLayer({ layerId: "extra" });
+// @ts-expect-error targetLayerId must be a layer id or null
+removeLayer({ layerId: "extra", targetLayerId: 1 });
+const insertLayer: NamedOperation = addLayer({
+  layerId: "notes",
+  name: "Notes"
+});
+void insertLayer;
+const addLayerInput: AddLayerInput = {
+  layerId: "notes",
+  name: "Notes"
+};
+void addLayerInput;
+// @ts-expect-error extra fields are rejected
+addLayer({ extra: true, layerId: "notes", name: "Notes" });
+// @ts-expect-error name is required
+addLayer({ layerId: "notes" });
+// @ts-expect-error index must be a number
+addLayer({ index: "0", layerId: "notes", name: "Notes" });
+const moveLayer: NamedOperation = reorderLayer({
+  index: 0,
+  layerId: "extra"
+});
+void moveLayer;
+const reorderLayerInput: ReorderLayerInput = {
+  index: 0,
+  layerId: "extra"
+};
+void reorderLayerInput;
+// @ts-expect-error extra fields are rejected
+reorderLayer({ extra: true, index: 0, layerId: "extra" });
+// @ts-expect-error index is required
+reorderLayer({ layerId: "extra" });
+// @ts-expect-error index must be a number
+reorderLayer({ index: "0", layerId: "extra" });
+// @ts-expect-error extra fields are rejected
+setFieldPattern({ nodeId: "field", pattern: "letters", extra: true });
+// @ts-expect-error pattern is a closed union
+setFieldPattern({ nodeId: "field", pattern: "wave" });
+const sparkStyle: NamedOperation = setSparklineStyle({
+  nodeId: "spark",
+  style: "step"
+});
+void sparkStyle;
+const sparklineStyleInput: SetSparklineStyleInput = {
+  nodeId: "spark",
+  style: "step"
+};
+void sparklineStyleInput;
+// @ts-expect-error extra fields are rejected
+setSparklineStyle({ extra: true, nodeId: "spark", style: "step" });
+// @ts-expect-error style is a closed union
+setSparklineStyle({ nodeId: "spark", style: "spline" });
 // @ts-expect-error extra fields are rejected
 setLayerVisible({ layerId: "main", visible: false, extra: true });
 // @ts-expect-error visible must be boolean
 setLayerVisible({ layerId: "main", visible: "false" });
+// @ts-expect-error extra fields are rejected
+stackBox({ createId: () => "stacked-box", extra: true, face: "+y", on: "box-1" });
+// @ts-expect-error face is a closed axis union
+stackBox({ createId: () => "stacked-box", face: "+w", on: "box-1" });
+const listed: readonly ListedNode[] = listNodes(editor.getState().document);
+void listed;
+declare const listedNode: ListedNode;
+// @ts-expect-error listed nodes omit geometry arrays
+listedNode.positions;
+// @ts-expect-error extra fields are rejected
+listNodes(editor.getState().document, { extra: true });
+const listedLayers: readonly ListedLayer[] = listLayers(
+  editor.getState().document
+);
+void listedLayers;
+declare const listedLayer: ListedLayer;
+// @ts-expect-error listed layers omit metadata
+listedLayer.metadata;
+// @ts-expect-error listLayers does not take a filter
+listLayers(editor.getState().document, { extra: true });
 const disconnect = connectEditorToRuntime(editor, {
   update(scene) {
     void scene;

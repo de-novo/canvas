@@ -1,0 +1,21 @@
+{
+  "name": "@denovo/canvas-flow-example",
+  "version": "0.0.0",
+  "license": "Apache-2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "clean": "rm -rf dist .turbo",
+    "dev": "vite --host 127.0.0.1 --port 5181",
+    "preview": "vite preview --host 127.0.0.1 --port 4181",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@denovo/canvas": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2",
+    "vite": "^8.1.3"
+  }
+}

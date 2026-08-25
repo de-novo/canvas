@@ -3,6 +3,8 @@ import { createRequire } from "node:module";
 import { pathToFileURL } from "node:url";
 import path from "node:path";
 
+import { z } from "../packages/core/node_modules/zod/index.js";
+
 import { createCheckRunner } from "./lib/checks.mjs";
 
 /**
@@ -292,6 +294,144 @@ const web = await import(
 
 {
   const scene = core.defineScene({
+    id: "orthogonal-stub-gap-scene",
+    layers: [{ id: "main", name: "Main" }],
+    mode: "2d",
+    nodes: [
+      { id: "a", layerId: "main", position: [0, 0], size: [40, 40], type: "rect" },
+      { id: "b", layerId: "main", position: [0, 76], size: [40, 40], type: "rect" },
+      {
+        id: "stacked",
+        layerId: "main",
+        routing: "orthogonal",
+        sourceId: "b",
+        sourcePort: "top",
+        targetId: "a",
+        targetPort: "bottom",
+        type: "edge"
+      }
+    ]
+  });
+  const graph = web.createCanvas2DSceneGraph(scene);
+  const stacked = web.resolveCanvas2DEdgeGeometry(
+    scene.nodes.find((node) => node.id === "stacked"),
+    graph
+  );
+  const points = [stacked.start, ...stacked.waypoints, stacked.end];
+  for (const [, y] of points) {
+    assert.ok(
+      y >= 40 - 1e-6 && y <= 76 + 1e-6,
+      `orthogonal stub must stay inside the 36-unit port gap, got y=${y}`
+    );
+  }
+}
+
+{
+  const scene = core.defineScene({
+    id: "orthogonal-facing-ports-scene",
+    layers: [{ id: "main", name: "Main" }],
+    mode: "2d",
+    nodes: [
+      { id: "a", layerId: "main", position: [0, 0], size: [40, 40], type: "rect" },
+      { id: "b", layerId: "main", position: [120, 0], size: [40, 40], type: "rect" },
+      {
+        id: "stale-ports",
+        layerId: "main",
+        routing: "orthogonal",
+        sourceId: "a",
+        sourcePort: "top",
+        targetId: "b",
+        targetPort: "bottom",
+        type: "edge"
+      }
+    ]
+  });
+  const graph = web.createCanvas2DSceneGraph(scene);
+  const stale = web.resolveCanvas2DEdgeGeometry(
+    scene.nodes.find((node) => node.id === "stale-ports"),
+    graph
+  );
+  assert.ok(
+    Math.abs(stale.start[0] - 40) < 1e-6 && Math.abs(stale.start[1] - 20) < 1e-6,
+    "stale top port must retarget to the facing right side"
+  );
+  assert.ok(
+    Math.abs(stale.end[0] - 120) < 1e-6 && Math.abs(stale.end[1] - 20) < 1e-6,
+    "stale bottom port must retarget to the facing left side"
+  );
+}
+
+{
+  const kind = core.definePluginNodeKind({
+    mode: "2d",
+    props: z.object({ label: z.string() }).strict(),
+    type: "plugin.test.card"
+  });
+  const unregister = core.registerPluginNodeKind(kind);
+  try {
+    const scene = core.defineScene({
+      id: "plugin-2d-marker-scene",
+      layers: [{ id: "main", name: "Main" }],
+      mode: "2d",
+      nodes: [
+        {
+          id: "card",
+          layerId: "main",
+          position: [10, 20],
+          props: { label: "hero" },
+          type: "plugin.test.card"
+        }
+      ]
+    });
+    const graph = web.createCanvas2DSceneGraph(scene);
+    const card = scene.nodes.find((node) => node.id === "card");
+    assert.deepEqual(web.resolveCanvas2DNodeWorldCenter(card, graph), [10, 20]);
+    assert.deepEqual(web.resolveCanvas2DNodeWorldBounds(card, graph), {
+      maxX: 58,
+      maxY: 68,
+      minX: 10,
+      minY: 20
+    });
+  } finally {
+    unregister();
+  }
+}
+
+{
+  const scene = core.defineScene({
+    id: "sparkline-bounds-scene",
+    layers: [{ id: "main", name: "Main" }],
+    mode: "2d",
+    nodes: [
+      {
+        id: "spark",
+        layerId: "main",
+        position: [10, 20],
+        props: {
+          fill: "none",
+          height: 80,
+          stroke: "#22c55e",
+          style: "linear",
+          values: [2, 8, 3, 12],
+          width: 240
+        },
+        type: "plugin.denovo.sparkline"
+      }
+    ]
+  });
+  const graph = web.createCanvas2DSceneGraph(scene);
+  const spark = scene.nodes.find((node) => node.id === "spark");
+  assert.deepEqual(web.resolveCanvas2DNodeWorldCenter(spark, graph), [10, 20]);
+  assert.deepEqual(web.resolveCanvas2DNodeWorldBounds(spark, graph), {
+    maxX: 250,
+    maxY: 100,
+    minX: 10,
+    minY: 20
+  });
+}
+
+{
+  const scene = core.defineScene({
     id: "html-transform-scene",
     layers: [{ id: "main", name: "Main" }],
     mode: "2d",
@@ -311,6 +451,12 @@ const web = await import(
   const card = scene.nodes.find((node) => node.id === "card");
   const center = web.resolveCanvas2DNodeWorldCenter(card, graph);
   assert.deepEqual(center, [200, 260]);
+  assert.deepEqual(web.resolveCanvas2DNodeWorldBounds(card, graph), {
+    maxX: 320,
+    maxY: 308,
+    minX: 200,
+    minY: 260
+  });
 }
 
 {

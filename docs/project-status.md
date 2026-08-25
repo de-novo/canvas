@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: 2026-08-24.
+Last updated: 2026-08-25.
 
 This is the canonical project status index. Keep milestone definitions in
 [Vision and Milestones](./vision-and-milestones.md); keep chronological evidence
@@ -28,6 +28,17 @@ v1 focus remains the framework-agnostic 2D/3D editor engine. Diagram and
 BIM stay optional packages, not a second product identity. See
 [2026-08-17 review-hardening](./history/2026-08-17-review-hardening.md).
 
+Product identity is now recorded: we restate open-source impressiveness
+as our documents. Hosting an upstream room is not absorption. See
+[Product Identity](./product-identity.md) and
+[2026-08-25 product identity](./history/2026-08-25-product-identity.md).
+The editor engine is verified. The first absorbed diagram catalog case
+is the release board in `apps/playground-flow`. The first absorbed hero
+case is Warp Field restated as `plugin.denovo.field` in
+`apps/playground-field`. The first absorbed graph catalog case is the
+service map in `apps/playground-network`. See
+[Framework Surface](./framework-surface.md).
+
 ## Complete
 
 - Monorepo scaffold exists with framework-agnostic core/web packages, optional
@@ -36,9 +47,17 @@ BIM stay optional packages, not a second product identity. See
 - Public API contract verification exists and passes.
 - Renderer backend vocabulary includes `auto`, `webgpu`, `webgl2`,
   `canvas2d`, `offscreen-canvas2d`, and `custom`. Implemented `auto`
-  results are Canvas2D and WebGL2. WebGPU is reserved and unimplemented.
-- Agent/project/document/history management policy is defined.
-- Enforceable agent rules are defined.
+  results are Canvas2D and WebGL2. Explicit `backend: "webgpu"` is a 3D
+  built-in and is not an `auto` result.
+- Contributor/project/document/history management policy is defined for human
+  and automated contributors.
+- Enforceable contributor rules are canonical; `AGENTS.md` adds only
+  automation-specific workspace and handoff safeguards.
+- Four repository-scoped skills route public-contract, editor-core,
+  browser-rendering, and governance work to the canonical documents and
+  risk-matched gates; `verify:docs` validates their location and frontmatter.
+- Root code-review rules and the pull-request template require contract impact,
+  exact verification, unmeasured scope, and durable evidence to stay separate.
 - TypeScript 7 is the required repository toolchain, and Effect is the preferred
   internal workflow foundation behind Effect-free public facade boundaries.
 - The initial M0 document/schema slice was verified for valid 2D/3D scenes,
@@ -165,10 +184,10 @@ BIM stay optional packages, not a second product identity. See
   boundary. Conflicting sources and ignored adapters fail explicitly. The
   plugin registry is private, and placeholder node/renderer registration or
   unconnected storage config is not advertised as working API.
-- The root agent guide now enforces a public type safety gate: no explicit
-  `any`, no convenience broad types when the domain is expressible, documented
-  `unknown` boundaries, schema-derived contracts, and positive/negative
-  consumer fixtures for every public type change.
+- The shared contributor rulebook enforces the public type safety gate: no
+  explicit `any`, no convenience broad types when the domain is expressible,
+  documented `unknown` boundaries, schema-derived contracts, and
+  positive/negative consumer fixtures for every public type change.
 - React, Vue, Svelte, and Solid view wrappers mount the facade
   `createCanvas(target, config)` instead of `@denovo/canvas-web`, expose
   `DenovoCanvasRuntime` through their runtime callbacks, and accept the
@@ -199,9 +218,9 @@ BIM stay optional packages, not a second product identity. See
   immediately, serialize preview cleanup through leases, and propagate cleanup
   failures without facade-owned fire-and-forget clearing.
 - Backend selection is strict. `auto` resolves only the implemented Canvas2D
-  or WebGL2 backend compatible with the current mode and capabilities; explicit
-  unimplemented, unavailable, mismatched, or adapter-less requests fail without
-  substituting another backend.
+  or WebGL2 backend compatible with the current mode and capabilities.
+  Explicit `webgpu` is 3D-only. Unimplemented, unavailable, mismatched,
+  or adapter-less requests fail without substituting another backend.
 - The vanilla facade example exercises the authoring surface with explicit IDs,
   layers, work planes, grids, strict document reload, undo, and redo. Desktop
   mouse and real mobile touch acceptance covers the complete 2D/3D authoring
@@ -219,9 +238,46 @@ BIM stay optional packages, not a second product identity. See
   place one box on the static target's +X face, and prove that hover/contact
   ghosts plus empty-space misses leave document, node count, and history
   unchanged until a successful release.
+- First absorbed diagram showcase: `apps/playground-flow` release board
+  (`html` + `edge` + `text`, no iframe). See
+  [2026-08-25 absorbed flow showcase](./history/2026-08-25-flow-showcase.md).
+- First absorbed hero showcase: `apps/playground-field` restates
+  ThreeUI Warp Field as one `plugin.denovo.field` node. See
+  [2026-08-25 absorbed field showcase](./history/2026-08-25-field-showcase.md).
+- First absorbed graph showcase: `apps/playground-network` service map
+  (`html` + `edge` + `text`, relation/time layout, no iframe). See
+  [2026-08-25 absorbed network showcase](./history/2026-08-25-network-showcase.md).
 
 ## Active
 
+- Framework surface (2026-08-25): 3D and 2D plugin nodes, official
+  `plugin.denovo.field`, official `plugin.denovo.sparkline`, the Warp
+  Field catalog, and the service-map graph catalog have landed. A
+  plugin kind declares `2d`, `3d`, or `both`. Single-mode kinds fail
+  closed in the other scene. `apps/playground-threeui` stays a visual
+  reference, not product proof. See
+  [Framework Surface](./framework-surface.md),
+  [2026-08-25 official denovo sparkline](./history/2026-08-25-denovo-sparkline.md),
+  [2026-08-25 plugin kinds in both modes](./history/2026-08-25-plugin-nodes-both-modes.md),
+  [2026-08-25 2D plugin nodes](./history/2026-08-25-plugin-nodes-2d.md),
+  [2026-08-25 official denovo field](./history/2026-08-25-denovo-field.md),
+  [2026-08-25 absorbed field showcase](./history/2026-08-25-field-showcase.md),
+  and
+  [2026-08-25 absorbed network showcase](./history/2026-08-25-network-showcase.md).
+- Product identity (2026-08-25): Denovo is a facade that restates
+  open-source impressiveness as our documents. View is required for
+  edit. An upstream room is absorbed only if the document still redraws
+  after that host is removed. `apps/playground-threeui` stays a visual
+  reference; Warp Field (`nodes: []` + original engine) fails the
+  absorption test and is not product proof. See
+  [Product Identity](./product-identity.md) and
+  [2026-08-25 product identity](./history/2026-08-25-product-identity.md).
+- Isolated ThreeUI Community playground still vendors public MIT rooms
+  (`apps/playground-threeui`). No facade export and no new node types.
+  See
+  [2026-08-24 ThreeUI Community playground](./history/2026-08-24-threeui-community-playground.md)
+  and
+  [2026-08-24 Warp Field as a Denovo document host](./history/2026-08-24-warp-field-denovo-host.md).
 - Review hardening landed on 2026-08-17. See
   [2026-08-17 review-hardening](./history/2026-08-17-review-hardening.md).
 - Product boundary (2026-08-22): advanced graph visuals in the
@@ -278,20 +334,40 @@ BIM stay optional packages, not a second product identity. See
 
 ## Next
 
-1. **Named authoring operations (slice 1 landed, slice 2 next):**
+1. **Framework surface:** 3D and 2D plugin-node unions, official
+   `plugin.denovo.field`, official `plugin.denovo.sparkline`, and the
+   Warp Field catalog landed. A kind declares `2d`, `3d`, or `both`.
+   Markers draw until a kind has a drawer. Do not wrap more ThreeUI
+   rooms. `keycaps` / `hyperspace` stay unabsorbed. See
+   [Framework Surface](./framework-surface.md) and
+   [2026-08-25 official denovo sparkline](./history/2026-08-25-denovo-sparkline.md).
+2. **Absorbed showcases:** diagram (`apps/playground-flow`,
+   `pnpm verify:flow-showcase` 2/2), hero (`apps/playground-field`,
+   `pnpm verify:field-showcase` 2/2), and graph
+   (`apps/playground-network`, `pnpm verify:network-showcase`) landed.
+   `apps/playground-graph` stays the throughput bench. See
+   [Product Identity](./product-identity.md).
+3. **Named authoring operations (slices 1–16 landed):**
    humans and agents share one function that compiles to existing
-   commands. Slice 1 ships `setLayerVisible`, `applyNamedOperations`, and
-   `editor.apply([…])`. Already-in-state does not grow history. Playground
-   Hide / Show Level 2 call the helper, not a raw `layer.update`. Next is
-   document-only `stackBox`, then `listNodes`. See
+   commands. `setLayerVisible`, `setLayerLocked`, `setLayerName`,
+   document-only `stackBox`, read-only `listNodes` and `listLayers`,
+   `setFieldPattern`, `setSparklineStyle`, `setNodeVisible`, `setNodeLocked`,
+   `setNodeLayer`, `setText`,
+   `removeNode`, `removeEdge`, `removeLayer`, `addLayer`, and
+   `reorderLayer` are shipped.
+   `listNodes` returns effective
+   `{ id, type, layerId, visible, locked }` and no geometry.
+   `listLayers` returns `{ id, name, visible, locked }` and no
+   metadata. See
    [Named Authoring Operations](./named-authoring-operations.md) and
-   [2026-08-24 named operations setLayerVisible](./history/2026-08-24-named-operations-set-layer-visible.md).
-2. **Graph field throughput (not presentation):** time/relation layout
+   [2026-08-25 named operations setText](./history/2026-08-25-named-operations-set-text.md).
+4. **Graph field throughput (not presentation):** time/relation layout
    adapters and a packed 2D point field exist. Canvas stops at measured
    10k-point draw cost and screen-size clamp. Hosts (for example haru)
-   own glow, cluster colour, and labels. See
+   own glow, cluster colour, and labels. A later absorbed graph showcase
+   must use our vocabulary, not those skins. See
    [2026-08-22 graph field host presentation](./history/2026-08-22-graph-field-host-presentation.md).
-3. **Next contract — mesh-surface measurement endpoints (complete):**
+5. **Next contract — mesh-surface measurement endpoints (complete):**
    the protocol extension landed 2026-08-22 —
    `resolveSurfacePoint` accepts `mesh` targets with correlated
    `mesh.triangle` hits (schema, Three resolver, facade; browser-verified) —
@@ -302,10 +378,13 @@ BIM stay optional packages, not a second product identity. See
    [2026-08-22 mesh surface points](./history/2026-08-22-mesh-surface-points.md)
    and the extension section in
    [M3.1 Surface Placement Contract](./m3-1-surface-placement-contract.md).
-   WebGPU adapter and a pinned-environment frame budget gate are
-   explicitly deferred (rationale in
+   The first explicit 3D WebGPU slice landed 2026-08-25; `auto` still
+   does not select it. A pinned-environment frame budget gate remains
+   deferred (rationale in
    [2026-08-22 next contract decision](./history/2026-08-22-next-contract-decision.md)).
-4. **B-item residual risks (complete):** storey layers (2026-08-22),
+   See
+   [2026-08-25 explicit WebGPU 3D](./history/2026-08-25-webgpu-explicit-3d.md).
+6. **B-item residual risks (complete):** storey layers (2026-08-22),
    instance surface points (2026-08-22), and BIM multi-model federation
    (2026-08-23) have all landed. Federation: `loadModel` is additive,
    `toDocument()` merges staged models, `expressID` pairs with `modelId`,
@@ -324,15 +403,199 @@ BIM stay optional packages, not a second product identity. See
 
 ## Evidence
 
+- Named operations `setText` (2026-08-25). Compiles to `node.update`
+  of `text` on a 2D `text` node. Non-text is `invalid-command`.
+  `pnpm typecheck` 36/36. `pnpm build` 25/25.
+  `pnpm verify:public-api` ok. `pnpm verify:editor-core` ok.
+  `pnpm verify:named-operations` 3/3. `pnpm verify:docs` 151 Markdown
+  files, 487/487 local targets. See
+  [2026-08-25 named operations setText](./history/2026-08-25-named-operations-set-text.md).
+- Named operations `setNodeLayer` (2026-08-25). Compiles to
+  `node.update` of `layerId`. Locked node or locked target layer is
+  `locked-target`. `pnpm typecheck` 36/36. `pnpm build` 25/25.
+  `pnpm verify:public-api` ok. `pnpm verify:editor-core` ok.
+  `pnpm verify:named-operations` 3/3. `pnpm verify:docs` 150 Markdown
+  files, 485/485 local targets. See
+  [2026-08-25 named operations setNodeLayer](./history/2026-08-25-named-operations-set-node-layer.md).
+- Named operations `setLayerName` (2026-08-25). Compiles to
+  `layer.update` of `name`. Locked layer is `locked-target`.
+  `pnpm typecheck` 36/36. `pnpm build` 25/25.
+  `pnpm verify:public-api` ok. `pnpm verify:editor-core` ok.
+  `pnpm verify:named-operations` 3/3. `pnpm verify:docs` 149 Markdown
+  files, 483/483 local targets. See
+  [2026-08-25 named operations setLayerName](./history/2026-08-25-named-operations-set-layer-name.md).
+- Official `plugin.denovo.sparkline` (2026-08-25). Closed 2D props,
+  official drawer, `setSparklineStyle`. No new playground.
+  `pnpm typecheck` 36/36. `pnpm build` 25/25.
+  `pnpm verify:public-api` ok. `pnpm verify:document-schema` 44
+  checks. `pnpm verify:hit-testing` ok. `pnpm verify:editor-core`
+  ok. `pnpm verify:denovo-sparkline` 2/2. `pnpm verify:docs` 148
+  Markdown files, 481/481 local targets. See
+  [2026-08-25 official denovo sparkline](./history/2026-08-25-denovo-sparkline.md).
+- Named operations `reorderLayer` (2026-08-25). Compiles to
+  `layer.reorder`. Already at that index does not grow history.
+  `pnpm typecheck` 36/36. `pnpm build` 25/25.
+  `pnpm verify:public-api` ok. `pnpm verify:editor-core` ok.
+  `pnpm verify:named-operations` 3/3. `pnpm verify:docs` 147 Markdown
+  files, 478/478 local targets. See
+  [2026-08-25 named operations reorderLayer](./history/2026-08-25-named-operations-reorder-layer.md).
+- Named operations `addLayer` (2026-08-25). Compiles to `layer.add`.
+  Omit `index` to append. Duplicate id is `layer-already-exists`.
+  `pnpm typecheck` 36/36. `pnpm build` 25/25.
+  `pnpm verify:public-api` ok. `pnpm verify:editor-core` ok.
+  `pnpm verify:named-operations` 3/3. `pnpm verify:docs` 146 Markdown
+  files, 476/476 local targets. See
+  [2026-08-25 named operations addLayer](./history/2026-08-25-named-operations-add-layer.md).
+- WebGPU section plane (2026-08-25). Explicit `backend: "webgpu"` uses
+  a `ClippingGroup` for `setSectionPlane`. WebGL2 still uses renderer
+  clipping planes. `pnpm typecheck` 36/36. `pnpm build` 25/25.
+  `pnpm verify:webgpu` 4/4. `pnpm verify:docs` 145 Markdown files,
+  474/474 local targets. See
+  [2026-08-25 WebGPU section plane](./history/2026-08-25-webgpu-section-plane.md).
+- Explicit 3D WebGPU (2026-08-25). `backend: "webgpu"` resolves on 3D
+  when `navigator.gpu` is present. `auto` stays Canvas2D/WebGL2. A 2D
+  request is `mode-mismatch`. Missing GPU is `capability-unavailable`.
+  Three.js WebGL fallback is rejected. `pnpm typecheck` 36/36.
+  `pnpm build` 25/25. `pnpm verify:public-api` ok.
+  `pnpm verify:webgpu` 3/3, desktop and mobile `drawn`.
+  `pnpm verify:docs` 144 Markdown files, 471/471 local targets. See
+  [2026-08-25 explicit WebGPU 3D](./history/2026-08-25-webgpu-explicit-3d.md).
+- Named operations `removeLayer` (2026-08-25). Compiles to
+  `layer.remove`. Empty layer requires `targetLayerId: null`; a
+  non-empty layer requires an explicit other layer.
+  `pnpm typecheck` 36/36. `pnpm build` 25/25.
+  `pnpm verify:public-api` ok. `pnpm verify:editor-core` ok.
+  `pnpm verify:named-operations` 3/3. `pnpm verify:docs` 143 Markdown
+  files, 468/468 local targets. See
+  [2026-08-25 named operations removeLayer](./history/2026-08-25-named-operations-remove-layer.md).
+- Named operations `removeEdge` (2026-08-25). Compiles to
+  `node.remove` of an `edge`. Pair with `removeNode` in one list.
+  `pnpm typecheck` 36/36. `pnpm build` 25/25.
+  `pnpm verify:public-api` ok. `pnpm verify:editor-core` ok.
+  `pnpm verify:named-operations` 3/3. `pnpm verify:docs` 142 Markdown
+  files, 466/466 local targets. See
+  [2026-08-25 named operations removeEdge](./history/2026-08-25-named-operations-remove-edge.md).
+- Named operations `removeNode` (2026-08-25). Compiles to
+  `node.remove`. Fails on missing, locked, edge-referenced, and
+  non-empty group nodes. `pnpm typecheck` 36/36. `pnpm build` 25/25.
+  `pnpm verify:public-api` ok. `pnpm verify:editor-core` ok.
+  `pnpm verify:named-operations` 3/3. `pnpm verify:docs` 141 Markdown
+  files, 463/463 local targets. See
+  [2026-08-25 named operations removeNode](./history/2026-08-25-named-operations-remove-node.md).
+- Named operations `listLayers` (2026-08-25). Read-only
+  `{ id, name, visible, locked }` in document order.
+  `pnpm typecheck` 36/36. `pnpm build` 25/25.
+  `pnpm verify:public-api` ok. `pnpm verify:editor-core` ok.
+  `pnpm verify:named-operations` 3/3. `pnpm verify:docs` 140 Markdown
+  files, 461/461 local targets. See
+  [2026-08-25 named operations listLayers](./history/2026-08-25-named-operations-list-layers.md).
+- Named operations `setLayerLocked` (2026-08-25). Compiles to
+  `layer.update`. Unlocking the layer itself is allowed.
+  `pnpm typecheck` 36/36. `pnpm build` 25/25.
+  `pnpm verify:public-api` ok. `pnpm verify:editor-core` ok.
+  `pnpm verify:named-operations` 3/3. `pnpm verify:docs` 139 Markdown
+  files, 458/458 local targets. See
+  [2026-08-25 named operations setLayerLocked](./history/2026-08-25-named-operations-set-layer-locked.md).
+- Named operations node flags (2026-08-25). `setNodeVisible` and
+  `setNodeLocked` compile to `node.update`. `pnpm typecheck` 36/36.
+  `pnpm build` 25/25. `pnpm verify:public-api` ok.
+  `pnpm verify:editor-core` ok including 2D `rect`.
+  `pnpm verify:named-operations` 3/3. `pnpm verify:docs` 138 Markdown
+  files, 456/456 local targets. See
+  [2026-08-25 named operations node flags](./history/2026-08-25-named-operations-node-flags.md).
+- Plugin kinds in both modes (2026-08-25). A kind may declare `2d`,
+  `3d`, or `both`. 3D is not a later slice. `pnpm typecheck` 36/36.
+  `pnpm build` 25/25. `pnpm verify:public-api` ok.
+  `pnpm verify:document-schema` 43 checks including
+  `plugin.test.badge` in both scenes. `pnpm verify:docs` 137 Markdown
+  files, 454/454 local targets. See
+  [2026-08-25 plugin kinds in both modes](./history/2026-08-25-plugin-nodes-both-modes.md).
+- 2D plugin nodes (2026-08-25). `pnpm typecheck` 36/36. `pnpm build`
+  25/25. `pnpm verify:public-api` ok, including `Canvas2DPluginNode`.
+  `pnpm verify:document-schema` 43 checks including
+  `plugin-nodes-register-and-parse-by-mode`. `pnpm verify:hit-testing`
+  ok including 48×48 marker bounds. `pnpm verify:editor-core` ok.
+  `pnpm verify:docs` 136 Markdown files, 450/450 local targets. See
+  [2026-08-25 2D plugin nodes](./history/2026-08-25-plugin-nodes-2d.md).
+- Network layout routing (2026-08-25). Relation stacks down from the
+  origin, orthogonal ports retarget when they no longer aim at the
+  neighbor, and the service map fits the camera after layout.
+  `pnpm verify:hit-testing` ok. `pnpm verify:editor-core` ok.
+  `pnpm verify:network-showcase` 2/2. `pnpm verify:docs` 135 Markdown
+  files, 446/446 local targets. See
+  [2026-08-25 Network layout routing](./history/2026-08-25-network-layout-routing.md).
+- HTML overlay cull (2026-08-25). Overlay visibility uses world-bounds
+  intersection, not the `html` origin. Facing orthogonal stubs stay
+  inside the port gap. `pnpm verify:hit-testing` ok.
+  `pnpm verify:network-showcase` 2/2 including a card whose origin is
+  off-screen. `pnpm verify:docs` 134 Markdown files, 444/444 local
+  targets. See
+  [2026-08-25 HTML overlay culls by bounds](./history/2026-08-25-html-overlay-cull.md).
+- HTML overlay zoom (2026-08-25). `pnpm verify:hit-testing` ok.
+  `pnpm verify:network-showcase` 2/2 including overlay size at zoom 2
+  (`400×192`). See
+  [2026-08-25 HTML overlay follows zoom](./history/2026-08-25-html-overlay-zoom.md).
+- Service map catalog (2026-08-25). `pnpm typecheck` 36/36.
+  `pnpm build` 25/25. `pnpm verify:public-api` ok.
+  `pnpm verify:network-showcase` 2/2. Desktop: no iframe, no
+  point-field overlay, API hub hit-test, relation layout moves
+  positions, undo restores `[80, 168]`. Mobile iPhone 14: no iframe,
+  nine cards. Screenshots
+  `artifacts/verification/network-service-map.png` and
+  `network-service-map-mobile.png`. `pnpm verify:docs` 132 Markdown
+  files, 437/437 local targets. See
+  [2026-08-25 absorbed network showcase](./history/2026-08-25-network-showcase.md).
+- Warp Field catalog (2026-08-25). `pnpm typecheck` 35/35.
+  `pnpm build` 24/24. `pnpm verify:field-showcase` 2/2. Desktop: no
+  iframe, field hit-test, `setFieldPattern` to letters, undo restores
+  streaks, compare board shows ThreeUI source as text and live
+  `plugin.denovo.field` props. Mobile iPhone 14: no iframe, streaks
+  paint. Screenshots `artifacts/verification/field-warp-field.png` and
+  `field-warp-field-mobile.png`. `pnpm verify:docs` 131 Markdown files,
+  432/432 local targets. See
+  [2026-08-25 absorbed field showcase](./history/2026-08-25-field-showcase.md).
+- Official `plugin.denovo.field` (2026-08-25). `pnpm typecheck` 34/34.
+  `pnpm build` 23/23. `pnpm verify:public-api` ok.
+  `pnpm verify:document-schema` 43 checks including
+  `official-denovo-field-parses-without-host-register`.
+  `pnpm verify:editor-core` ok. `pnpm verify:denovo-field` 2/2.
+  `pnpm verify:docs` 130 Markdown files, 428/428 local targets. See
+  [2026-08-25 official denovo field](./history/2026-08-25-denovo-field.md).
+- 3D plugin nodes (2026-08-25). `pnpm typecheck` and `pnpm build` 23/23.
+  `pnpm verify:public-api` ok. `pnpm verify:document-schema` 42 checks
+  including `plugin-nodes-register-and-parse-in-3d-only`.
+  `pnpm verify:editor-core` ok. `pnpm verify:docs` 129 Markdown files,
+  425/425 local targets. See
+  [2026-08-25 3D plugin nodes](./history/2026-08-25-plugin-nodes.md).
+- Framework surface designed 2026-08-25. Documentation only.
+  `pnpm verify:docs` passed: 128 Markdown files, 421/421 local targets.
+  See
+  [2026-08-25 framework surface](./history/2026-08-25-framework-surface.md).
+- `pnpm verify:flow-showcase`: passed 2/2 on 2026-08-25. Desktop: no
+  iframe, five cards, Build hit-test, hide labels, undo. Mobile
+  iPhone 14: no iframe, five cards. Screenshots
+  `artifacts/verification/flow-release-board.png` and
+  `artifacts/verification/flow-release-board-mobile.png`. See
+  [2026-08-25 absorbed flow showcase](./history/2026-08-25-flow-showcase.md).
+- Product identity recorded 2026-08-25. Documentation pointers only.
+  `pnpm verify:docs` after the flow showcase: 126 Markdown files,
+  399/399 local targets. Previously 125 / 394/394 at identity-only.
+  See
+  [2026-08-25 product identity](./history/2026-08-25-product-identity.md).
+- `pnpm --filter @denovo/canvas-threeui-example typecheck` and `build`
+  passed on 2026-08-24 for the Warp Field Denovo host. Browser: custom
+  backend, 1408×547 canvas, screenshot
+  `artifacts/verification/warp-field-denovo.png`. See
+  [2026-08-24 Warp Field as a Denovo document host](./history/2026-08-24-warp-field-denovo-host.md).
 - `pnpm typecheck`: passed on 2026-08-24 (32 tasks) after named-operations
   slice 1; previously 32/32 on 2026-08-23 after federated origin.
 - `pnpm build`: passed on 2026-08-24 (21 packages/apps) after
   named-operations slice 1; previously 21/21 on 2026-08-23 after
   federated origin.
 - `pnpm verify:public-api`: passed on 2026-08-24 after named-operations
-  slice 1, including `setLayerVisible` / `applyNamedOperations` function
-  exports and extra-field / non-boolean `visible` `@ts-expect-error`
-  fixtures. Previously passed on 2026-08-23 after federated origin.
+  slice 3, including `listNodes` / `ListedNode` fixtures (no geometry
+  fields, extra options rejected). Previously passed after slice 2 the
+  same day.
 - `pnpm verify:m4-performance`: passed on 2026-08-22 (11 named checks) —
   LOD schema defaults/validation/round-trip and chunk-loader ordering,
   budget batching, cancellation, and recovery.
@@ -380,16 +643,16 @@ BIM stay optional packages, not a second product identity. See
   including edge endpoint/same-layer/port validation,
   `m8-node-update-roundtrips-edge-text-html`, and deterministic `0.1.0` →
   `0.2.0` migration. Previously passed on 2026-08-21.
-- `pnpm verify:editor-core`: passed on 2026-08-24, adding the named
-  operation recipe: `applyNamedOperations` and `editor.apply` hide the
-  same layer, already-in-state does not grow history, unknown `layerId`
-  is `layer-not-found`, a bare helper is rejected (list required), and
-  two ops commit as one undo. Previously passed on 2026-08-22.
-- `pnpm verify:named-operations`: passed on 2026-08-24 (2 named checks)
-  — the same list from a node caller, plus Chromium Hide Level 2
-  (`data-level-2-visible` true → false, second hide does not grow undo,
-  Show restores, screenshot
-  `artifacts/verification/named-ops-hide-level-2.png`).
+- `pnpm verify:editor-core`: passed on 2026-08-24, adding `listNodes`
+  (document order, empty layer `[]`, unknown layer, hidden layer
+  effective `visible: false`, then `stackBox` from a listed box id).
+  Previously included `stackBox` and `setLayerVisible` the same day.
+- `pnpm verify:named-operations`: passed on 2026-08-24 after slice 3
+  browser QA — BIM Hide/Show Level 2 plus vanilla Stack +Y on
+  `static-box` (`[0, 1.2, 0]`, second click does not grow undo,
+  screenshots
+  `artifacts/verification/named-ops-hide-level-2.png` and
+  `named-ops-stack-box.png`).
 - `pnpm verify:server`: passed on 2026-08-22 (36 assertions), adding six
   IndexedDB adapter checks (`fake-indexeddb`) to the existing
   conflict-does-not-overwrite, memory/filesystem `applyCommands`, undo/redo
@@ -409,8 +672,16 @@ BIM stay optional packages, not a second product identity. See
 - `pnpm verify:performance`: re-measured on 2026-08-21 with
   `drawCalls=1` / `geometries=1`. Frame p50: 100 boxes 8.80 ms, 1k
   50.00 ms, 10k 116.60 ms. No pass/fail gates.
-- `doc-governance-*.py`: not run on 2026-08-17 — scripts are not present at
-  `~/.agents/skills/doc-governance/scripts/`.
+- `pnpm verify:docs`: passed on 2026-08-24 after contributor-governance
+  and repository-skill generalization (119 Markdown files, 369/369 local
+  targets, 0 symlinks, 0 conflict markers, 4/4 canonical contributor
+  entrypoints, 4/4 repository skills, 5/5 required project-status headings).
+  The pull-request template also passed 6/6 required headings.
+  Broken canonical-link, mismatched skill-name, and missing PR evidence-heading
+  mutations each produced the expected 1-error red result before restoration.
+  The Skill Creator validator also passed 4/4 skills. `git diff --check` passed.
+  See
+  [2026-08-24 contributor governance](./history/2026-08-24-contributor-governance.md).
 - Generated declaration `any` audit and positive/negative TypeScript consumer
   fixtures: passed on 2026-07-20; zero explicit `any` occurrences across public
   declaration files (the Vue adapter is exempt — Vue's `DefineComponent` emits
@@ -423,6 +694,7 @@ BIM stay optional packages, not a second product identity. See
   vault-level checks succeeded; 45 Markdown files had no duplicate phase status
   claims, broken local links, missing expected paths, or schema violations.
 - [M0 public API history](./history/2026-07-10-m0-public-api-contract.md)
+- [2026-08-24 contributor governance](./history/2026-08-24-contributor-governance.md)
 - [Agent rules history](./history/2026-07-10-agent-rules.md)
 - [Browser rendering stability history](./history/2026-07-10-browser-rendering-stability.md)
 - [Document schema stability history](./history/2026-07-10-document-schema-stability.md)
@@ -457,4 +729,3 @@ BIM stay optional packages, not a second product identity. See
 - [2026-08-17 open-source governance](./history/2026-08-17-open-source-governance.md)
 - [2026-08-17 geometry blob persistence](./history/2026-08-17-geometry-blob-persistence.md)
 - [2026-08-21 M3 suite and ghost material](./history/2026-08-21-m3-suite-ghost-material.md)
-

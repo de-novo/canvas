@@ -5,6 +5,7 @@ import {
   createEditor,
   createPanOrbitTool,
   createSelectTool,
+  listNodes,
   setLayerVisible,
   type CanvasDocument,
   type CanvasEditor
@@ -56,6 +57,7 @@ type BimFederationSnapshot = {
 type BimNamedOpsSnapshot = {
   changed: boolean;
   layerIds: readonly string[];
+  nodeCount: number;
   undoDepth: number;
   visible: boolean;
 };
@@ -129,15 +131,22 @@ function level2Layers(document: CanvasDocument) {
 
 function publishLevel2(document: CanvasDocument, changed: boolean): BimNamedOpsSnapshot {
   const layers = level2Layers(document);
-  const visible = layers.some((layer) => layer.visible);
+  const listed = layers.flatMap((layer) =>
+    listNodes(document, { layerId: layer.id })
+  );
+  const visible = listed.some((node) => node.visible);
   const snapshot: BimNamedOpsSnapshot = {
     changed,
     layerIds: layers.map((layer) => layer.id),
+    nodeCount: listed.length,
     undoDepth: editor?.getState().history.undoDepth ?? 0,
     visible
   };
-  level2VisibleOutput.textContent = visible ? "visible" : "hidden";
+  level2VisibleOutput.textContent = visible
+    ? `visible (${listed.length})`
+    : `hidden (${listed.length})`;
   level2VisibleOutput.setAttribute("data-level-2-visible", String(visible));
+  level2VisibleOutput.setAttribute("data-level-2-nodes", String(listed.length));
   playgroundWindow().__bimNamedOps = snapshot;
   return snapshot;
 }

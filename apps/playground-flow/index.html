@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Denovo Canvas — Release board</title>
+  </head>
+  <body>
+    <main class="shell">
+      <section class="viewport">
+        <div
+          id="stage"
+          class="stage"
+          aria-label="Release board"
+          tabindex="0"
+        ></div>
+      </section>
+      <aside class="panel">
+        <p class="eyebrow">Absorbed showcase</p>
+        <h1>Release board</h1>
+        <p>
+          A delivery board a product would keep: cards, edges, and labels as
+          one Denovo document. No iframe. Select a card, hide labels, undo.
+        </p>
+        <div class="controls">
+          <button id="select-tool" type="button" data-denovo-control="select">
+            Select
+          </button>
+          <button id="move-tool" type="button" data-denovo-control="move">
+            Move
+          </button>
+          <button
+            id="connect-tool"
+            type="button"
+            data-denovo-control="connect"
+          >
+            Connect
+          </button>
+          <button
+            id="hide-labels"
+            type="button"
+            data-denovo-control="hide-labels"
+          >
+            Hide labels
+          </button>
+          <button
+            id="show-labels"
+            type="button"
+            data-denovo-control="show-labels"
+          >
+            Show labels
+          </button>
+          <button id="undo" type="button" data-denovo-control="undo">
+            Undo
+          </button>
+        </div>
+        <p class="status">
+          Status: <output id="status">idle</output>
+        </p>
+        <pre id="nodes" class="nodes" aria-live="polite"></pre>
+      </aside>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

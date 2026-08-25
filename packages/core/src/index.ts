@@ -6,6 +6,39 @@ import {
   encodeMeshGeometry,
   type CanvasGeometryStore
 } from "./geometry.js";
+import {
+  PluginNodeTypeSchema,
+  definePluginNodeKind,
+  getPluginNodeKind,
+  isCanvas2DPluginNode,
+  isPluginNodeType,
+  parsePluginNodeProps,
+  pluginNodeKindSupportsMode,
+  registerPluginNodeKind,
+  type PluginNodeType
+} from "./plugin-nodes.js";
+import {
+  DENOVO_FIELD_NODE_TYPE,
+  DenovoFieldPatternSchema,
+  DenovoFieldPropsSchema,
+  denovoFieldInstanceCount,
+  denovoFieldKind,
+  isDenovoFieldNode,
+  isDenovoFieldType,
+  parseDenovoFieldProps,
+  type DenovoFieldProps
+} from "./field.js";
+import {
+  DENOVO_SPARKLINE_NODE_TYPE,
+  DenovoSparklinePropsSchema,
+  DenovoSparklineStyleSchema,
+  denovoSparklineKind,
+  denovoSparklinePoints,
+  denovoSparklineSize,
+  isDenovoSparklineNode,
+  isDenovoSparklineType,
+  parseDenovoSparklineProps
+} from "./sparkline.js";
 
 export const CANVAS_DOCUMENT_SCHEMA_VERSION = "0.2.0";
 export const CANVAS_LEGACY_DOCUMENT_SCHEMA_VERSION = "0.1.0";
@@ -332,7 +365,30 @@ export const Canvas3DAnnotationNodeSchema = z
   })
   .strict();
 
-export const Canvas2DNodeSchema = z.discriminatedUnion("type", [
+const PluginNodePropsSchema = JsonValueSchema.superRefine((value, context) => {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    context.addIssue({
+      code: "custom",
+      message: "Plugin node props must be a JSON object."
+    });
+  }
+});
+
+export const Canvas3DPluginNodeSchema = NodeTransformSchema.extend({
+  ...CanvasNodeCommonSchemaShape,
+  type: PluginNodeTypeSchema,
+  props: PluginNodePropsSchema
+}).strict();
+
+export const Canvas2DPluginNodeSchema = Node2DTransformSchema.extend({
+  ...CanvasNodeCommonSchemaShape,
+  type: PluginNodeTypeSchema,
+  props: PluginNodePropsSchema
+}).strict();
+
+export type Canvas2DPluginNode = z.output<typeof Canvas2DPluginNodeSchema>;
+
+const Canvas2DBuiltInNodeSchema = z.discriminatedUnion("type", [
   RectNodeSchema,
   CircleNodeSchema,
   Canvas2DGroupNodeSchema,
@@ -343,7 +399,30 @@ export const Canvas2DNodeSchema = z.discriminatedUnion("type", [
   Canvas2DHtmlNodeSchema
 ]);
 
-export const Canvas3DNodeSchema = z
+export type Canvas2DBuiltInNode = z.output<typeof Canvas2DBuiltInNodeSchema>;
+export type Canvas2DNode = Canvas2DBuiltInNode | Canvas2DPluginNode;
+
+export const Canvas2DNodeSchema = z
+  .union([Canvas2DBuiltInNodeSchema, Canvas2DPluginNodeSchema])
+  .superRefine((node, context) => {
+    if (!isPluginNodeType(node.type) || !("props" in node)) {
+      return;
+    }
+
+    try {
+      parsePluginNodeProps(node.type, node.props, "2d");
+    } catch (cause) {
+      context.addIssue({
+        code: "custom",
+        message:
+          cause instanceof Error
+            ? cause.message
+            : `Plugin node kind is invalid: ${node.type}`
+      });
+    }
+  });
+
+const Canvas3DBuiltInNodeSchema = z
   .discriminatedUnion("type", [
     BoxNodeSchema,
     SphereNodeSchema,
@@ -359,6 +438,26 @@ export const Canvas3DNodeSchema = z
     }
   });
 
+export const Canvas3DNodeSchema = z
+  .union([Canvas3DBuiltInNodeSchema, Canvas3DPluginNodeSchema])
+  .superRefine((node, context) => {
+    if (!isPluginNodeType(node.type) || !("props" in node)) {
+      return;
+    }
+
+    try {
+      parsePluginNodeProps(node.type, node.props, "3d");
+    } catch (cause) {
+      context.addIssue({
+        code: "custom",
+        message:
+          cause instanceof Error
+            ? cause.message
+            : `Plugin node kind is invalid: ${node.type}`
+      });
+    }
+  });
+
 export const Canvas2DNodeTypeSchema = z.union([
   RectNodeSchema.shape.type,
   CircleNodeSchema.shape.type,
@@ -367,7 +466,8 @@ export const Canvas2DNodeTypeSchema = z.union([
   Canvas2DAnnotationNodeSchema.shape.type,
   Canvas2DEdgeNodeSchema.shape.type,
   Canvas2DTextNodeSchema.shape.type,
-  Canvas2DHtmlNodeSchema.shape.type
+  Canvas2DHtmlNodeSchema.shape.type,
+  PluginNodeTypeSchema
 ]);
 
 export const Canvas3DNodeTypeSchema = z.union([
@@ -377,7 +477,8 @@ export const Canvas3DNodeTypeSchema = z.union([
   InstancesNodeSchema.shape.type,
   Canvas3DGroupNodeSchema.shape.type,
   Canvas3DMeasurementNodeSchema.shape.type,
-  Canvas3DAnnotationNodeSchema.shape.type
+  Canvas3DAnnotationNodeSchema.shape.type,
+  PluginNodeTypeSchema
 ]);
 
 const Canvas2DNodeIdentitySchemaShape = {
@@ -1488,10 +1589,14 @@ export type Canvas2DAnnotationNode = z.output<
 export type Canvas3DAnnotationNode = z.output<
   typeof Canvas3DAnnotationNodeSchema
 >;
+export type Canvas3DPluginNode = z.output<typeof Canvas3DPluginNodeSchema>;
+export type Canvas3DDenovoFieldNode = Omit<Canvas3DPluginNode, "props" | "type"> & {
+  readonly props: DenovoFieldProps;
+  readonly type: typeof DENOVO_FIELD_NODE_TYPE;
+};
 export type Canvas2DEdgeNode = z.output<typeof Canvas2DEdgeNodeSchema>;
 export type Canvas2DTextNode = z.output<typeof Canvas2DTextNodeSchema>;
 export type Canvas2DHtmlNode = z.output<typeof Canvas2DHtmlNodeSchema>;
-export type Canvas2DNode = z.output<typeof Canvas2DNodeSchema>;
 export type Canvas3DNode = z.output<typeof Canvas3DNodeSchema>;
 export type CanvasNode = z.output<typeof CanvasNodeSchema>;
 export type CanvasNodeInput = z.input<typeof CanvasNodeSchema>;
@@ -1829,7 +1934,9 @@ type CanonicalNodeSchema =
   | typeof Canvas3DAnnotationNodeSchema
   | typeof Canvas2DEdgeNodeSchema
   | typeof Canvas2DTextNodeSchema
-  | typeof Canvas2DHtmlNodeSchema;
+  | typeof Canvas2DHtmlNodeSchema
+  | typeof Canvas2DPluginNodeSchema
+  | typeof Canvas3DPluginNodeSchema;
 
 function withoutSchemaDefault(schema: z.ZodType): z.ZodType {
   if (schema instanceof z.ZodDefault) {
@@ -1912,6 +2019,12 @@ const Canvas2DTextNodePatchSchema = createCanonicalNodePatchSchema(
 const Canvas2DHtmlNodePatchSchema = createCanonicalNodePatchSchema(
   Canvas2DHtmlNodeSchema
 );
+const Canvas2DPluginNodePatchSchema = createCanonicalNodePatchSchema(
+  Canvas2DPluginNodeSchema
+);
+const Canvas3DPluginNodePatchSchema = createCanonicalNodePatchSchema(
+  Canvas3DPluginNodeSchema
+);
 
 export const CanvasNodePatchSchema: z.ZodType<CanvasNodePatch> = z.union([
   RectNodePatchSchema,
@@ -1928,7 +2041,9 @@ export const CanvasNodePatchSchema: z.ZodType<CanvasNodePatch> = z.union([
   Canvas3DAnnotationNodePatchSchema,
   Canvas2DEdgeNodePatchSchema,
   Canvas2DTextNodePatchSchema,
-  Canvas2DHtmlNodePatchSchema
+  Canvas2DHtmlNodePatchSchema,
+  Canvas2DPluginNodePatchSchema,
+  Canvas3DPluginNodePatchSchema
 ]);
 
 export const CanvasLayerPatchSchema = z
@@ -2013,6 +2128,16 @@ const CanvasNodeUpdateCommandSchema: z.ZodType<CanvasNodeUpdateCommand> =
     createNodeUpdateCommandSchema("2d", "edge", Canvas2DEdgeNodePatchSchema),
     createNodeUpdateCommandSchema("2d", "text", Canvas2DTextNodePatchSchema),
     createNodeUpdateCommandSchema("2d", "html", Canvas2DHtmlNodePatchSchema),
+    z
+      .object({
+        ...CanvasCommandMetaSchemaShape,
+        nodeId: NodeIdSchema,
+        nodeMode: z.literal("2d"),
+        nodeType: PluginNodeTypeSchema,
+        patch: Canvas2DPluginNodePatchSchema,
+        type: z.literal("node.update")
+      })
+      .strict(),
     createNodeUpdateCommandSchema("3d", "box", BoxNodePatchSchema),
     createNodeUpdateCommandSchema("3d", "sphere", SphereNodePatchSchema),
     createNodeUpdateCommandSchema(
@@ -2035,7 +2160,17 @@ const CanvasNodeUpdateCommandSchema: z.ZodType<CanvasNodeUpdateCommand> =
       "3d",
       "annotation",
       Canvas3DAnnotationNodePatchSchema
-    )
+    ),
+    z
+      .object({
+        ...CanvasCommandMetaSchemaShape,
+        nodeId: NodeIdSchema,
+        nodeMode: z.literal("3d"),
+        nodeType: PluginNodeTypeSchema,
+        patch: Canvas3DPluginNodePatchSchema,
+        type: z.literal("node.update")
+      })
+      .strict()
   ]);
 
 export const CanvasCommandSchema: z.ZodType<CanvasCommand> = z.lazy(() =>
@@ -2769,6 +2904,10 @@ export function createEmptySelection(): SelectionState {
 }
 
 export function isCanvas2DNode(node: CanvasNode): node is Canvas2DNode {
+  if (isPluginNodeType(node.type)) {
+    return "rotation" in node && typeof node.rotation === "number";
+  }
+
   switch (node.type) {
     case "rect":
     case "circle":
@@ -2791,6 +2930,10 @@ export function isCanvas2DNode(node: CanvasNode): node is Canvas2DNode {
 }
 
 export function isCanvas3DNode(node: CanvasNode): node is Canvas3DNode {
+  if (isPluginNodeType(node.type)) {
+    return "rotation" in node && Array.isArray(node.rotation);
+  }
+
   switch (node.type) {
     case "rect":
     case "circle":
@@ -2811,6 +2954,46 @@ export function isCanvas3DNode(node: CanvasNode): node is Canvas3DNode {
       return node.anchor.length === 3;
   }
 }
+
+export {
+  DENOVO_FIELD_NODE_TYPE,
+  DENOVO_SPARKLINE_NODE_TYPE,
+  DenovoFieldPatternSchema,
+  DenovoFieldPropsSchema,
+  DenovoSparklinePropsSchema,
+  DenovoSparklineStyleSchema,
+  PluginNodeTypeSchema,
+  definePluginNodeKind,
+  denovoFieldInstanceCount,
+  denovoFieldKind,
+  denovoSparklineKind,
+  denovoSparklinePoints,
+  denovoSparklineSize,
+  getPluginNodeKind,
+  isDenovoFieldNode,
+  isDenovoFieldType,
+  isDenovoSparklineNode,
+  isDenovoSparklineType,
+  isCanvas2DPluginNode,
+  isPluginNodeType,
+  parseDenovoFieldProps,
+  parseDenovoSparklineProps,
+  parsePluginNodeProps,
+  pluginNodeKindSupportsMode,
+  registerPluginNodeKind
+};
+export type {
+  CanvasPluginNodeKind,
+  PluginNodeKindMode,
+  PluginNodeType,
+  PluginSceneMode
+} from "./plugin-nodes.js";
+export type { DenovoFieldPattern, DenovoFieldProps } from "./field.js";
+export type {
+  DenovoSparklinePoint,
+  DenovoSparklineProps,
+  DenovoSparklineStyle
+} from "./sparkline.js";
 
 export {
   CANVAS_MESH_GEOMETRY_SCHEMA,

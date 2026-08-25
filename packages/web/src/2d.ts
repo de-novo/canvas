@@ -58,7 +58,6 @@ import {
   type Canvas2DTransformNode
 } from "./2d/scene-graph";
 import {
-  isPointInsideRectangle,
   rectsIntersect,
   resolveCanvas2DNodeWorldBounds,
   resolveCanvas2DNodeWorldCenter,
@@ -113,6 +112,9 @@ const CANVAS_2D_TRANSFORM_KINDS = [
   "rotate",
   "scale"
 ] as const;
+
+/** Extra world units so a card does not pop at the exact clip edge. */
+const OVERLAY_CULL_PAD = 8;
 
 function parseCanvas2DTransformPreview(
   input: unknown
@@ -678,12 +680,15 @@ export function createCanvas2D(
       if (!node || node.type !== "html") {
         continue;
       }
-      const center = resolveCanvas2DNodeWorldCenter(node, sceneGraph);
-      const onScreen = isPointInsideRectangle(center, {
-        minX: visible.minX,
-        minY: visible.minY,
-        maxX: visible.maxX,
-        maxY: visible.maxY
+      // html origin is top-left, not the visual middle. A point test at that
+      // origin hides a card whose body still intersects the view, while canvas
+      // edges keep drawing to the card's ports.
+      const bounds = resolveCanvas2DNodeWorldBounds(node, sceneGraph);
+      const onScreen = rectsIntersect(bounds, {
+        minX: visible.minX - OVERLAY_CULL_PAD,
+        minY: visible.minY - OVERLAY_CULL_PAD,
+        maxX: visible.maxX + OVERLAY_CULL_PAD,
+        maxY: visible.maxY + OVERLAY_CULL_PAD
       });
 
       // Virtualization: skip DOM work for off-screen html nodes. We keep the
@@ -692,9 +697,18 @@ export function createCanvas2D(
       element.style.display = onScreen ? "" : "none";
 
       if (onScreen) {
-        const screen = sceneToCanvasPoint(viewState, center);
-        element.style.transform = `translate(${screen[0]}px, ${screen[1]}px)`;
+        const topLeft = sceneToCanvasPoint(viewState, [bounds.minX, bounds.minY]);
+        const pixelRatio = resizeState.pixelRatio || 1;
+        const x = Math.round(topLeft[0] * pixelRatio) / pixelRatio;
+        const y = Math.round(topLeft[1] * pixelRatio) / pixelRatio;
+        const width = Math.max(0, (bounds.maxX - bounds.minX) * viewState.zoom);
+        const height = Math.max(0, (bounds.maxY - bounds.minY) * viewState.zoom);
+        element.style.transform = `translate(${x}px, ${y}px)`;
         element.style.transformOrigin = "0 0";
+        element.style.width = `${width}px`;
+        element.style.height = `${height}px`;
+        element.style.boxSizing = "border-box";
+        element.style.setProperty("--dc-html-zoom", String(viewState.zoom));
       }
     }
   }

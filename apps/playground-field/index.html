@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Denovo Canvas — Warp field</title>
+  </head>
+  <body>
+    <main class="shell">
+      <section class="viewport">
+        <div
+          id="stage"
+          class="stage"
+          aria-label="Warp field"
+          tabindex="0"
+        ></div>
+      </section>
+      <aside class="panel">
+        <p class="eyebrow">Absorbed showcase</p>
+        <h1>Warp field</h1>
+        <p>
+          ThreeUI Warp Field restated as one Denovo node. The view is
+          <code>plugin.denovo.field</code>. No iframe and no vendor
+          renderer. The board below is source text, not a second
+          runtime.
+        </p>
+        <div class="controls">
+          <button id="select-tool" type="button" data-denovo-control="select">
+            Select
+          </button>
+          <button
+            id="pattern-letters"
+            type="button"
+            data-denovo-control="pattern-letters"
+          >
+            Letters
+          </button>
+          <button
+            id="pattern-streaks"
+            type="button"
+            data-denovo-control="pattern-streaks"
+          >
+            Streaks
+          </button>
+          <button id="undo" type="button" data-denovo-control="undo">
+            Undo
+          </button>
+        </div>
+        <p class="status">
+          Status: <output id="status">idle</output>
+        </p>
+        <pre id="nodes" class="nodes" aria-live="polite"></pre>
+      </aside>
+      <section class="compare" data-field-compare>
+        <article
+          class="compare-pane"
+          data-field-compare-host
+          aria-label="ThreeUI source"
+        ></article>
+        <article
+          class="compare-pane"
+          data-field-compare-denovo
+          aria-label="Denovo source"
+        ></article>
+      </section>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,202 @@
+:root {
+  color: #e8e6e1;
+  background: #111214;
+  font-family: "IBM Plex Sans", "Helvetica Neue", sans-serif;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+}
+
+code {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+.shell {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  height: 100%;
+}
+
+.rail {
+  overflow: auto;
+  padding: 20px 16px 32px;
+  border-right: 1px solid #2a2b31;
+  background: #16171b;
+}
+
+.eyebrow,
+.lede,
+.count,
+.stage-wrap header p {
+  color: #9a9aa3;
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+h1,
+.stage-wrap header h2,
+.rail h2 {
+  margin: 8px 0;
+  font-size: 18px;
+  font-weight: 560;
+}
+
+.rail h2 {
+  margin-top: 20px;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #6f7380;
+}
+
+.lede,
+.count {
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.list {
+  display: grid;
+  gap: 6px;
+}
+
+.list button {
+  text-align: left;
+  border: 1px solid #2a2b31;
+  background: #1c1d22;
+  color: inherit;
+  border-radius: 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+
+.list button[aria-pressed="true"] {
+  border-color: #d8d2c4;
+  background: #2a2b31;
+}
+
+.stage-wrap {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-width: 0;
+  min-height: 0;
+}
+
+.stage-wrap header {
+  padding: 16px 20px 0;
+}
+
+.tally {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: #e6b089;
+}
+
+.quad {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: minmax(240px, 1fr) minmax(220px, 38vh);
+  min-width: 0;
+  min-height: 0;
+  padding: 12px 16px 16px;
+  gap: 12px;
+}
+
+.cell {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-width: 0;
+  min-height: 0;
+}
+
+.cell h3,
+.compare-pane h3 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.stage {
+  min-height: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #050607;
+}
+
+.denovo-warp-field,
+.stage .threeui-background {
+  width: 100%;
+  height: 100%;
+  min-height: 240px;
+}
+
+.compare-pane {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-width: 0;
+  min-height: 0;
+  border-radius: 12px;
+  background: #121318;
+}
+
+.compare-pane header {
+  padding: 12px 16px 0;
+}
+
+.compare-pane header p {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: #9a9aa3;
+}
+
+.compare-files {
+  min-height: 0;
+  overflow: auto;
+  padding: 0 12px 12px;
+}
+
+.compare-file h4 {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 12px 0 6px;
+  font-size: 12px;
+  font-weight: 560;
+}
+
+.compare-file h4 span {
+  color: #9a9aa3;
+  font-weight: 400;
+}
+
+.compare-file pre {
+  margin: 0;
+  padding: 12px;
+  overflow: visible;
+  border-radius: 8px;
+  background: #0c0d10;
+  color: #d8d6cf;
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.loading,
+.empty {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  color: #9a9aa3;
+  padding: 16px;
+  text-align: center;
+}

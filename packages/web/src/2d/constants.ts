@@ -27,3 +27,6 @@ export const CANVAS_2D_CONNECTION_HANDLE_HIT_RADIUS = 9;
 
 /** Inset between the minimap canvas edge and its content. */
 export const CANVAS_2D_MINIMAP_PADDING = 8;
+
+/** World size of the placeholder drawn for a 2D plugin kind without a drawer. */
+export const CANVAS_2D_PLUGIN_MARKER_SIZE = 48;

@@ -7,7 +7,9 @@ The goal is to make common 2D/3D view and edit workflows easier than wiring
 Three.js, React Three Fiber, Canvas2D, xeokit, or web-ifc directly.
 
 Denovo can depend on those libraries. Its job is to make them easier to install,
-configure, style, edit with, save from, and extend.
+configure, style, edit with, save from, and extend. The product restates that
+impressiveness as our documents. It must not become those catalogs. See
+[Product Identity](./docs/product-identity.md).
 
 The product shape is inspired by Better Auth: one high-level setup API with
 adapters, plugins, storage integrations, framework helpers, and eventually CLI
@@ -89,7 +91,9 @@ pnpm dev --filter @denovo/canvas-next-playground
 
 ## Design Documents
 
-- [Agent Operating Policy](./docs/agent-operating-policy.md)
+- [Contributor Operating Policy](./docs/contributor-operating-policy.md)
+- [Contributor Rules](./docs/contributor-rules.md)
+- [Contributor Automation](./docs/contributor-automation.md)
 - [Project Status](./docs/project-status.md)
 - [M4 Performance Thresholds](./docs/m4-performance-thresholds.md)
 - [M0 Product Contract](./docs/m0-product-contract.md)

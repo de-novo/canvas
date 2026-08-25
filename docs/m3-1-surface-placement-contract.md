@@ -301,8 +301,7 @@ pnpm verify:document-schema
 pnpm verify:editor-core
 pnpm verify:hit-testing
 pnpm verify:browser-rendering
-python3 ~/.agents/skills/doc-governance/scripts/doc-governance-conflicts.py --root .
-python3 ~/.agents/skills/doc-governance/scripts/doc-governance-audit.py --root .
+pnpm verify:docs
 ```
 
 Project Status must link to durable implementation and verification evidence

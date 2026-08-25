@@ -1,12 +1,11 @@
 # Rendering Backend Strategy
 
-Last reviewed: 2026-08-17.
+Last reviewed: 2026-08-25.
 
-Implemented built-in backends are Canvas2D (2D) and WebGL2 (3D). WebGPU is
-reserved public vocabulary and a future adapter milestone. The product
-contract must keep that name in the backend union without leaking any GPU API
-into persisted documents, and without letting `auto` report WebGPU as the
-current result.
+Implemented `auto` backends are Canvas2D (2D) and WebGL2 (3D). Explicit
+`backend: "webgpu"` is a 3D built-in. The product contract must keep that
+name in the backend union without leaking any GPU API into persisted
+documents, and without letting `auto` report WebGPU as the current result.
 
 ## Decision
 
@@ -31,14 +30,16 @@ The current built-in resolver applies these rules:
 4. `custom` requires an explicit adapter whose declared modes include the
    scene mode.
 
-`navigator.gpu` is capability detection only. `auto` must not report or
-select WebGPU until a compatible runtime is actually implemented.
+`navigator.gpu` is capability detection for the explicit `webgpu` path.
+`auto` must not report or select WebGPU.
 
 Every non-`auto` request is strict. An unavailable or mode-incompatible
-`canvas2d` or `webgl2` request fails. The currently unimplemented `webgpu` and
-`offscreen-canvas2d` built-ins fail with `backend-unimplemented`. `custom`
-without an adapter fails with `adapter-required`. No explicit request silently
-changes to another backend.
+`canvas2d`, `webgl2`, or `webgpu` request fails. `webgpu` is 3D-only.
+`offscreen-canvas2d` stays unimplemented and fails with
+`backend-unimplemented`. `custom` without an adapter fails with
+`adapter-required`. No explicit request silently changes to another
+backend. Three.js must not keep a WebGL2 fallback when `webgpu` was
+requested.
 
 The scene/document model must not store `webgpu`, `webgl2`, or `three` as
 semantic requirements. Those are runtime adapter choices.
@@ -111,8 +112,8 @@ from WebGL2 to WebGPU.
 
 The strategy is:
 
-- keep `WebGLRenderer` as the stable implemented 3D compatibility path;
-- add a WebGPU-capable renderer adapter;
+- keep `WebGLRenderer` as the stable `auto` 3D compatibility path;
+- use Three.js `WebGPURenderer` for explicit `backend: "webgpu"`;
 - expose underlying Three.js resources as escape hatches;
 - keep React Three Fiber as a React adapter, not the source of renderer truth;
 - avoid depending on Drei for core behavior.
@@ -173,8 +174,8 @@ implementation:
 - Canvas2D context creation for the built-in 2D runtime;
 - WebGL2 context creation for the built-in 3D runtime;
 - an explicit custom adapter and its declared modes for `custom`;
-- secure context, `navigator.gpu`, adapter/device creation, and required
-  feature limits when a WebGPU runtime is added;
+- secure context and `navigator.gpu` for explicit `webgpu`; adapter and
+  device creation happen during `runtime.ready`;
 - OffscreenCanvas transfer and context support when an OffscreenCanvas runtime
   is added.
 
@@ -222,14 +223,13 @@ performance features available on WebGL2 where possible.
 Short term:
 
 - keep `@denovo/canvas` as the default entrypoint;
-- keep `backend: "auto"` deterministic over currently implemented backends;
-- keep Three.js WebGL2 path working;
-- add WebGPU as an adapter rather than rewriting the whole runtime.
+- keep `backend: "auto"` deterministic over Canvas2D and WebGL2;
+- keep Three.js WebGL2 as the `auto` 3D path;
+- keep explicit `backend: "webgpu"` on the existing 3D runtime.
 
 Medium term:
 
-- implement `@denovo/canvas-webgpu` or a WebGPU adapter under
-  `@denovo/canvas-web`;
+- decide whether `auto` may select WebGPU;
 - add backend capability reporting;
 - add explicit backend-resolution and capability events if consumers need
   asynchronous observability beyond the existing error boundary;

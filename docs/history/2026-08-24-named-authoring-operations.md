@@ -44,4 +44,4 @@ Design only. Slice 1 evidence is in
 
 ## Next action
 
-Done for design. Implementation continues at slice 2 (`stackBox`).
+Done for design. The first three helpers are implemented.

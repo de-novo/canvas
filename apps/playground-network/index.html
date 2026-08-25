@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Denovo Canvas — Service map</title>
+  </head>
+  <body>
+    <main class="shell">
+      <section class="viewport">
+        <div
+          id="stage"
+          class="stage"
+          aria-label="Service map"
+          tabindex="0"
+        ></div>
+      </section>
+      <aside class="panel">
+        <p class="eyebrow">Absorbed showcase</p>
+        <h1>Service map</h1>
+        <p>
+          A dependency graph a product would keep: services, edges, and
+          labels as one Denovo document. No iframe and no point-field
+          overlay. Relation and Time move positions; undo restores them.
+        </p>
+        <div class="controls">
+          <button id="select-tool" type="button" data-denovo-control="select">
+            Select
+          </button>
+          <button
+            id="layout-relation"
+            type="button"
+            data-denovo-control="layout-relation"
+          >
+            Relation
+          </button>
+          <button
+            id="layout-time"
+            type="button"
+            data-denovo-control="layout-time"
+          >
+            Time
+          </button>
+          <button
+            id="hide-labels"
+            type="button"
+            data-denovo-control="hide-labels"
+          >
+            Hide labels
+          </button>
+          <button
+            id="show-labels"
+            type="button"
+            data-denovo-control="show-labels"
+          >
+            Show labels
+          </button>
+          <button id="undo" type="button" data-denovo-control="undo">
+            Undo
+          </button>
+        </div>
+        <p class="status">
+          Status: <output id="status">idle</output>
+        </p>
+        <pre id="nodes" class="nodes" aria-live="polite"></pre>
+      </aside>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

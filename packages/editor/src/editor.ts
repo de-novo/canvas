@@ -19,6 +19,7 @@ import {
   type CanvasToolContext,
   type CanvasToolDefinition,
   type CanvasToolInput,
+  isPluginNodeType,
   type JsonValue,
   type NodeId,
   type SelectionState,
@@ -271,7 +272,8 @@ function isPositionableNode(node: CanvasNode): boolean {
     node.type === "box" ||
     node.type === "sphere" ||
     node.type === "mesh" ||
-    node.type === "instances"
+    node.type === "instances" ||
+    isPluginNodeType(node.type)
   );
 }
 

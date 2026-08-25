@@ -144,6 +144,32 @@ importers:
         specifier: ^8.1.3
         version: 8.1.3(@types/node@26.1.1)(esbuild@0.27.7)(jiti@2.7.0)
 
+  apps/playground-field:
+    dependencies:
+      '@denovo/canvas':
+        specifier: workspace:*
+        version: link:../../packages/canvas
+    devDependencies:
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vite:
+        specifier: ^8.1.3
+        version: 8.1.3(@types/node@26.1.1)(esbuild@0.27.7)(jiti@2.7.0)
+
+  apps/playground-flow:
+    dependencies:
+      '@denovo/canvas':
+        specifier: workspace:*
+        version: link:../../packages/canvas
+    devDependencies:
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vite:
+        specifier: ^8.1.3
+        version: 8.1.3(@types/node@26.1.1)(esbuild@0.27.7)(jiti@2.7.0)
+
   apps/playground-graph:
     dependencies:
       '@denovo/canvas':
@@ -155,6 +181,19 @@ importers:
       '@denovo/canvas-web':
         specifier: workspace:*
         version: link:../../packages/web
+    devDependencies:
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vite:
+        specifier: ^8.1.3
+        version: 8.1.3(@types/node@26.1.1)(esbuild@0.27.7)(jiti@2.7.0)
+
+  apps/playground-network:
+    dependencies:
+      '@denovo/canvas':
+        specifier: workspace:*
+        version: link:../../packages/canvas
     devDependencies:
       typescript:
         specifier: ^7.0.2
@@ -259,6 +298,46 @@ importers:
         specifier: ^7.1.3
         version: 7.3.6(@types/node@26.1.1)(jiti@2.7.0)(lightningcss@1.32.0)
 
+  apps/playground-threeui:
+    dependencies:
+      '@denovo/canvas-core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      react:
+        specifier: ^19.2.7
+        version: 19.2.7
+      react-dom:
+        specifier: ^19.2.7
+        version: 19.2.7(react@19.2.7)
+      three:
+        specifier: 0.149.0
+        version: 0.149.0
+      three128:
+        specifier: npm:three@0.128.0
+        version: three@0.128.0
+      three165:
+        specifier: npm:three@0.165.0
+        version: three@0.165.0
+    devDependencies:
+      '@types/react':
+        specifier: ^19.2.17
+        version: 19.2.17
+      '@types/react-dom':
+        specifier: ^19.2.3
+        version: 19.2.3(@types/react@19.2.17)
+      '@types/three':
+        specifier: 0.149.0
+        version: 0.149.0
+      '@vitejs/plugin-react':
+        specifier: ^4.3.4
+        version: 4.7.0(vite@8.1.3(@types/node@26.1.1)(esbuild@0.27.7)(jiti@2.7.0))
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vite:
+        specifier: ^8.1.3
+        version: 8.1.3(@types/node@26.1.1)(esbuild@0.27.7)(jiti@2.7.0)
+
   apps/playground-vue:
     dependencies:
       '@denovo/canvas-core':
@@ -357,6 +436,10 @@ importers:
         version: 3.21.4
 
   packages/react:
+    dependencies:
+      '@denovo/canvas-three':
+        specifier: workspace:*
+        version: link:../three
     devDependencies:
       '@denovo/canvas':
         specifier: workspace:*
@@ -1614,6 +1697,9 @@ packages:
 
   '@types/stats.js@0.17.4':
     resolution: {integrity: sha512-jIBvWWShCvlBqBNIZt0KAshWpvSjhkwkEu4ZUcASoAvhmrgAUI2t1dXrjSL4xXVLB4FznPrIsX3nKXFl/Dt4vA==}
+
+  '@types/three@0.149.0':
+    resolution: {integrity: sha512-fgNBm9LWc65ER/W0cvoXdC0iMy7Ke9e2CONmEr6Jt8sDSY3sw4DgOubZfmdZ747dkPhbQrgRQAWwDEr2S/7IEg==}
 
   '@types/three@0.185.0':
     resolution: {integrity: sha512-O2Uy8Cj4Nonr8dWUUbifMdPe8B0Mq7EdOHb89S4+kjUw/KhbjTZrUuYlrQ1bpUKG+EP9QJnN7qNxbHGlGoLHMA==}
@@ -3303,6 +3389,15 @@ packages:
     peerDependencies:
       three: '>=0.128.0'
 
+  three@0.128.0:
+    resolution: {integrity: sha512-i0ap/E+OaSfzw7bD1TtYnPo3VEplkl70WX5fZqZnfZsE3k3aSFudqrrC9ldFZfYFkn1zwDmBcdGfiIm/hnbyZA==}
+
+  three@0.149.0:
+    resolution: {integrity: sha512-tohpUxPDht0qExRLDTM8sjRLc5d9STURNrdnK3w9A+V4pxaTBfKWWT/IqtiLfg23Vfc3Z+ImNfvRw1/0CtxrkQ==}
+
+  three@0.165.0:
+    resolution: {integrity: sha512-cc96IlVYGydeceu0e5xq70H8/yoVT/tXBxV/W8A/U6uOq7DXc4/s1Mkmnu6SqoYGhSRWWYFOhVwvq6V0VtbplA==}
+
   three@0.185.1:
     resolution: {integrity: sha512-5aojFCXKwnjBRZvUnt3WFfEcvUJgkN5LlijRFN95hMy8WVkG4I0QNcJE+OuWvuJ0bOdStrbfXn0pkd6/QyiAlg==}
 
@@ -4579,6 +4674,10 @@ snapshots:
       csstype: 3.2.3
 
   '@types/stats.js@0.17.4': {}
+
+  '@types/three@0.149.0':
+    dependencies:
+      '@types/webxr': 0.5.24
 
   '@types/three@0.185.0':
     dependencies:
@@ -6211,6 +6310,12 @@ snapshots:
       fflate: 0.6.10
       potpack: 1.0.2
       three: 0.185.1
+
+  three@0.128.0: {}
+
+  three@0.149.0: {}
+
+  three@0.165.0: {}
 
   three@0.185.1: {}
 

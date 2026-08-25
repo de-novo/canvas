@@ -10,7 +10,11 @@
  */
 import {
   CANVAS_NODE_PORT_SIDES,
+  denovoSparklineSize,
+  isCanvas2DPluginNode,
+  isDenovoSparklineNode,
   type Canvas2DNode,
+  type Canvas2DPluginNode,
   type Canvas2DScene,
   type CanvasNodePortSide,
   type CanvasNodeTransformPreview
@@ -25,6 +29,7 @@ import {
   type Canvas2DMatrix,
   type Canvas2DNodeRenderTransform
 } from "./matrix";
+import { CANVAS_2D_PLUGIN_MARKER_SIZE } from "./constants";
 import {
   getCanvas2DAncestors,
   getCanvas2DGroupChildren,
@@ -50,6 +55,56 @@ export type Canvas2DEdgeGeometry = {
 
 /** Length of the straight stub an orthogonal edge leaves a port with. */
 const CANVAS_2D_PORT_STUB_LENGTH = 24;
+
+function portsFaceEachOther(
+  sourcePort: CanvasNodePortSide | null,
+  targetPort: CanvasNodePortSide | null
+): "horizontal" | "vertical" | null {
+  if (
+    (sourcePort === "left" && targetPort === "right") ||
+    (sourcePort === "right" && targetPort === "left")
+  ) {
+    return "horizontal";
+  }
+  if (
+    (sourcePort === "top" && targetPort === "bottom") ||
+    (sourcePort === "bottom" && targetPort === "top")
+  ) {
+    return "vertical";
+  }
+  return null;
+}
+
+/**
+ * Facing stubs must not overshoot the gap between ports. A 24-unit stub on
+ * both ends of a 36-unit stack gap walks past the midpoint and leaves a
+ * leftover segment in empty space.
+ */
+function resolveOrthogonalStubLength(
+  start: readonly [number, number],
+  end: readonly [number, number],
+  sourcePort: CanvasNodePortSide | null,
+  targetPort: CanvasNodePortSide | null
+): { readonly startStub: number; readonly endStub: number } {
+  const startStub = sourcePort === null ? 0 : CANVAS_2D_PORT_STUB_LENGTH;
+  const endStub = targetPort === null ? 0 : CANVAS_2D_PORT_STUB_LENGTH;
+  const facing = portsFaceEachOther(sourcePort, targetPort);
+
+  if (facing === null) {
+    return { endStub, startStub };
+  }
+
+  const gap =
+    facing === "horizontal"
+      ? Math.abs(start[0] - end[0])
+      : Math.abs(start[1] - end[1]);
+  const maxEach = gap / 2;
+
+  return {
+    endStub: Math.min(endStub, maxEach),
+    startStub: Math.min(startStub, maxEach)
+  };
+}
 
 export function resolveNodeRenderTransform(
   node: Canvas2DTransformNode,
@@ -201,7 +256,8 @@ export function resolveCanvas2DNodeWorldTransform(
     node.type === "circle" ||
     node.type === "group" ||
     node.type === "text" ||
-    node.type === "html"
+    node.type === "html" ||
+    isCanvas2DPluginNode(node)
   ) {
     return multiplyCanvas2DMatrices(
       parentWorld,
@@ -282,8 +338,26 @@ export function resolveCanvas2DNodeWorldCenter(
       const world = resolveCanvas2DNodeWorldTransform(node, sceneGraph);
       return transformCanvas2DPoint(world, [0, 0]);
     }
+    default: {
+      if (isCanvas2DPluginNode(node)) {
+        const world = resolveCanvas2DNodeWorldTransform(node, sceneGraph);
+        return transformCanvas2DPoint(world, [0, 0]);
+      }
+      const exhaustive: never = node;
+      return exhaustive;
+    }
   }
 }
+export function resolveCanvas2DPluginNodeLocalSize(
+  node: Canvas2DPluginNode
+): readonly [number, number] {
+  if (isDenovoSparklineNode(node)) {
+    return denovoSparklineSize(node.props);
+  }
+
+  return [CANVAS_2D_PLUGIN_MARKER_SIZE, CANVAS_2D_PLUGIN_MARKER_SIZE];
+}
+
 /**
  * Axis-aligned world bounds for a node. Used by marquee selection (rect-rect
  * intersection) and by the minimap. Rotated nodes yield the bounds of their
@@ -372,6 +446,20 @@ export function resolveCanvas2DNodeWorldBounds(
         maxX: node.anchor[0],
         maxY: node.anchor[1]
       };
+    default: {
+      if (isCanvas2DPluginNode(node)) {
+        const origin = resolveCanvas2DNodeWorldCenter(node, sceneGraph);
+        const [width, height] = resolveCanvas2DPluginNodeLocalSize(node);
+        return {
+          minX: origin[0],
+          minY: origin[1],
+          maxX: origin[0] + width,
+          maxY: origin[1] + height
+        };
+      }
+      const exhaustive: never = node;
+      return exhaustive;
+    }
   }
 }
 export function boundsFromPoints(
@@ -391,6 +479,84 @@ export function boundsFromPoints(
 
   return { minX, minY, maxX, maxY };
 }
+function rectCenter(
+  bounds: Canvas2DRectBounds
+): readonly [number, number] {
+  return [
+    (bounds.minX + bounds.maxX) / 2,
+    (bounds.minY + bounds.maxY) / 2
+  ];
+}
+
+function portAimsToward(
+  port: CanvasNodePortSide,
+  from: readonly [number, number],
+  to: readonly [number, number]
+): boolean {
+  const direction = resolveCanvas2DPortDirection(port);
+  return (
+    direction[0] * (to[0] - from[0]) + direction[1] * (to[1] - from[1]) > 0
+  );
+}
+
+/**
+ * Facing sides for two node boxes. Used when a named port would leave the
+ * node pointing away from its neighbor after a layout move.
+ */
+export function resolveCanvas2DFacingPortPair(
+  sourceBounds: Canvas2DRectBounds,
+  targetBounds: Canvas2DRectBounds
+): {
+  readonly sourcePort: CanvasNodePortSide;
+  readonly targetPort: CanvasNodePortSide;
+} {
+  const source = rectCenter(sourceBounds);
+  const target = rectCenter(targetBounds);
+  const dx = target[0] - source[0];
+  const dy = target[1] - source[1];
+
+  if (Math.abs(dx) >= Math.abs(dy)) {
+    return dx >= 0
+      ? { sourcePort: "right", targetPort: "left" }
+      : { sourcePort: "left", targetPort: "right" };
+  }
+
+  return dy >= 0
+    ? { sourcePort: "bottom", targetPort: "top" }
+    : { sourcePort: "top", targetPort: "bottom" };
+}
+
+/**
+ * Keep named ports when they still aim at the other node. Otherwise pick
+ * a facing pair from the current boxes so orthogonal edges survive layout.
+ */
+export function resolveCanvas2DOrthogonalPorts(
+  sourceBounds: Canvas2DRectBounds,
+  targetBounds: Canvas2DRectBounds,
+  sourcePort: CanvasNodePortSide | null,
+  targetPort: CanvasNodePortSide | null
+): {
+  readonly sourcePort: CanvasNodePortSide | null;
+  readonly targetPort: CanvasNodePortSide | null;
+} {
+  if (sourcePort === null && targetPort === null) {
+    return { sourcePort, targetPort };
+  }
+
+  const source = rectCenter(sourceBounds);
+  const target = rectCenter(targetBounds);
+  const sourceOk =
+    sourcePort === null || portAimsToward(sourcePort, source, target);
+  const targetOk =
+    targetPort === null || portAimsToward(targetPort, target, source);
+
+  if (sourceOk && targetOk) {
+    return { sourcePort, targetPort };
+  }
+
+  return resolveCanvas2DFacingPortPair(sourceBounds, targetBounds);
+}
+
 /**
  * Resolves an edge endpoint to a world-space point. When the edge names a port
  * side, the endpoint sits on that side of the node's bounds — the same point the
@@ -400,7 +566,8 @@ export function boundsFromPoints(
 export function resolveCanvas2DEdgeEndpoint(
   node: Canvas2DEdgeNode,
   sceneGraph: Canvas2DSceneGraph,
-  which: "source" | "target"
+  which: "source" | "target",
+  portOverride?: CanvasNodePortSide | null
 ): readonly [number, number] {
   const endpointNode =
     which === "source"
@@ -411,7 +578,12 @@ export function resolveCanvas2DEdgeEndpoint(
     return [0, 0];
   }
 
-  const port = which === "source" ? node.sourcePort : node.targetPort;
+  const port =
+    portOverride !== undefined
+      ? portOverride
+      : which === "source"
+        ? node.sourcePort
+        : node.targetPort;
   const anchor = which === "source" ? node.sourceAnchor : node.targetAnchor;
   const base =
     port === null
@@ -427,22 +599,46 @@ export function resolveCanvas2DEdgeGeometry(
   node: Canvas2DEdgeNode,
   sceneGraph: Canvas2DSceneGraph
 ): Canvas2DEdgeGeometry {
-  const start = resolveCanvas2DEdgeEndpoint(node, sceneGraph, "source");
-  const end = resolveCanvas2DEdgeEndpoint(node, sceneGraph, "target");
-
   if (node.routing === "orthogonal") {
+    const sourceNode = sceneGraph.nodesById.get(node.sourceId);
+    const targetNode = sceneGraph.nodesById.get(node.targetId);
+    const ports =
+      sourceNode && targetNode
+        ? resolveCanvas2DOrthogonalPorts(
+            resolveCanvas2DNodeWorldBounds(sourceNode, sceneGraph),
+            resolveCanvas2DNodeWorldBounds(targetNode, sceneGraph),
+            node.sourcePort,
+            node.targetPort
+          )
+        : { sourcePort: node.sourcePort, targetPort: node.targetPort };
+    const start = resolveCanvas2DEdgeEndpoint(
+      node,
+      sceneGraph,
+      "source",
+      ports.sourcePort
+    );
+    const end = resolveCanvas2DEdgeEndpoint(
+      node,
+      sceneGraph,
+      "target",
+      ports.targetPort
+    );
+
     return {
       start,
       end,
       waypoints: resolveCanvas2DOrthogonalWaypoints(
         start,
         end,
-        node.sourcePort,
-        node.targetPort
+        ports.sourcePort,
+        ports.targetPort
       ),
       control: null
     };
   }
+
+  const start = resolveCanvas2DEdgeEndpoint(node, sceneGraph, "source");
+  const end = resolveCanvas2DEdgeEndpoint(node, sceneGraph, "target");
 
   if (node.curve === "curved" && node.curveOffset !== 0) {
     const midX = (start[0] + end[0]) / 2;
@@ -493,6 +689,12 @@ export function resolveCanvas2DOrthogonalWaypoints(
   targetPort: CanvasNodePortSide | null
 ): readonly (readonly [number, number])[] {
   const points: (readonly [number, number])[] = [];
+  const { startStub, endStub } = resolveOrthogonalStubLength(
+    start,
+    end,
+    sourcePort,
+    targetPort
+  );
 
   const afterStart =
     sourcePort === null
@@ -500,8 +702,8 @@ export function resolveCanvas2DOrthogonalWaypoints(
       : (() => {
           const direction = resolveCanvas2DPortDirection(sourcePort);
           return [
-            start[0] + direction[0] * CANVAS_2D_PORT_STUB_LENGTH,
-            start[1] + direction[1] * CANVAS_2D_PORT_STUB_LENGTH
+            start[0] + direction[0] * startStub,
+            start[1] + direction[1] * startStub
           ] as const;
         })();
 
@@ -511,8 +713,8 @@ export function resolveCanvas2DOrthogonalWaypoints(
       : (() => {
           const direction = resolveCanvas2DPortDirection(targetPort);
           return [
-            end[0] + direction[0] * CANVAS_2D_PORT_STUB_LENGTH,
-            end[1] + direction[1] * CANVAS_2D_PORT_STUB_LENGTH
+            end[0] + direction[0] * endStub,
+            end[1] + direction[1] * endStub
           ] as const;
         })();
 
@@ -573,7 +775,8 @@ export function isCanvas2DConnectableNode(node: Canvas2DNode): boolean {
     node.type === "circle" ||
     node.type === "text" ||
     node.type === "html" ||
-    node.type === "group"
+    node.type === "group" ||
+    isCanvas2DPluginNode(node)
   );
 }
 export function resolvePreviewParentWorldTransform(

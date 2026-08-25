@@ -334,6 +334,7 @@ export {
 } from "./scene-chunks";
 export {
   resolveCanvas2DEdgeGeometry,
+  resolveCanvas2DNodeWorldBounds,
   resolveCanvas2DNodeWorldCenter
 } from "./2d/geometry";
 export { createCanvas2DSceneGraph } from "./2d/scene-graph";
@@ -373,7 +374,7 @@ export type { Canvas2DObject, Canvas2DRuntime } from "./2d";
 export type { Canvas2DRectBounds, Canvas2DViewportSize, Canvas2DViewState, Canvas2DViewStateInput } from "./view2d";
 export type { Canvas2DRenderNode, Canvas2DRenderNodeContext } from "./types";
 export type { Canvas3DSectionPlaneInput } from "./types";
-export type { ThreeCanvasRuntime } from "./3d";
+export type { Canvas3DGpuRenderer, ThreeCanvasRuntime } from "./3d";
 export type {
   CanvasCameraControlsInput,
   CanvasCameraControlsOptions,

@@ -67,8 +67,24 @@ export {
   CanvasEditorError,
   applyCommandsToDocument,
   applyCommandsToStoredDocument,
+  addLayer,
   applyNamedOperations,
+  listLayers,
+  listNodes,
+  removeEdge,
+  removeLayer,
+  removeNode,
+  reorderLayer,
+  setFieldPattern,
+  setSparklineStyle,
+  setLayerLocked,
+  setLayerName,
   setLayerVisible,
+  setNodeLayer,
+  setNodeLocked,
+  setNodeVisible,
+  setText,
+  stackBox,
   create2DShapeTool,
   create3DPrimitiveTool,
   create3DSurfacePlacementTool,
@@ -76,6 +92,8 @@ export {
   createConnectorTool,
   createDistanceMeasurementTool,
   createEditor,
+  createRelationGraphLayoutAdapter,
+  createTimeGraphLayoutAdapter,
   createGroupNodesCommand,
   createNodeUpdateCommand,
   createPanOrbitTool,
@@ -120,9 +138,29 @@ export type {
   CanvasSelectToolOptions,
   CanvasTransformToolOptions,
   CreateCanvasEditorOptions,
+  AddLayerInput,
+  ListedLayer,
+  ListedNode,
+  ListNodesOptions,
   NamedOperation,
   NamedOperationResult,
-  SetLayerVisibleInput
+  RelationGraphLayoutOptions,
+  RemoveEdgeInput,
+  RemoveLayerInput,
+  RemoveNodeInput,
+  ReorderLayerInput,
+  SetFieldPatternInput,
+  SetSparklineStyleInput,
+  SetLayerLockedInput,
+  SetLayerNameInput,
+  SetLayerVisibleInput,
+  SetNodeLayerInput,
+  SetNodeLockedInput,
+  SetNodeVisibleInput,
+  SetTextInput,
+  StackBoxFace,
+  StackBoxInput,
+  TimeGraphLayoutOptions
 } from "@denovo/canvas-editor";
 export {
   canvasToScenePoint,
@@ -171,6 +209,7 @@ export type {
   CanvasSceneChunkProgress,
   CanvasTarget,
   CanvasToolInputTarget,
+  Canvas3DGpuRenderer,
   CreateCanvasOptions,
   DynamicCanvasRuntime,
   ThreeCanvasRuntime,
@@ -213,9 +252,9 @@ export type CanvasFacadeRendererAdapter = CanvasRendererAdapter<
  * Renderer backend selector.
  *
  * `auto` resolves only to an implemented built-in: Canvas2D for 2D scenes and
- * WebGL2 for 3D scenes. `webgpu` and `offscreen-canvas2d` are reserved names;
- * requesting them fails with `backend-unimplemented` until a runtime exists.
- * WebGPU is a future adapter milestone, not a current `auto` result.
+ * WebGL2 for 3D scenes. Explicit `webgpu` is a 3D built-in and is never an
+ * `auto` result. `offscreen-canvas2d` stays reserved; requesting it fails
+ * with `backend-unimplemented` until a runtime exists.
  */
 export type CanvasBackend =
   | "auto"
@@ -227,9 +266,12 @@ export type CanvasBackend =
 /** Built-in backends that `auto` may currently resolve to. */
 export type CanvasImplementedBackend = "canvas2d" | "webgl2";
 /** Reserved built-in names. Requests fail until a runtime is implemented. */
-export type CanvasUnimplementedBackend = "webgpu" | "offscreen-canvas2d";
-/** Successful resolution result. Never `auto`, `webgpu`, or `offscreen-canvas2d`. */
-export type CanvasResolvedBackend = CanvasImplementedBackend | "custom";
+export type CanvasUnimplementedBackend = "offscreen-canvas2d";
+/** Successful resolution result. Never `auto` or an unimplemented built-in. */
+export type CanvasResolvedBackend =
+  | CanvasImplementedBackend
+  | "webgpu"
+  | "custom";
 export type CanvasBuiltInBackend = Exclude<CanvasBackend, "custom">;
 export type RendererPreset = CanvasBuiltInBackend | "three";
 export type CanvasThemePreset = "dark" | "light";
@@ -640,7 +682,8 @@ export function createCanvas(
     ...(config.geometryStore === undefined
       ? {}
       : { geometryStore: config.geometryStore }),
-    ...(config.renderNode === undefined ? {} : { renderNode: config.renderNode })
+    ...(config.renderNode === undefined ? {} : { renderNode: config.renderNode }),
+    ...(renderer.resolved === "webgpu" ? { gpuBackend: "webgpu" as const } : {})
   };
   const customAdapter = resolveRendererAdapter(config.renderer);
   const runtime = createResolvedRendererRuntime(
@@ -795,6 +838,7 @@ export function createCanvas(
       host.removeAttribute("data-denovo-backend");
       host.removeAttribute("data-denovo-editable");
       host.removeAttribute("data-denovo-mode");
+      host.removeAttribute("data-denovo-ready");
       host.removeAttribute("data-denovo-theme");
     },
     getScene() {
@@ -876,6 +920,14 @@ export function createCanvas(
       }) as DenovoCanvasRuntime);
 
   facadeRegistryControllers.set(facadeRuntime, registryController);
+  void facadeRuntime.ready.then(
+    () => {
+      host.dataset.denovoReady = "true";
+    },
+    () => {
+      host.dataset.denovoReady = "error";
+    }
+  );
   return facadeRuntime;
 }
 
@@ -1354,6 +1406,7 @@ function applyHostContract(
   host.dataset.denovoBackend = renderer.resolved;
   host.dataset.denovoEditable = String(config.editable ?? false);
   host.dataset.denovoMode = scene.mode;
+  host.dataset.denovoReady = "pending";
   host.dataset.denovoTheme = theme.name;
 
   if (typeof config.theme === "object") {
@@ -2128,12 +2181,9 @@ function resolveBackend(
         "The built-in offscreen Canvas2D runtime is not implemented. Install and select a custom renderer adapter instead."
       );
     case "webgpu":
-      throw new CanvasBackendResolutionError(
-        "backend-unimplemented",
-        requested,
-        mode,
-        "The built-in WebGPU runtime is not implemented. Install and select a custom renderer adapter instead."
-      );
+      requireBackendMode(requested, mode, "3d");
+      requireBackendCapability(requested, mode, capabilities.webgpu);
+      return requested;
     default: {
       const exhaustive: never = requested;
       return exhaustive;
@@ -2157,7 +2207,7 @@ function requireBackendMode(
 }
 
 function requireBackendCapability(
-  backend: "canvas2d" | "webgl2",
+  backend: "canvas2d" | "webgl2" | "webgpu",
   mode: CanvasMode,
   available: boolean
 ): void {

@@ -1,0 +1,30 @@
+{
+  "name": "@denovo/canvas-threeui-example",
+  "version": "0.0.0",
+  "license": "Apache-2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "clean": "rm -rf dist .turbo",
+    "dev": "vite --host 127.0.0.1 --port 5179",
+    "preview": "vite preview --host 127.0.0.1 --port 4179",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@denovo/canvas-core": "workspace:*",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "three": "0.149.0",
+    "three128": "npm:three@0.128.0",
+    "three165": "npm:three@0.165.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@types/three": "0.149.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "^7.0.2",
+    "vite": "^8.1.3"
+  }
+}

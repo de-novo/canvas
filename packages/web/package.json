@@ -34,7 +34,7 @@
   ],
   "sideEffects": false,
   "scripts": {
-    "build": "tsup src/index.ts src/2d.ts src/3d.ts src/indexed-db.ts --format esm,cjs --clean --external three --external three-mesh-bvh --external @denovo/canvas-core --external @denovo/canvas-three --external @denovo/canvas-editor && tsc --emitDeclarationOnly",
+    "build": "tsup src/index.ts src/2d.ts src/3d.ts src/indexed-db.ts --format esm,cjs --clean --external three --external three/webgpu --external three-mesh-bvh --external @denovo/canvas-core --external @denovo/canvas-three --external @denovo/canvas-editor && tsc --emitDeclarationOnly",
     "clean": "rm -rf dist .turbo",
     "typecheck": "tsc --noEmit"
   },

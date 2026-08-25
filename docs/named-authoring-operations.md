@@ -86,8 +86,22 @@ function to `applyNamedOperations` / `editor.apply` is the list path.
 | Symbol | Lives in | Facade export |
 |---|---|---|
 | `setLayerVisible` | `@denovo/canvas-editor` | `@denovo/canvas` |
+| `setLayerLocked` | `@denovo/canvas-editor` | `@denovo/canvas` |
+| `setLayerName` | `@denovo/canvas-editor` | `@denovo/canvas` |
 | `stackBox` | `@denovo/canvas-editor` | `@denovo/canvas` |
 | `listNodes` | `@denovo/canvas-editor` | `@denovo/canvas` |
+| `listLayers` | `@denovo/canvas-editor` | `@denovo/canvas` |
+| `removeNode` | `@denovo/canvas-editor` | `@denovo/canvas` |
+| `removeEdge` | `@denovo/canvas-editor` | `@denovo/canvas` |
+| `removeLayer` | `@denovo/canvas-editor` | `@denovo/canvas` |
+| `addLayer` | `@denovo/canvas-editor` | `@denovo/canvas` |
+| `reorderLayer` | `@denovo/canvas-editor` | `@denovo/canvas` |
+| `setFieldPattern` | `@denovo/canvas-editor` | `@denovo/canvas` |
+| `setSparklineStyle` | `@denovo/canvas-editor` | `@denovo/canvas` |
+| `setNodeVisible` | `@denovo/canvas-editor` | `@denovo/canvas` |
+| `setNodeLocked` | `@denovo/canvas-editor` | `@denovo/canvas` |
+| `setNodeLayer` | `@denovo/canvas-editor` | `@denovo/canvas` |
+| `setText` | `@denovo/canvas-editor` | `@denovo/canvas` |
 | `applyNamedOperations` | `@denovo/canvas-editor` | `@denovo/canvas` |
 | `CanvasEditor.apply` | `@denovo/canvas-editor` | through the editor instance |
 
@@ -123,18 +137,214 @@ defaults to the source layer. No runtime argument.
 
 ## Slice 3 — `listNodes`
 
-Read-only. Returns `{ id, type, layerId, visible, locked }[]` using
-effective state. No geometry arrays. Unknown `layerId` fails; an empty
-layer returns `[]`.
+```ts
+listNodes(
+  document: CanvasDocument,
+  options?: { layerId?: CanvasLayerId }
+): readonly ListedNode[]
+
+type ListedNode = {
+  id: NodeId;
+  type: CanvasNode["type"];
+  layerId: CanvasLayerId;
+  visible: boolean;
+  locked: boolean;
+};
+```
+
+Read-only. `visible` and `locked` are effective state. No geometry
+arrays. Unknown `layerId` fails; an empty layer returns `[]`. Omit
+`layerId` to list the whole document.
+
+## Slice 4 — `setFieldPattern`
+
+```ts
+setFieldPattern({
+  nodeId: NodeId,
+  pattern: "streaks" | "letters"
+}): NamedOperation
+```
+
+Document-only. Source MUST be `plugin.denovo.field`. Compiles to one
+`node.update` that replaces `props` with the same knobs and the new
+pattern. Already-in-state does not grow history.
+
+## Slice 5 — `setNodeVisible` / `setNodeLocked`
+
+```ts
+setNodeVisible({ nodeId: NodeId, visible: boolean }): NamedOperation
+setNodeLocked({ nodeId: NodeId, locked: boolean }): NamedOperation
+```
+
+Document-only. Each compiles to one `node.update` of that field.
+Unknown `nodeId` is `node-not-found`. Extra fields and a non-boolean
+flag fail at the helper. Already-in-state does not grow history.
+
+`setNodeVisible` fails with `locked-target` when the node is
+effectively locked. `setNodeLocked({ locked: false })` may unlock the
+node itself when the lock is not from a parent or layer. A hierarchy
+or layer lock still fails.
+
+Works in 2D and 3D. The compiled command keeps the node's
+`nodeMode` / `nodeType`.
+
+## Slice 6 — `setLayerLocked`
+
+```ts
+setLayerLocked({ layerId: CanvasLayerId, locked: boolean }): NamedOperation
+```
+
+Compiles to one `layer.update` when the layer exists and `locked`
+differs. Unknown `layerId` is `layer-not-found`. Extra fields and a
+non-boolean `locked` fail at the helper. Already-in-state does not
+grow history. Unlocking the layer itself is allowed. A locked layer
+still rejects `setLayerVisible`.
+
+## Slice 7 — `listLayers`
+
+```ts
+listLayers(document: CanvasDocument): readonly ListedLayer[]
+
+type ListedLayer = {
+  id: CanvasLayerId;
+  name: string;
+  visible: boolean;
+  locked: boolean;
+};
+```
+
+Read-only. Layers stay in document order. Own flags, not effective
+node state. No metadata. Extra arguments fail.
+
+## Slice 8 — `removeNode`
+
+```ts
+removeNode({ nodeId: NodeId }): NamedOperation
+```
+
+Document-only. Compiles to one `node.remove`. Unknown `nodeId` is
+`node-not-found`. An effectively locked node is `locked-target`. A
+node still referenced by an edge fails. A non-empty group fails;
+ungroup first. Extra fields fail. This helper does not also remove
+incident edges.
+
+## Slice 9 — `removeEdge`
+
+```ts
+removeEdge({ nodeId: NodeId }): NamedOperation
+```
+
+Document-only. Source MUST be an `edge`. Compiles to one
+`node.remove`. Unknown `nodeId` is `node-not-found`. An effectively
+locked edge is `locked-target`. Another edge still targeting this
+edge fails. Extra fields fail. Pair with `removeNode` in one list
+when a connected node must go.
+
+## Slice 10 — `removeLayer`
+
+```ts
+removeLayer({
+  layerId: CanvasLayerId,
+  targetLayerId: CanvasLayerId | null
+}): NamedOperation
+```
+
+Compiles to one `layer.remove`. The last layer cannot be removed.
+An empty layer requires `targetLayerId: null`. A non-empty layer
+requires an explicit other layer; nodes move there. Locked source,
+locked nodes on it, or a locked target fail. Extra fields fail.
+
+## Slice 11 — `addLayer`
+
+```ts
+addLayer({
+  layerId: CanvasLayerId,
+  name: string,
+  index?: number
+}): NamedOperation
+```
+
+Compiles to one `layer.add`. Omit `index` to append. An explicit
+index must be an integer from `0` to the current layer count.
+A duplicate `layerId` is `layer-already-exists`. Empty name, extra
+fields, and a non-integer index fail at the helper. Visibility and
+lock stay on `setLayerVisible` / `setLayerLocked`.
+
+## Slice 12 — `reorderLayer`
+
+```ts
+reorderLayer({
+  layerId: CanvasLayerId,
+  index: number
+}): NamedOperation
+```
+
+Compiles to one `layer.reorder`. `index` must be an integer from `0`
+to the last layer. Already at that index does not grow history.
+Unknown `layerId` is `layer-not-found`. Extra fields and a
+non-integer index fail at the helper.
+
+## Slice 13 — `setSparklineStyle`
+
+```ts
+setSparklineStyle({
+  nodeId: NodeId,
+  style: "linear" | "step"
+}): NamedOperation
+```
+
+Document-only. Source MUST be `plugin.denovo.sparkline`. Compiles to
+one `node.update` that replaces `props` with the same knobs and the
+new style. Already-in-state does not grow history. Requires a 2D
+document.
+
+## Slice 14 — `setLayerName`
+
+```ts
+setLayerName({ layerId: CanvasLayerId, name: string }): NamedOperation
+```
+
+Compiles to one `layer.update` of `name`. Empty name and extra fields
+fail at the helper. A locked layer is `locked-target`. Already the
+same name does not grow history. Unknown `layerId` is
+`layer-not-found`.
+
+## Slice 15 — `setNodeLayer`
+
+```ts
+setNodeLayer({ nodeId: NodeId, layerId: CanvasLayerId }): NamedOperation
+```
+
+Document-only. Compiles to one `node.update` of `layerId`. Unknown
+`nodeId` is `node-not-found`. Unknown `layerId` is `layer-not-found`.
+An effectively locked node or a locked target layer is
+`locked-target`. Already on that layer does not grow history. Extra
+fields fail. This helper does not also change `parentId`.
+
+## Slice 16 — `setText`
+
+```ts
+setText({ nodeId: NodeId, text: string }): NamedOperation
+```
+
+Document-only. Source MUST be a 2D `text` node. Compiles to one
+`node.update` of `text`. Empty string is allowed. A non-text node is
+`invalid-command`. An effectively locked node is `locked-target`.
+Already the same text does not grow history. Extra fields fail.
+Annotation and HTML stay off this helper.
 
 ## Verification (when a slice ships)
 
 - editor-core: pure path and `editor.apply` leave the same document;
   already-in-state does not grow history; unknown id fails;
-- public-api: `setLayerVisible` is a `NamedOperation`; extra fields and
-  illegal unions are `@ts-expect-error`;
-- playground slice 1 calls the named operation, not a hand-built
-  `layer.update`.
+- public-api: `setLayerVisible`, `setLayerLocked`, `stackBox`,
+  `setNodeVisible`, `setNodeLocked`, `setNodeLayer`, `setText`, `removeNode`, `removeEdge`,
+  `removeLayer`, `addLayer`, `reorderLayer`, `setSparklineStyle`, and
+  `setLayerName` are `NamedOperation`s; `listNodes` returns `ListedNode[]` without
+  geometry; `listLayers` returns `ListedLayer[]` without metadata;
+  extra fields and illegal unions are `@ts-expect-error`;
+- playground storey isolation calls `setLayerVisible` and reads Level 2
+  through `listNodes`, not a hand-built `layer.update`.
 
 `pnpm typecheck`, `pnpm build`, `pnpm verify:public-api`,
 `pnpm verify:editor-core`.
@@ -144,10 +354,25 @@ layer returns `[]`.
 1. `setLayerVisible` + `applyNamedOperations` + `editor.apply`.
 2. `stackBox` (document-only).
 3. `listNodes`.
+4. `setFieldPattern`.
+5. `setNodeVisible` / `setNodeLocked`.
+6. `setLayerLocked`.
+7. `listLayers`.
+8. `removeNode`.
+9. `removeEdge`.
+10. `removeLayer`.
+11. `addLayer`.
+12. `reorderLayer`.
+13. `setSparklineStyle`.
+14. `setLayerName`.
+15. `setNodeLayer`.
+16. `setText`.
 
-Do not start slice 2 until slice 1 has types and editor-core evidence.
+Do not start a later slice until the previous slice has types and
+editor-core evidence.
 
 ## WebGPU
 
-Unchanged. These calls are backend-agnostic. A future WebGPU runtime
-MUST accept the same document and the same operations.
+Unchanged. These calls are backend-agnostic. Explicit
+`backend: "webgpu"` MUST accept the same document and the same
+operations. `auto` still resolves 3D to WebGL2.

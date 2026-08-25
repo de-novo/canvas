@@ -71,7 +71,8 @@ export function createTimeGraphLayoutAdapter(
 
 /**
  * Relation graph. Connected components stay together; inside a component,
- * BFS layers run left to right from the highest-degree node. No global
+ * BFS layers run left to right from the highest-degree node. Lanes stack
+ * down from the origin so titles above the graph stay put. No global
  * center force — components sit in id order along x.
  */
 export function createRelationGraphLayoutAdapter(
@@ -101,11 +102,10 @@ export function createRelationGraphLayoutAdapter(
         const layers = bfsLayers(component, neighbors);
         layers.forEach((layer, layerIndex) => {
           const x = cursorX + layerIndex * layerGap;
-          const mid = (layer.length - 1) / 2;
           layer.forEach((node, index) => {
             positions.push({
               id: node.id,
-              position: [x, origin[1] + (index - mid) * laneGap]
+              position: [x, origin[1] + index * laneGap]
             });
           });
         });

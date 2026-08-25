@@ -3,7 +3,11 @@
 ## Goal
 
 Denovo Canvas exists to reduce the friction of building web 2D/3D viewers and
-editors.
+editors. The default path inside the spec should be the strongest visible
+result, not the most efficient internal composition. Humans and agents
+write kinds and properties, not engine APIs. See
+[Product Identity](./product-identity.md) and
+[Framework Surface](./framework-surface.md).
 
 The SDK should let application developers express intent with document,
 selection, editing, persistence, and extension APIs instead of forcing them to

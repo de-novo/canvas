@@ -2,13 +2,19 @@
 
 import {
   defineScene,
+  isDenovoFieldNode,
   resolveCanvasMeshGeometry,
+  type Canvas3DDenovoFieldNode,
   type Canvas3DNode,
   type Canvas3DScene,
   type Canvas3DSceneInput,
   type CanvasGeometryStore,
   type CanvasSceneInput
 } from "@denovo/canvas-core";
+import {
+  createDenovoFieldObject,
+  tickDenovoFieldObject
+} from "@denovo/canvas-three";
 import {
   createCanvas,
   type DenovoCanvasCommonConfig,
@@ -17,6 +23,7 @@ import {
 import { Html, Line, OrbitControls } from "@react-three/drei";
 import {
   Canvas,
+  useFrame,
   useThree,
   type CanvasProps
 } from "@react-three/fiber";
@@ -31,7 +38,9 @@ import {
 import {
   Color,
   Euler,
+  LineSegments,
   Matrix4,
+  Mesh,
   Object3D,
   Quaternion,
   Vector3,
@@ -156,7 +165,7 @@ function SceneCamera({ scene }: { scene: Canvas3DScene }) {
       scene.camera.target[2]
     );
 
-    const perspective = camera as PerspectiveCamera;
+    const perspective = camera as unknown as PerspectiveCamera;
     perspective.fov = scene.camera.fov;
     perspective.updateProjectionMatrix();
     invalidate();
@@ -311,11 +320,80 @@ function renderSceneNode(
           <span>{node.text}</span>
         </Html>
       );
-    default: {
-      const exhaustive: never = node;
-      return exhaustive;
-    }
+    default:
+      if (isDenovoFieldNode(node)) {
+        return (
+          <DenovoFieldView
+            key={node.id}
+            frustumCulled={frustumCulled}
+            node={node}
+          />
+        );
+      }
+      return (
+        <mesh
+          key={node.id}
+          position={node.position}
+          rotation={node.rotation}
+          scale={node.scale}
+          frustumCulled={frustumCulled}
+        >
+          <boxGeometry args={[1, 1, 1]} />
+          <meshStandardMaterial color="#64748b" />
+        </mesh>
+      );
   }
+}
+
+function DenovoFieldView({
+  frustumCulled,
+  node
+}: {
+  frustumCulled: boolean;
+  node: Canvas3DDenovoFieldNode;
+}) {
+  const object = useMemo(
+    () => createDenovoFieldObject(node.props),
+    [
+      node.props.brightness,
+      node.props.density,
+      node.props.hue,
+      node.props.pattern,
+      node.props.speed
+    ]
+  );
+
+  useEffect(() => {
+    return () => {
+      object.traverse((child) => {
+        if (child instanceof Mesh || child instanceof LineSegments) {
+          child.geometry.dispose();
+          const material = child.material;
+          const materials = Array.isArray(material) ? material : [material];
+          for (const entry of materials) {
+            if ("map" in entry && entry.map) {
+              entry.map.dispose();
+            }
+            entry.dispose();
+          }
+        }
+      });
+    };
+  }, [object]);
+
+  useFrame((state) => {
+    tickDenovoFieldObject(object, state.clock.elapsedTime * 1000);
+  });
+
+  return (
+    <primitive
+      object={object}
+      frustumCulled={frustumCulled}
+      position={node.position}
+      rotation={node.rotation}
+      scale={node.scale}
+    />
+  );
 }
 
 function formatMeasurementValue(value: number, precision: number): string {

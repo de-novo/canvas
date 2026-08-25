@@ -123,6 +123,11 @@ export type CreateCanvasOptions = {
   controls?: CanvasCameraControlsInput;
   devicePixelRatio?: number;
   /**
+   * Built-in 3D GPU backend. Default WebGL2. The facade sets `webgpu`
+   * only after resolving an explicit `backend: "webgpu"` request.
+   */
+  gpuBackend?: "webgl2" | "webgpu";
+  /**
    * Session geometry buffers for `mesh.geometryAssetId`. Tessellation stays
    * out of the document JSON; the runtime looks up buffers here.
    */

@@ -3,6 +3,7 @@ import { spawnSync } from "node:child_process";
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { z } from "../packages/core/node_modules/zod/index.js";
 
 import { createCheckRunner } from "./lib/checks.mjs";
 
@@ -38,13 +39,24 @@ import {
   resolveCanvasMeshGeometry,
   defineCommand,
   defineDocument,
+  definePluginNodeKind,
+  denovoFieldInstanceCount,
+  denovoSparklinePoints,
+  getPluginNodeKind,
+  pluginNodeKindSupportsMode,
+  isDenovoFieldNode,
+  isDenovoFieldType,
+  isDenovoSparklineNode,
+  isDenovoSparklineType,
   defineHitResult,
   defineHitTestInput,
   defineToolInput,
   defineScene,
   defineSelection,
+  isPluginNodeType,
   parseDocument,
   parseDocumentJson,
+  registerPluginNodeKind,
   safeDefineDocument,
   safeDefineCommand,
   safeDefineHitResult,
@@ -1907,6 +1919,9 @@ check("node-update-identity-schema-is-correlated-strict-and-roundtrips", () => {
   assert.equal(Canvas2DNodeTypeSchema.safeParse("box").success, false);
   assert.equal(Canvas3DNodeTypeSchema.safeParse("box").success, true);
   assert.equal(Canvas3DNodeTypeSchema.safeParse("rect").success, false);
+  assert.equal(Canvas3DNodeTypeSchema.safeParse("plugin.test.marker").success, true);
+  assert.equal(Canvas3DNodeTypeSchema.safeParse("plugin.marker").success, false);
+  assert.equal(Canvas2DNodeTypeSchema.safeParse("plugin.test.marker").success, true);
 
   for (const identity of [
     { nodeMode: "2d", nodeType: "rect" },
@@ -1917,7 +1932,9 @@ check("node-update-identity-schema-is-correlated-strict-and-roundtrips", () => {
     { nodeMode: "3d", nodeType: "mesh" },
     { nodeMode: "3d", nodeType: "group" },
     { nodeMode: "3d", nodeType: "measurement" },
-    { nodeMode: "3d", nodeType: "annotation" }
+    { nodeMode: "3d", nodeType: "annotation" },
+    { nodeMode: "3d", nodeType: "plugin.test.marker" },
+    { nodeMode: "2d", nodeType: "plugin.test.marker" }
   ]) {
     assert.equal(CanvasNodeIdentitySchema.safeParse(identity).success, true);
   }
@@ -2349,6 +2366,10 @@ const rectPatch: CanvasNodePatchFor<Rect2D> = {
 };
 const rectType: Canvas2DNodeType = "rect";
 const boxType: Canvas3DNodeType = "box";
+const pluginType: Canvas3DNodeType = "plugin.test.marker";
+void pluginType;
+const pluginType2d: Canvas2DNodeType = "plugin.test.marker";
+void pluginType2d;
 const rectIdentity: CanvasNodeIdentity = {
   nodeMode: "2d",
   nodeType: rectType
@@ -3105,6 +3126,356 @@ void json;
     force: true,
     recursive: true
   });
+});
+
+check("plugin-nodes-register-and-parse-by-mode", () => {
+  const kind3d = definePluginNodeKind({
+    mode: "3d",
+    props: z.object({ label: z.string().min(1) }).strict(),
+    type: "plugin.test.marker"
+  });
+  const kind2d = definePluginNodeKind({
+    mode: "2d",
+    props: z.object({ label: z.string().min(1) }).strict(),
+    type: "plugin.test.card"
+  });
+  const kindBoth = definePluginNodeKind({
+    mode: "both",
+    props: z.object({ label: z.string().min(1) }).strict(),
+    type: "plugin.test.badge"
+  });
+  assert.equal(pluginNodeKindSupportsMode(kind3d.mode, "3d"), true);
+  assert.equal(pluginNodeKindSupportsMode(kind3d.mode, "2d"), false);
+  assert.equal(pluginNodeKindSupportsMode(kindBoth.mode, "2d"), true);
+  assert.equal(pluginNodeKindSupportsMode(kindBoth.mode, "3d"), true);
+  const unregister3d = registerPluginNodeKind(kind3d);
+  const unregister2d = registerPluginNodeKind(kind2d);
+  const unregisterBoth = registerPluginNodeKind(kindBoth);
+
+  try {
+    assert.equal(isPluginNodeType("plugin.test.marker"), true);
+    assert.equal(isPluginNodeType("plugin.test.card"), true);
+    assert.equal(isPluginNodeType("plugin.marker"), false);
+    assert.equal(isPluginNodeType("box"), false);
+
+    const unregistered = safeDefineDocument({
+      id: "plugin-unregistered",
+      scene: {
+        id: "plugin-unregistered-scene",
+        layers: [{ id: "main", name: "Main" }],
+        nodes: [
+          {
+            id: "field",
+            layerId: "main",
+            props: { label: "hero" },
+            type: "plugin.test.missing"
+          }
+        ]
+      }
+    });
+    assert.equal(unregistered.success, false);
+
+    const document = defineDocument({
+      id: "plugin-marker",
+      scene: {
+        id: "plugin-marker-scene",
+        layers: [{ id: "main", name: "Main" }],
+        nodes: [
+          {
+            id: "marker",
+            layerId: "main",
+            props: { label: "hero" },
+            type: "plugin.test.marker"
+          }
+        ]
+      }
+    });
+    const node = document.scene.nodes[0];
+    assert.equal(node?.type, "plugin.test.marker");
+    assert.equal(node && "props" in node && node.props.label, "hero");
+
+    const wrongProps = safeDefineDocument({
+      id: "plugin-wrong-props",
+      scene: {
+        id: "plugin-wrong-props-scene",
+        layers: [{ id: "main", name: "Main" }],
+        nodes: [
+          {
+            id: "marker",
+            layerId: "main",
+            props: { extra: true, label: "hero" },
+            type: "plugin.test.marker"
+          }
+        ]
+      }
+    });
+    assert.equal(wrongProps.success, false);
+
+    const threeDKindIn2d = safeDefineDocument({
+      id: "plugin-3d-in-2d",
+      scene: {
+        id: "plugin-3d-in-2d-scene",
+        layers: [{ id: "main", name: "Main" }],
+        mode: "2d",
+        nodes: [
+          {
+            id: "marker",
+            layerId: "main",
+            props: { label: "hero" },
+            type: "plugin.test.marker"
+          }
+        ]
+      }
+    });
+    assert.equal(threeDKindIn2d.success, false);
+
+    const twoD = defineDocument({
+      id: "plugin-2d",
+      scene: {
+        id: "plugin-2d-scene",
+        layers: [{ id: "main", name: "Main" }],
+        mode: "2d",
+        nodes: [
+          {
+            id: "card",
+            layerId: "main",
+            props: { label: "hero" },
+            type: "plugin.test.card"
+          }
+        ]
+      }
+    });
+    const card = twoD.scene.nodes[0];
+    assert.equal(card?.type, "plugin.test.card");
+    assert.equal(card && "props" in card && card.props.label, "hero");
+
+    const twoDKindIn3d = safeDefineDocument({
+      id: "plugin-2d-in-3d",
+      scene: {
+        id: "plugin-2d-in-3d-scene",
+        layers: [{ id: "main", name: "Main" }],
+        nodes: [
+          {
+            id: "card",
+            layerId: "main",
+            props: { label: "hero" },
+            type: "plugin.test.card"
+          }
+        ]
+      }
+    });
+    assert.equal(twoDKindIn3d.success, false);
+
+    const bothIn3d = defineDocument({
+      id: "plugin-both-3d",
+      scene: {
+        id: "plugin-both-3d-scene",
+        layers: [{ id: "main", name: "Main" }],
+        nodes: [
+          {
+            id: "badge",
+            layerId: "main",
+            props: { label: "hero" },
+            type: "plugin.test.badge"
+          }
+        ]
+      }
+    });
+    assert.equal(bothIn3d.scene.nodes[0]?.type, "plugin.test.badge");
+
+    const bothIn2d = defineDocument({
+      id: "plugin-both-2d",
+      scene: {
+        id: "plugin-both-2d-scene",
+        layers: [{ id: "main", name: "Main" }],
+        mode: "2d",
+        nodes: [
+          {
+            id: "badge",
+            layerId: "main",
+            props: { label: "hero" },
+            type: "plugin.test.badge"
+          }
+        ]
+      }
+    });
+    assert.equal(bothIn2d.scene.nodes[0]?.type, "plugin.test.badge");
+  } finally {
+    unregister3d();
+    unregister2d();
+    unregisterBoth();
+  }
+});
+
+check("official-denovo-field-parses-without-host-register", () => {
+  assert.equal(isDenovoFieldType("plugin.denovo.field"), true);
+  assert.equal(denovoFieldInstanceCount(0), 64);
+  assert.equal(denovoFieldInstanceCount(1), 2048);
+  assert.ok(getPluginNodeKind("plugin.denovo.field"));
+
+  const document = defineDocument({
+    id: "official-field",
+    scene: {
+      id: "official-field-scene",
+      layers: [{ id: "hero", name: "Hero" }],
+      nodes: [
+        {
+          id: "field",
+          layerId: "hero",
+          props: {
+            brightness: 1,
+            density: 0.6,
+            hue: 0,
+            pattern: "streaks",
+            speed: 15
+          },
+          type: "plugin.denovo.field"
+        }
+      ]
+    }
+  });
+  const node = document.scene.nodes[0];
+  assert.ok(node && isDenovoFieldNode(node));
+  assert.equal(node.props.pattern, "streaks");
+
+  const invalidPattern = safeDefineDocument({
+    id: "official-field-bad-pattern",
+    scene: {
+      id: "official-field-bad-pattern-scene",
+      layers: [{ id: "hero", name: "Hero" }],
+      nodes: [
+        {
+          id: "field",
+          layerId: "hero",
+          props: {
+            brightness: 1,
+            density: 0.6,
+            hue: 0,
+            pattern: "wave",
+            speed: 15
+          },
+          type: "plugin.denovo.field"
+        }
+      ]
+    }
+  });
+  assert.equal(invalidPattern.success, false);
+
+  const missingKnob = safeDefineDocument({
+    id: "official-field-missing",
+    scene: {
+      id: "official-field-missing-scene",
+      layers: [{ id: "hero", name: "Hero" }],
+      nodes: [
+        {
+          id: "field",
+          layerId: "hero",
+          props: { pattern: "streaks", speed: 15 },
+          type: "plugin.denovo.field"
+        }
+      ]
+    }
+  });
+  assert.equal(missingKnob.success, false);
+});
+
+check("official-denovo-sparkline-parses-without-host-register", () => {
+  assert.equal(isDenovoSparklineType("plugin.denovo.sparkline"), true);
+  assert.ok(getPluginNodeKind("plugin.denovo.sparkline"));
+  const linear = denovoSparklinePoints({
+    fill: "none",
+    height: 80,
+    stroke: "#22c55e",
+    style: "linear",
+    values: [0, 10],
+    width: 100
+  });
+  const stepped = denovoSparklinePoints({
+    fill: "none",
+    height: 80,
+    stroke: "#22c55e",
+    style: "step",
+    values: [0, 10],
+    width: 100
+  });
+  assert.equal(linear.length, 2);
+  assert.ok(stepped.length > linear.length);
+
+  const document = defineDocument({
+    id: "official-sparkline",
+    scene: {
+      id: "official-sparkline-scene",
+      layers: [{ id: "main", name: "Main" }],
+      mode: "2d",
+      nodes: [
+        {
+          id: "spark",
+          layerId: "main",
+          props: {
+            fill: "none",
+            height: 80,
+            stroke: "#22c55e",
+            style: "linear",
+            values: [2, 8, 3, 12],
+            width: 240
+          },
+          type: "plugin.denovo.sparkline"
+        }
+      ]
+    }
+  });
+  const node = document.scene.nodes[0];
+  assert.ok(node && isDenovoSparklineNode(node));
+  assert.equal(node.props.style, "linear");
+
+  const in3d = safeDefineDocument({
+    id: "official-sparkline-3d",
+    scene: {
+      id: "official-sparkline-3d-scene",
+      layers: [{ id: "main", name: "Main" }],
+      nodes: [
+        {
+          id: "spark",
+          layerId: "main",
+          props: {
+            fill: "none",
+            height: 80,
+            stroke: "#22c55e",
+            style: "linear",
+            values: [2, 8, 3, 12],
+            width: 240
+          },
+          type: "plugin.denovo.sparkline"
+        }
+      ]
+    }
+  });
+  assert.equal(in3d.success, false);
+
+  const invalidStyle = safeDefineDocument({
+    id: "official-sparkline-bad-style",
+    scene: {
+      id: "official-sparkline-bad-style-scene",
+      layers: [{ id: "main", name: "Main" }],
+      mode: "2d",
+      nodes: [
+        {
+          id: "spark",
+          layerId: "main",
+          props: {
+            fill: "none",
+            height: 80,
+            stroke: "#22c55e",
+            style: "spline",
+            values: [2, 8, 3, 12],
+            width: 240
+          },
+          type: "plugin.denovo.sparkline"
+        }
+      ]
+    }
+  });
+  assert.equal(invalidStyle.success, false);
 });
 
 report();

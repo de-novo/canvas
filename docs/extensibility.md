@@ -38,7 +38,9 @@ Denovo Canvas should support these plugin categories:
 
 ## Node Plugins
 
-Node plugins define new document node types.
+Node plugins define new document node types. The user-facing grammar
+(`plugin.<org>.<kind>`, JSON properties, no engine objects) is
+[Framework Surface](./framework-surface.md).
 
 ```ts
 type NodePlugin<TNode> = {
@@ -53,7 +55,7 @@ type NodePlugin<TNode> = {
 Rules:
 
 - `nodeType` must be globally namespaced when external, for example
-  `acme.floor-plan.room`;
+  `plugin.acme.room`;
 - plugin nodes must validate through their plugin schema;
 - plugin nodes must keep stable IDs;
 - plugin nodes should remain serializable.

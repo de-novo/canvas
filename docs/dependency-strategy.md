@@ -10,7 +10,9 @@ compatibility, or performance primitives that would be expensive and risky to
 rebuild.
 
 Denovo should be a facade and orchestration SDK over good libraries, not a
-from-scratch replacement for them.
+from-scratch replacement for them. Absorbing an upstream look means restating
+it as our document. Shipping their component, HTML, or iframe is hosting.
+See [Product Identity](./product-identity.md).
 
 The closest product reference is Better Auth: one cohesive high-level API with
 adapters, plugins, generated schema/migrations, and framework-specific helpers.
@@ -24,7 +26,8 @@ domain extensions.
 - Three.js for general 3D rendering (WebGL2 today).
 - WebGL2 as the implemented 3D backend.
 - Native Canvas2D as the implemented 2D backend.
-- WebGPU as a reserved future adapter, not a current dependency.
+- WebGPU as an explicit 3D built-in through Three.js, never a current
+  `auto` result or a document field.
 - React Three Fiber for React-specific 3D composition.
 - Limited Drei helpers for common React 3D controls and convenience.
 - xeokit and web-ifc as optional BIM engines.
@@ -117,7 +120,7 @@ substitution:
 
 - WebGL2 for implemented 3D;
 - Canvas2D for implemented 2D;
-- WebGPU as a future adapter, never a current `auto` result;
+- WebGPU as an explicit 3D built-in, never a current `auto` result;
 - custom adapters for BIM, domain renderers, and a future WebGPU-native 2D.
 
 An explicit `webgpu`, `webgl2`, `canvas2d`, `offscreen-canvas2d`, or `custom`
@@ -125,8 +128,8 @@ request either creates that backend or fails with a backend-resolution error.
 It must not select a different implementation. `auto` is the only selector
 that may choose among backends, and it may choose only an implemented,
 mode-compatible backend whose required capability is available. The current
-built-ins therefore resolve 2D to Canvas2D and 3D to WebGL2; unimplemented
-WebGPU and OffscreenCanvas2D requests fail explicitly.
+built-ins therefore resolve 2D to Canvas2D and 3D to WebGL2. Explicit
+`webgpu` is 3D-only. OffscreenCanvas2D requests fail as unimplemented.
 
 See [Rendering Backend Strategy](./rendering-backend-strategy.md).
 

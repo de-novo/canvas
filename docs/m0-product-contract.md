@@ -66,15 +66,14 @@ runtime objects, or app-specific storage clients.
 
 ## Renderer Backend Contract
 
-Implemented built-in backends are Canvas2D (2D) and WebGL2 (3D). WebGPU is
-reserved public vocabulary and a future adapter milestone, not a current
-`auto` result.
+Implemented `auto` backends are Canvas2D (2D) and WebGL2 (3D). Explicit
+`backend: "webgpu"` is a 3D built-in and is not a current `auto` result.
 
 M0 separates document `mode` from runtime `backend`:
 
 - `mode`: persistent scene intent, currently `2d` or `3d`.
 - `backend`: runtime implementation, such as `webgpu`, `webgl2`, `canvas2d`, or
-  `custom`. `webgpu` is reserved until a runtime exists.
+  `custom`. `webgpu` is an explicit 3D built-in; `auto` does not select it.
 
 The target default is:
 
@@ -88,12 +87,13 @@ createCanvas("#stage", {
 ```
 
 `backend: "auto"` resolves only to a genuinely implemented backend compatible
-with the scene mode and current runtime capabilities. The current built-ins
-resolve 3D to WebGL2 and 2D to Canvas2D. Requesting `webgpu` fails with
-`backend-unimplemented`. An explicitly requested backend is never silently
-replaced: unimplemented, unavailable, or mode-incompatible choices fail with a
-backend-resolution error. Backend choice remains a runtime concern and is not
-embedded into saved documents.
+with the scene mode and current runtime capabilities. The current `auto`
+built-ins resolve 3D to WebGL2 and 2D to Canvas2D. Requesting `webgpu` on a
+3D scene uses the WebGPU runtime when `navigator.gpu` is present; a 2D
+scene throws `mode-mismatch`. An explicitly requested backend is never
+silently replaced: unimplemented, unavailable, or mode-incompatible choices
+fail with a backend-resolution error. Backend choice remains a runtime
+concern and is not embedded into saved documents.
 
 Detailed policy lives in
 [Rendering Backend Strategy](./rendering-backend-strategy.md).
@@ -140,7 +140,10 @@ built-ins that shipped without a version bump and are now frozen in place:
 
 `0.2.0` is not getting a `0.3.0` successor for those kinds. New built-in
 node kinds after this freeze require a schema migration or a namespaced
-plugin node.
+plugin node. Plugin nodes are that slot: `type` is
+`plugin.<owner>.<kind>`, kind values live in `props`, and the kind must
+be registered before parse for `2d`, `3d`, or `both`. See
+[Framework Surface](./framework-surface.md).
 
 Every scene has at least one ordered layer, and every node has one `layerId`
 plus explicit `visible`, `locked`, `metadata`, and nullable `parentId`
@@ -148,8 +151,10 @@ fields. These additions remain renderer-independent.
 
 Scene dimension is strict at public parse boundaries:
 
-- a scene with `mode: "2d"` accepts only built-in 2D nodes;
-- a scene with `mode: "3d"` accepts only built-in 3D nodes;
+- a scene with `mode: "2d"` accepts built-in 2D nodes or registered 2D
+  plugin nodes;
+- a scene with `mode: "3d"` accepts built-in 3D nodes or registered 3D
+  plugin nodes;
 - omitting `mode` continues to select the default `3d` scene contract;
 - renderers must not silently drop built-in nodes from the other dimension.
 

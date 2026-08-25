@@ -97,9 +97,14 @@ export function installMeshBvhRaycast() {
     return;
   }
 
-  Mesh.prototype.raycast = acceleratedRaycast;
-  BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
-  BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
+  Mesh.prototype.raycast =
+    acceleratedRaycast as unknown as typeof Mesh.prototype.raycast;
+  const geometryPrototype = BufferGeometry.prototype as BufferGeometry & {
+    computeBoundsTree: typeof computeBoundsTree;
+    disposeBoundsTree: typeof disposeBoundsTree;
+  };
+  geometryPrototype.computeBoundsTree = computeBoundsTree;
+  geometryPrototype.disposeBoundsTree = disposeBoundsTree;
   meshBvhInstalled = true;
 }
 
@@ -454,3 +459,11 @@ function resolveThreeUnitBoxFace(
 function isFiniteThreeVector(vector: Vector3): boolean {
   return [vector.x, vector.y, vector.z].every(Number.isFinite);
 }
+
+export {
+  DENOVO_FIELD_USER_DATA_KEY,
+  createDenovoFieldObject,
+  isDenovoFieldObject,
+  readDenovoFieldObjectState,
+  tickDenovoFieldObject
+} from "./field.js";

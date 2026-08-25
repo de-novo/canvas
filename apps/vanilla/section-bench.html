@@ -6,6 +6,9 @@
     <script type="module">
       import { createCanvas } from "@denovo/canvas";
 
+      const requestedBackend = new URLSearchParams(location.search).get(
+        "backend"
+      );
       const nodes = [];
 
       for (let i = 0; i < 200; i += 1) {
@@ -24,6 +27,9 @@
 
       try {
         const runtime = createCanvas(document.getElementById("stage"), {
+          ...(requestedBackend === "webgpu"
+            ? { renderer: { backend: "webgpu" } }
+            : {}),
           scene: {
             background: "#111827",
             camera: { fov: 50, position: [0, 0, 40], target: [0, 0, 0] },
@@ -85,24 +91,57 @@
 
         const GEOMETRY_RATIO = 0.01;
 
-        const base = analyze();
-        runtime.setSectionPlane({ constant: 0, normal: [0, -1, 0] });
-        const sectioned = analyze();
-        runtime.setSectionPlane(null);
-        const cleared = analyze();
-
-        window.__sectionBenchResult = {
-          base,
-          cleared,
-          renderStatsTriangles: runtime.getRenderStats()?.triangles ?? null,
-          sectioned,
-          verdict: {
-            baseUpperHasGeometry: base.upper > GEOMETRY_RATIO,
-            clearedRestoresGeometry: cleared.upper > GEOMETRY_RATIO,
-            sectionCutsUpper: sectioned.upper < GEOMETRY_RATIO,
-            sectionKeepsLower: sectioned.lower > GEOMETRY_RATIO
+        function countClippingPlanes() {
+          let count = 0;
+          const current = runtime.current;
+          if (!current || !("scene" in current) || !current.scene) {
+            return count;
           }
-        };
+          current.scene.traverse((object) => {
+            if (object.isClippingGroup) {
+              count = object.clippingPlanes.length;
+            }
+          });
+          return count;
+        }
+
+        if (runtime.config.renderer.resolved === "webgpu") {
+          runtime.setSectionPlane({ constant: 0, normal: [0, -1, 0] });
+          runtime.render();
+          const clipOn = countClippingPlanes();
+          runtime.setSectionPlane(null);
+          runtime.render();
+          const clipOff = countClippingPlanes();
+          window.__sectionBenchResult = {
+            backend: "webgpu",
+            clipOff,
+            clipOn,
+            verdict: {
+              clipOff: clipOff === 0,
+              clipOn: clipOn === 1
+            }
+          };
+        } else {
+          const base = analyze();
+          runtime.setSectionPlane({ constant: 0, normal: [0, -1, 0] });
+          const sectioned = analyze();
+          runtime.setSectionPlane(null);
+          const cleared = analyze();
+
+          window.__sectionBenchResult = {
+            backend: runtime.config.renderer.resolved,
+            base,
+            cleared,
+            renderStatsTriangles: runtime.getRenderStats()?.triangles ?? null,
+            sectioned,
+            verdict: {
+              baseUpperHasGeometry: base.upper > GEOMETRY_RATIO,
+              clearedRestoresGeometry: cleared.upper > GEOMETRY_RATIO,
+              sectionCutsUpper: sectioned.upper < GEOMETRY_RATIO,
+              sectionKeepsLower: sectioned.lower > GEOMETRY_RATIO
+            }
+          };
+        }
       } catch (cause) {
         window.__sectionBenchError = String(cause);
       }

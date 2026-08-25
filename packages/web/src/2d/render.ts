@@ -8,8 +8,12 @@
  */
 import {
   CANVAS_NODE_PORT_SIDES,
+  denovoSparklinePoints,
+  isCanvas2DPluginNode,
+  isDenovoSparklineNode,
   type Canvas2DGrid,
   type Canvas2DNode,
+  type Canvas2DPluginNode,
   type Canvas2DScene,
   type CanvasAuthoringPreviewForMode,
   type CanvasNodeTransformHandleTarget,
@@ -32,6 +36,7 @@ import {
   resolveCanvas2DEdgeGeometry,
   resolveCanvas2DNodeWorldBounds,
   resolveCanvas2DNodeWorldCenter,
+  resolveCanvas2DPluginNodeLocalSize,
   resolveNodeRenderTransform,
   resolvePreviewParentWorldTransform,
   type Canvas2DEdgeNode
@@ -559,11 +564,80 @@ export function renderCanvas2DDrawableNode(
       // html nodes are rendered into the DOM overlay, not the bitmap canvas.
       return;
     default: {
+      if (isDenovoSparklineNode(node)) {
+        renderCanvas2DSparkline(context, node, preview);
+        return;
+      }
+      if (isCanvas2DPluginNode(node)) {
+        renderCanvas2DPluginMarker(context, node, preview);
+        return;
+      }
       const exhaustive: never = node;
       return exhaustive;
     }
   }
 }
+function renderCanvas2DPluginMarker(
+  context: CanvasRenderingContext2D,
+  node: Canvas2DPluginNode,
+  preview: CanvasNodeTransformPreview | null
+) {
+  const transform = resolveNodeRenderTransform(node, preview);
+  const [width, height] = resolveCanvas2DPluginNodeLocalSize(node);
+  context.save();
+  applyCanvas2DMatrix(context, createCanvas2DTransformMatrix(transform));
+  context.fillStyle = "#64748b";
+  context.fillRect(0, 0, width, height);
+  context.restore();
+}
+
+function renderCanvas2DSparkline(
+  context: CanvasRenderingContext2D,
+  node: Canvas2DPluginNode,
+  preview: CanvasNodeTransformPreview | null
+) {
+  if (!isDenovoSparklineNode(node)) {
+    return;
+  }
+
+  const transform = resolveNodeRenderTransform(node, preview);
+  const points = denovoSparklinePoints(node.props);
+  const first = points[0];
+  const last = points[points.length - 1];
+
+  if (!first || !last) {
+    return;
+  }
+
+  context.save();
+  applyCanvas2DMatrix(context, createCanvas2DTransformMatrix(transform));
+
+  if (node.props.fill !== "none") {
+    context.beginPath();
+    context.moveTo(first[0], node.props.height);
+    context.lineTo(first[0], first[1]);
+    for (const point of points.slice(1)) {
+      context.lineTo(point[0], point[1]);
+    }
+    context.lineTo(last[0], node.props.height);
+    context.closePath();
+    context.fillStyle = node.props.fill;
+    context.fill();
+  }
+
+  context.beginPath();
+  context.moveTo(first[0], first[1]);
+  for (const point of points.slice(1)) {
+    context.lineTo(point[0], point[1]);
+  }
+  context.strokeStyle = node.props.stroke;
+  context.lineWidth = 2;
+  context.lineJoin = "round";
+  context.lineCap = "round";
+  context.stroke();
+  context.restore();
+}
+
 export function renderCanvas2DShapeNode(
   context: CanvasRenderingContext2D,
   node: Canvas2DShapeNode,
@@ -626,6 +700,8 @@ export function renderCanvas2DEdgeNode(
   context.strokeStyle = stroke;
   context.fillStyle = stroke;
   context.lineWidth = strokeWidth;
+  context.lineJoin = "round";
+  context.lineCap = "round";
   context.setLineDash(
     node.lineStyle === "dashed"
       ? [12, 6]

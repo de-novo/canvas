@@ -40,6 +40,38 @@ assert.equal(typeof editorCore.applyCommandsToDocument, "function");
 assert.equal(typeof facade.applyCommandsToDocument, "function");
 assert.equal(typeof editorCore.setLayerVisible, "function");
 assert.equal(typeof facade.setLayerVisible, "function");
+assert.equal(typeof editorCore.setLayerLocked, "function");
+assert.equal(typeof facade.setLayerLocked, "function");
+assert.equal(typeof editorCore.setLayerName, "function");
+assert.equal(typeof facade.setLayerName, "function");
+assert.equal(typeof editorCore.setNodeLayer, "function");
+assert.equal(typeof facade.setNodeLayer, "function");
+assert.equal(typeof editorCore.setText, "function");
+assert.equal(typeof facade.setText, "function");
+assert.equal(typeof editorCore.setFieldPattern, "function");
+assert.equal(typeof facade.setFieldPattern, "function");
+assert.equal(typeof editorCore.setSparklineStyle, "function");
+assert.equal(typeof facade.setSparklineStyle, "function");
+assert.equal(typeof editorCore.setNodeVisible, "function");
+assert.equal(typeof facade.setNodeVisible, "function");
+assert.equal(typeof editorCore.setNodeLocked, "function");
+assert.equal(typeof facade.setNodeLocked, "function");
+assert.equal(typeof editorCore.removeNode, "function");
+assert.equal(typeof facade.removeNode, "function");
+assert.equal(typeof editorCore.removeEdge, "function");
+assert.equal(typeof facade.removeEdge, "function");
+assert.equal(typeof editorCore.removeLayer, "function");
+assert.equal(typeof facade.removeLayer, "function");
+assert.equal(typeof editorCore.addLayer, "function");
+assert.equal(typeof facade.addLayer, "function");
+assert.equal(typeof editorCore.reorderLayer, "function");
+assert.equal(typeof facade.reorderLayer, "function");
+assert.equal(typeof editorCore.stackBox, "function");
+assert.equal(typeof facade.stackBox, "function");
+assert.equal(typeof editorCore.listNodes, "function");
+assert.equal(typeof facade.listNodes, "function");
+assert.equal(typeof editorCore.listLayers, "function");
+assert.equal(typeof facade.listLayers, "function");
 assert.equal(typeof editorCore.applyNamedOperations, "function");
 assert.equal(typeof facade.applyNamedOperations, "function");
 assert.equal(typeof editorCore.applyCommandsToStoredDocument, "function");
@@ -4054,6 +4086,1562 @@ try {
   assert.equal(
     editor.getState().document.scene.layers.every((layer) => layer.visible === true),
     true
+  );
+}
+
+{
+  const document = {
+    id: "named-ops-stack",
+    scene: {
+      id: "named-ops-stack-scene",
+      layers: [{ id: "main", name: "Main" }],
+      mode: "3d",
+      nodes: [
+        {
+          color: "#fbbf24",
+          id: "box-1",
+          layerId: "main",
+          position: [2, 3, 4],
+          rotation: [0, 0, 0],
+          scale: [4, 2, 6],
+          type: "box"
+        }
+      ]
+    }
+  };
+  const stackUp = facade.stackBox({
+    createId: () => "box-1-plus-y",
+    face: "+y",
+    on: "box-1"
+  });
+  const preview = facade.applyNamedOperations(document, [stackUp]);
+  assert.equal(preview.changed, true);
+  assert.equal(preview.commands.length, 1);
+  assert.equal(preview.commands[0].type, "node.add");
+  const stacked = preview.document.scene.nodes.find(
+    (node) => node.id === "box-1-plus-y"
+  );
+  assert.equal(stacked?.type, "box");
+  assert.deepEqual(stacked?.position, [2, 5, 4]);
+  assert.deepEqual(stacked?.scale, [4, 2, 6]);
+  assert.equal(stacked?.layerId, "main");
+  assert.equal(stacked?.color, "#fbbf24");
+
+  const alreadyStacked = facade.applyNamedOperations(preview.document, [stackUp]);
+  assert.equal(alreadyStacked.changed, false);
+  assert.deepEqual(alreadyStacked.commands, []);
+  assert.equal(alreadyStacked.document, preview.document);
+
+  const editor = facade.createEditor({ document });
+  const applied = await editor.apply([stackUp]);
+  assert.equal(applied.changed, true);
+  assert.deepEqual(
+    editor
+      .getState()
+      .document.scene.nodes.find((node) => node.id === "box-1-plus-y")
+      ?.position,
+    [2, 5, 4]
+  );
+  assert.equal(editor.getState().history.undoDepth, 1);
+
+  const noop = await editor.apply([stackUp]);
+  assert.equal(noop.changed, false);
+  assert.equal(editor.getState().history.undoDepth, 1);
+
+  await editor.undo();
+  assert.equal(
+    editor
+      .getState()
+      .document.scene.nodes.some((node) => node.id === "box-1-plus-y"),
+    false
+  );
+
+  await assert.rejects(
+    async () =>
+      editor.apply([
+        facade.stackBox({
+          createId: () => "missing-top",
+          face: "+y",
+          on: "missing-box"
+        })
+      ]),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "node-not-found"
+  );
+
+  const plusX = facade.stackBox({
+    createId: () => "box-1-plus-x",
+    face: "+x",
+    on: "box-1"
+  });
+  const plusXPreview = facade.applyNamedOperations(document, [plusX]);
+  assert.deepEqual(
+    plusXPreview.document.scene.nodes.find((node) => node.id === "box-1-plus-x")
+      ?.position,
+    [6, 3, 4]
+  );
+
+  const minusZ = facade.stackBox({
+    createId: () => "box-1-minus-z",
+    face: "-z",
+    on: "box-1"
+  });
+  const minusZPreview = facade.applyNamedOperations(document, [minusZ]);
+  assert.deepEqual(
+    minusZPreview.document.scene.nodes.find((node) => node.id === "box-1-minus-z")
+      ?.position,
+    [2, 3, -2]
+  );
+
+  assert.throws(
+    () =>
+      facade.applyNamedOperations(
+        {
+          ...document,
+          scene: {
+            ...document.scene,
+            nodes: [
+              {
+                id: "sphere-1",
+                layerId: "main",
+                position: [0, 0, 0],
+                type: "sphere"
+              }
+            ]
+          }
+        },
+        [
+          facade.stackBox({
+            createId: () => "on-sphere",
+            face: "+y",
+            on: "sphere-1"
+          })
+        ]
+      ),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "invalid-command"
+  );
+
+  const stackedThenHidden = await editor.apply([
+    stackUp,
+    facade.setLayerVisible({ layerId: "main", visible: true })
+  ]);
+  assert.equal(stackedThenHidden.commands.length, 1);
+  assert.equal(editor.getState().history.undoDepth, 1);
+}
+
+{
+  const editor = facade.createEditor({
+    document: {
+      id: "named-ops-list",
+      scene: {
+        id: "named-ops-list-scene",
+        layers: [
+          { id: "main", name: "Main" },
+          { id: "empty", name: "Empty" }
+        ],
+        mode: "3d",
+        nodes: [
+          {
+            id: "box-1",
+            layerId: "main",
+            position: [0, 0, 0],
+            rotation: [0, 0, 0],
+            scale: [1, 1, 1],
+            type: "box"
+          },
+          {
+            id: "sphere-1",
+            layerId: "main",
+            position: [3, 0, 0],
+            type: "sphere"
+          }
+        ]
+      }
+    }
+  });
+  const document = editor.getState().document;
+  const listed = facade.listNodes(document);
+  assert.deepEqual(
+    listed.map((node) => node.id),
+    ["box-1", "sphere-1"]
+  );
+  assert.deepEqual(listed[0], {
+    id: "box-1",
+    layerId: "main",
+    locked: false,
+    type: "box",
+    visible: true
+  });
+  assert.equal("position" in listed[0], false);
+  assert.equal("positions" in listed[0], false);
+  assert.equal("scale" in listed[0], false);
+
+  assert.deepEqual(facade.listNodes(document, { layerId: "empty" }), []);
+  assert.throws(
+    () => facade.listNodes(document, { layerId: "missing" }),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "layer-not-found"
+  );
+  assert.throws(
+    () => facade.listNodes(document, { extra: true }),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "invalid-command"
+  );
+
+  const listedLayers = facade.listLayers(document);
+  assert.deepEqual(listedLayers, [
+    { id: "main", locked: false, name: "Main", visible: true },
+    { id: "empty", locked: false, name: "Empty", visible: true }
+  ]);
+  assert.equal("metadata" in listedLayers[0], false);
+  assert.throws(
+    () => facade.listLayers(document, { extra: true }),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "invalid-command"
+  );
+
+  await editor.apply([
+    facade.setLayerVisible({ layerId: "main", visible: false })
+  ]);
+  const hidden = facade.listNodes(editor.getState().document, {
+    layerId: "main"
+  });
+  assert.equal(hidden.length, 2);
+  assert.equal(
+    hidden.every((node) => node.visible === false),
+    true
+  );
+  assert.equal(
+    facade
+      .listLayers(editor.getState().document)
+      .find((layer) => layer.id === "main")?.visible,
+    false
+  );
+  assert.equal(editor.getState().history.undoDepth, 1);
+
+  const box = hidden.find((node) => node.type === "box");
+  assert.ok(box);
+  await editor.apply([
+    facade.setLayerVisible({ layerId: box.layerId, visible: true }),
+    facade.stackBox({
+      createId: () => "box-1-plus-y",
+      face: "+y",
+      on: box.id
+    })
+  ]);
+  const afterStack = facade.listNodes(editor.getState().document);
+  assert.deepEqual(
+    afterStack.map((node) => node.id),
+    ["box-1", "sphere-1", "box-1-plus-y"]
+  );
+  assert.equal(
+    afterStack.find((node) => node.id === "box-1-plus-y")?.type,
+    "box"
+  );
+}
+
+{
+  const document = facade.defineDocument({
+    id: "official-field",
+    scene: {
+      id: "official-field-scene",
+      layers: [{ id: "hero", name: "Hero" }],
+      nodes: [
+        {
+          id: "field",
+          layerId: "hero",
+          props: {
+            brightness: 1,
+            density: 0.6,
+            hue: 0,
+            pattern: "streaks",
+            speed: 15
+          },
+          type: "plugin.denovo.field"
+        }
+      ]
+    }
+  });
+  const toLetters = facade.setFieldPattern({
+    nodeId: "field",
+    pattern: "letters"
+  });
+  const preview = facade.applyNamedOperations(document, [toLetters]);
+  assert.equal(preview.changed, true);
+  assert.equal(preview.commands[0]?.type, "node.update");
+  const field = preview.document.scene.nodes[0];
+  assert.equal(field?.type, "plugin.denovo.field");
+  assert.equal(field && "props" in field && field.props.pattern, "letters");
+
+  const alreadyLetters = facade.applyNamedOperations(preview.document, [
+    toLetters
+  ]);
+  assert.equal(alreadyLetters.changed, false);
+  assert.deepEqual(alreadyLetters.commands, []);
+
+  const fieldEditor = facade.createEditor({ document });
+  const applied = await fieldEditor.apply([toLetters]);
+  assert.equal(applied.changed, true);
+  assert.equal(fieldEditor.getState().history.undoDepth, 1);
+  const again = await fieldEditor.apply([toLetters]);
+  assert.equal(again.changed, false);
+  assert.equal(fieldEditor.getState().history.undoDepth, 1);
+
+  await assert.rejects(
+    () =>
+      fieldEditor.apply([
+        facade.setFieldPattern({ nodeId: "missing-field", pattern: "letters" })
+      ]),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "node-not-found"
+  );
+}
+
+{
+  const document = facade.defineDocument({
+    id: "sparkline-style",
+    scene: {
+      id: "sparkline-style-scene",
+      layers: [{ id: "main", name: "Main" }],
+      mode: "2d",
+      nodes: [
+        {
+          id: "spark",
+          layerId: "main",
+          props: {
+            fill: "none",
+            height: 80,
+            stroke: "#22c55e",
+            style: "linear",
+            values: [2, 8, 3, 12],
+            width: 240
+          },
+          type: "plugin.denovo.sparkline"
+        }
+      ]
+    }
+  });
+  const toStep = facade.setSparklineStyle({
+    nodeId: "spark",
+    style: "step"
+  });
+  const preview = facade.applyNamedOperations(document, [toStep]);
+  assert.equal(preview.changed, true);
+  assert.equal(preview.commands[0]?.type, "node.update");
+  const spark = preview.document.scene.nodes[0];
+  assert.equal(spark?.type, "plugin.denovo.sparkline");
+  assert.equal(spark && "props" in spark && spark.props.style, "step");
+
+  const alreadyStep = facade.applyNamedOperations(preview.document, [toStep]);
+  assert.equal(alreadyStep.changed, false);
+  assert.deepEqual(alreadyStep.commands, []);
+
+  const sparkEditor = facade.createEditor({ document });
+  const applied = await sparkEditor.apply([toStep]);
+  assert.equal(applied.changed, true);
+  assert.equal(sparkEditor.getState().history.undoDepth, 1);
+  const again = await sparkEditor.apply([toStep]);
+  assert.equal(again.changed, false);
+  assert.equal(sparkEditor.getState().history.undoDepth, 1);
+
+  assert.throws(
+    () =>
+      facade.applyNamedOperations(document, [
+        facade.setSparklineStyle({ extra: true, nodeId: "spark", style: "step" })
+      ]),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "invalid-command"
+  );
+  await assert.rejects(
+    () =>
+      sparkEditor.apply([
+        facade.setSparklineStyle({ nodeId: "missing-spark", style: "step" })
+      ]),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "node-not-found"
+  );
+}
+
+{
+  const document = facade.defineDocument({
+    id: "node-flags",
+    scene: {
+      id: "node-flags-scene",
+      layers: [
+        { id: "main", name: "Main" },
+        { id: "locked-layer", locked: true, name: "Locked" }
+      ],
+      nodes: [
+        {
+          id: "box-1",
+          layerId: "main",
+          position: [0, 0, 0],
+          type: "box"
+        },
+        {
+          id: "box-locked",
+          layerId: "main",
+          locked: true,
+          position: [4, 0, 0],
+          type: "box"
+        },
+        {
+          id: "box-on-locked-layer",
+          layerId: "locked-layer",
+          locked: true,
+          position: [8, 0, 0],
+          type: "box"
+        }
+      ]
+    }
+  });
+  const hideBox = facade.setNodeVisible({
+    nodeId: "box-1",
+    visible: false
+  });
+  const preview = facade.applyNamedOperations(document, [hideBox]);
+  assert.equal(preview.changed, true);
+  assert.equal(preview.commands[0]?.type, "node.update");
+  const hidden = preview.document.scene.nodes.find((node) => node.id === "box-1");
+  assert.equal(hidden?.visible, false);
+  assert.equal(
+    facade.listNodes(preview.document).find((node) => node.id === "box-1")
+      ?.visible,
+    false
+  );
+
+  const alreadyHidden = facade.applyNamedOperations(preview.document, [hideBox]);
+  assert.equal(alreadyHidden.changed, false);
+  assert.deepEqual(alreadyHidden.commands, []);
+
+  const lockBox = facade.setNodeLocked({ locked: true, nodeId: "box-1" });
+  const lockedPreview = facade.applyNamedOperations(preview.document, [lockBox]);
+  assert.equal(
+    lockedPreview.document.scene.nodes.find((node) => node.id === "box-1")
+      ?.locked,
+    true
+  );
+  const unlockBox = facade.setNodeLocked({ locked: false, nodeId: "box-1" });
+  const unlocked = facade.applyNamedOperations(lockedPreview.document, [
+    unlockBox
+  ]);
+  assert.equal(
+    unlocked.document.scene.nodes.find((node) => node.id === "box-1")?.locked,
+    false
+  );
+
+  const flagEditor = facade.createEditor({ document });
+  const applied = await flagEditor.apply([hideBox]);
+  assert.equal(applied.changed, true);
+  assert.equal(flagEditor.getState().history.undoDepth, 1);
+  const again = await flagEditor.apply([hideBox]);
+  assert.equal(again.changed, false);
+  assert.equal(flagEditor.getState().history.undoDepth, 1);
+
+  await assert.rejects(
+    () =>
+      flagEditor.apply([
+        facade.setNodeVisible({ nodeId: "missing-box", visible: false })
+      ]),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "node-not-found"
+  );
+  await assert.rejects(
+    () =>
+      flagEditor.apply([
+        facade.setNodeVisible({ nodeId: "box-locked", visible: false })
+      ]),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "locked-target"
+  );
+  await assert.rejects(
+    () =>
+      flagEditor.apply([
+        facade.setNodeLocked({
+          locked: false,
+          nodeId: "box-on-locked-layer"
+        })
+      ]),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "locked-target"
+  );
+}
+
+{
+  const document = facade.defineDocument({
+    id: "node-flags-2d",
+    scene: {
+      id: "node-flags-2d-scene",
+      layers: [{ id: "main", name: "Main" }],
+      mode: "2d",
+      nodes: [
+        {
+          id: "rect-1",
+          layerId: "main",
+          position: [10, 20],
+          size: [40, 24],
+          type: "rect"
+        }
+      ]
+    }
+  });
+  const hideRect = facade.setNodeVisible({
+    nodeId: "rect-1",
+    visible: false
+  });
+  const preview = facade.applyNamedOperations(document, [hideRect]);
+  assert.equal(preview.changed, true);
+  assert.equal(preview.commands[0]?.type, "node.update");
+  assert.equal(preview.commands[0]?.nodeMode, "2d");
+  assert.equal(preview.commands[0]?.nodeType, "rect");
+  assert.equal(
+    preview.document.scene.nodes.find((node) => node.id === "rect-1")?.visible,
+    false
+  );
+}
+
+{
+  const document = facade.defineDocument({
+    id: "layer-lock",
+    scene: {
+      id: "layer-lock-scene",
+      layers: [{ id: "main", name: "Main" }],
+      nodes: [
+        {
+          id: "box-1",
+          layerId: "main",
+          position: [0, 0, 0],
+          type: "box"
+        }
+      ]
+    }
+  });
+  const lockMain = facade.setLayerLocked({
+    layerId: "main",
+    locked: true
+  });
+  const preview = facade.applyNamedOperations(document, [lockMain]);
+  assert.equal(preview.changed, true);
+  assert.equal(preview.commands[0]?.type, "layer.update");
+  assert.equal(
+    preview.document.scene.layers.find((layer) => layer.id === "main")?.locked,
+    true
+  );
+
+  const alreadyLocked = facade.applyNamedOperations(preview.document, [
+    lockMain
+  ]);
+  assert.equal(alreadyLocked.changed, false);
+  assert.deepEqual(alreadyLocked.commands, []);
+
+  const unlockMain = facade.setLayerLocked({
+    layerId: "main",
+    locked: false
+  });
+  const unlocked = facade.applyNamedOperations(preview.document, [unlockMain]);
+  assert.equal(
+    unlocked.document.scene.layers.find((layer) => layer.id === "main")?.locked,
+    false
+  );
+
+  const layerEditor = facade.createEditor({ document });
+  const applied = await layerEditor.apply([lockMain]);
+  assert.equal(applied.changed, true);
+  assert.equal(layerEditor.getState().history.undoDepth, 1);
+  const again = await layerEditor.apply([lockMain]);
+  assert.equal(again.changed, false);
+  assert.equal(layerEditor.getState().history.undoDepth, 1);
+
+  await assert.rejects(
+    () =>
+      layerEditor.apply([
+        facade.setLayerLocked({ layerId: "missing-layer", locked: true })
+      ]),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "layer-not-found"
+  );
+  await assert.rejects(
+    () =>
+      layerEditor.apply([
+        facade.setLayerVisible({ layerId: "main", visible: false })
+      ]),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "locked-target"
+  );
+}
+
+{
+  const document = facade.defineDocument({
+    id: "rename-layer",
+    scene: {
+      id: "rename-layer-scene",
+      layers: [
+        { id: "main", name: "Main" },
+        { id: "locked", locked: true, name: "Locked" }
+      ],
+      mode: "2d",
+      nodes: []
+    }
+  });
+  const rename = facade.setLayerName({
+    layerId: "main",
+    name: "Notes"
+  });
+  const preview = facade.applyNamedOperations(document, [rename]);
+  assert.equal(preview.changed, true);
+  assert.equal(preview.commands[0]?.type, "layer.update");
+  assert.equal(
+    facade.listLayers(preview.document).find((layer) => layer.id === "main")
+      ?.name,
+    "Notes"
+  );
+
+  const alreadyNamed = facade.applyNamedOperations(preview.document, [rename]);
+  assert.equal(alreadyNamed.changed, false);
+  assert.deepEqual(alreadyNamed.commands, []);
+
+  const renameEditor = facade.createEditor({ document });
+  const applied = await renameEditor.apply([rename]);
+  assert.equal(applied.changed, true);
+  assert.equal(renameEditor.getState().history.undoDepth, 1);
+  const again = await renameEditor.apply([rename]);
+  assert.equal(again.changed, false);
+  assert.equal(renameEditor.getState().history.undoDepth, 1);
+
+  assert.throws(
+    () =>
+      facade.applyNamedOperations(document, [
+        facade.setLayerName({
+          layerId: "locked",
+          name: "Still locked"
+        })
+      ]),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "locked-target"
+  );
+  assert.throws(
+    () =>
+      facade.setLayerName({
+        extra: true,
+        layerId: "main",
+        name: "Notes"
+      }),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "invalid-command"
+  );
+  assert.throws(
+    () =>
+      facade.setLayerName({
+        layerId: "main",
+        name: ""
+      }),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "invalid-command"
+  );
+  await assert.rejects(
+    () =>
+      renameEditor.apply([
+        facade.setLayerName({ layerId: "missing", name: "Notes" })
+      ]),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "layer-not-found"
+  );
+}
+
+{
+  const document = facade.defineDocument({
+    id: "move-node-layer",
+    scene: {
+      id: "move-node-layer-scene",
+      layers: [
+        { id: "main", name: "Main" },
+        { id: "notes", name: "Notes" },
+        { id: "locked-layer", locked: true, name: "Locked" }
+      ],
+      mode: "2d",
+      nodes: [
+        {
+          id: "rect-1",
+          layerId: "main",
+          position: [0, 0],
+          size: [80, 40],
+          type: "rect"
+        },
+        {
+          id: "rect-locked",
+          layerId: "main",
+          locked: true,
+          position: [120, 0],
+          size: [80, 40],
+          type: "rect"
+        }
+      ]
+    }
+  });
+  const move = facade.setNodeLayer({
+    layerId: "notes",
+    nodeId: "rect-1"
+  });
+  const preview = facade.applyNamedOperations(document, [move]);
+  assert.equal(preview.changed, true);
+  assert.equal(preview.commands[0]?.type, "node.update");
+  assert.equal(
+    facade.listNodes(preview.document).find((node) => node.id === "rect-1")
+      ?.layerId,
+    "notes"
+  );
+
+  const alreadyMoved = facade.applyNamedOperations(preview.document, [move]);
+  assert.equal(alreadyMoved.changed, false);
+  assert.deepEqual(alreadyMoved.commands, []);
+
+  const moveEditor = facade.createEditor({ document });
+  const applied = await moveEditor.apply([move]);
+  assert.equal(applied.changed, true);
+  assert.equal(moveEditor.getState().history.undoDepth, 1);
+  const again = await moveEditor.apply([move]);
+  assert.equal(again.changed, false);
+  assert.equal(moveEditor.getState().history.undoDepth, 1);
+
+  assert.throws(
+    () =>
+      facade.applyNamedOperations(document, [
+        facade.setNodeLayer({
+          layerId: "notes",
+          nodeId: "rect-locked"
+        })
+      ]),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "locked-target"
+  );
+  assert.throws(
+    () =>
+      facade.applyNamedOperations(document, [
+        facade.setNodeLayer({
+          layerId: "locked-layer",
+          nodeId: "rect-1"
+        })
+      ]),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "locked-target"
+  );
+  assert.throws(
+    () =>
+      facade.setNodeLayer({
+        extra: true,
+        layerId: "notes",
+        nodeId: "rect-1"
+      }),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "invalid-command"
+  );
+  await assert.rejects(
+    () =>
+      moveEditor.apply([
+        facade.setNodeLayer({ layerId: "missing", nodeId: "rect-1" })
+      ]),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "layer-not-found"
+  );
+  await assert.rejects(
+    () =>
+      moveEditor.apply([
+        facade.setNodeLayer({ layerId: "notes", nodeId: "missing" })
+      ]),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "node-not-found"
+  );
+}
+
+{
+  const document = facade.defineDocument({
+    id: "set-text",
+    scene: {
+      id: "set-text-scene",
+      layers: [{ id: "main", name: "Main" }],
+      mode: "2d",
+      nodes: [
+        {
+          id: "label",
+          layerId: "main",
+          position: [0, 0],
+          text: "Draft",
+          type: "text"
+        },
+        {
+          id: "label-locked",
+          layerId: "main",
+          locked: true,
+          position: [0, 24],
+          text: "Locked",
+          type: "text"
+        },
+        {
+          id: "rect-1",
+          layerId: "main",
+          position: [80, 0],
+          size: [80, 40],
+          type: "rect"
+        }
+      ]
+    }
+  });
+  const rename = facade.setText({
+    nodeId: "label",
+    text: "Done"
+  });
+  const preview = facade.applyNamedOperations(document, [rename]);
+  assert.equal(preview.changed, true);
+  assert.equal(preview.commands[0]?.type, "node.update");
+  assert.equal(
+    preview.document.scene.nodes.find((node) => node.id === "label")?.text,
+    "Done"
+  );
+
+  const alreadyNamed = facade.applyNamedOperations(preview.document, [rename]);
+  assert.equal(alreadyNamed.changed, false);
+  assert.deepEqual(alreadyNamed.commands, []);
+
+  const textEditor = facade.createEditor({ document });
+  const applied = await textEditor.apply([rename]);
+  assert.equal(applied.changed, true);
+  assert.equal(textEditor.getState().history.undoDepth, 1);
+  const again = await textEditor.apply([rename]);
+  assert.equal(again.changed, false);
+  assert.equal(textEditor.getState().history.undoDepth, 1);
+
+  assert.throws(
+    () =>
+      facade.applyNamedOperations(document, [
+        facade.setText({
+          nodeId: "label-locked",
+          text: "Nope"
+        })
+      ]),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "locked-target"
+  );
+  assert.throws(
+    () =>
+      facade.applyNamedOperations(document, [
+        facade.setText({
+          nodeId: "rect-1",
+          text: "Nope"
+        })
+      ]),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "invalid-command"
+  );
+  assert.throws(
+    () =>
+      facade.setText({
+        extra: true,
+        nodeId: "label",
+        text: "Done"
+      }),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "invalid-command"
+  );
+  assert.throws(
+    () =>
+      facade.setText({
+        nodeId: "label",
+        text: 1
+      }),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "invalid-command"
+  );
+  await assert.rejects(
+    () =>
+      textEditor.apply([
+        facade.setText({ nodeId: "missing", text: "Done" })
+      ]),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "node-not-found"
+  );
+}
+
+{
+  const document = facade.defineDocument({
+    id: "remove-node",
+    scene: {
+      id: "remove-node-scene",
+      layers: [{ id: "main", name: "Main" }],
+      nodes: [
+        {
+          id: "box-1",
+          layerId: "main",
+          position: [0, 0, 0],
+          type: "box"
+        },
+        {
+          id: "box-locked",
+          layerId: "main",
+          locked: true,
+          position: [4, 0, 0],
+          type: "box"
+        }
+      ]
+    }
+  });
+  const dropBox = facade.removeNode({ nodeId: "box-1" });
+  const preview = facade.applyNamedOperations(document, [dropBox]);
+  assert.equal(preview.changed, true);
+  assert.equal(preview.commands[0]?.type, "node.remove");
+  assert.equal(
+    preview.document.scene.nodes.some((node) => node.id === "box-1"),
+    false
+  );
+  assert.deepEqual(
+    facade.listNodes(preview.document).map((node) => node.id),
+    ["box-locked"]
+  );
+
+  const removeEditor = facade.createEditor({ document });
+  const applied = await removeEditor.apply([dropBox]);
+  assert.equal(applied.changed, true);
+  assert.equal(removeEditor.getState().history.undoDepth, 1);
+
+  await assert.rejects(
+    () =>
+      removeEditor.apply([facade.removeNode({ nodeId: "missing-box" })]),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "node-not-found"
+  );
+  await assert.rejects(
+    () =>
+      removeEditor.apply([facade.removeNode({ nodeId: "box-locked" })]),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "locked-target"
+  );
+}
+
+{
+  const document = facade.defineDocument({
+    id: "remove-node-edge",
+    scene: {
+      id: "remove-node-edge-scene",
+      layers: [{ id: "main", name: "Main" }],
+      mode: "2d",
+      nodes: [
+        {
+          id: "a",
+          layerId: "main",
+          position: [0, 0],
+          size: [40, 24],
+          type: "rect"
+        },
+        {
+          id: "b",
+          layerId: "main",
+          position: [80, 0],
+          size: [40, 24],
+          type: "rect"
+        },
+        {
+          id: "edge",
+          layerId: "main",
+          sourceId: "a",
+          targetId: "b",
+          type: "edge"
+        }
+      ]
+    }
+  });
+  assert.throws(
+    () =>
+      facade.applyNamedOperations(document, [
+        facade.removeNode({ nodeId: "a" })
+      ]),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "invalid-command"
+  );
+
+  assert.throws(
+    () =>
+      facade.applyNamedOperations(document, [
+        facade.removeEdge({ nodeId: "a" })
+      ]),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "invalid-command"
+  );
+
+  const disconnected = facade.applyNamedOperations(document, [
+    facade.removeEdge({ nodeId: "edge" }),
+    facade.removeNode({ nodeId: "a" })
+  ]);
+  assert.equal(disconnected.changed, true);
+  assert.deepEqual(
+    disconnected.commands.map((command) => command.type),
+    ["node.remove", "node.remove"]
+  );
+  assert.deepEqual(
+    facade.listNodes(disconnected.document).map((node) => node.id),
+    ["b"]
+  );
+
+  await assert.rejects(
+    () =>
+      facade.createEditor({ document }).apply([
+        facade.removeEdge({ nodeId: "missing-edge" })
+      ]),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "node-not-found"
+  );
+}
+
+{
+  const document = facade.defineDocument({
+    id: "remove-node-group",
+    scene: {
+      id: "remove-node-group-scene",
+      layers: [{ id: "main", name: "Main" }],
+      mode: "2d",
+      nodes: [
+        {
+          id: "group-1",
+          layerId: "main",
+          position: [0, 0],
+          type: "group"
+        },
+        {
+          id: "rect-1",
+          layerId: "main",
+          parentId: "group-1",
+          position: [8, 8],
+          size: [40, 24],
+          type: "rect"
+        }
+      ]
+    }
+  });
+  assert.throws(
+    () =>
+      facade.applyNamedOperations(document, [
+        facade.removeNode({ nodeId: "group-1" })
+      ]),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "invalid-command"
+  );
+}
+
+{
+  const document = facade.defineDocument({
+    id: "remove-layer",
+    scene: {
+      id: "remove-layer-scene",
+      layers: [
+        { id: "main", name: "Main" },
+        { id: "extra", name: "Extra" }
+      ],
+      mode: "2d",
+      nodes: [
+        {
+          id: "rect-1",
+          layerId: "main",
+          position: [0, 0],
+          size: [40, 24],
+          type: "rect"
+        }
+      ]
+    }
+  });
+  const dropEmpty = facade.removeLayer({
+    layerId: "extra",
+    targetLayerId: null
+  });
+  const preview = facade.applyNamedOperations(document, [dropEmpty]);
+  assert.equal(preview.changed, true);
+  assert.equal(preview.commands[0]?.type, "layer.remove");
+  assert.deepEqual(
+    facade.listLayers(preview.document).map((layer) => layer.id),
+    ["main"]
+  );
+
+  const removeEditor = facade.createEditor({ document });
+  const applied = await removeEditor.apply([dropEmpty]);
+  assert.equal(applied.changed, true);
+  assert.equal(removeEditor.getState().history.undoDepth, 1);
+  assert.deepEqual(
+    facade.listLayers(applied.document).map((layer) => layer.id),
+    ["main"]
+  );
+
+  assert.throws(
+    () =>
+      facade.applyNamedOperations(document, [
+        facade.removeLayer({
+          layerId: "extra",
+          targetLayerId: "main"
+        })
+      ]),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "invalid-command"
+  );
+  assert.throws(
+    () =>
+      facade.applyNamedOperations(document, [
+        facade.removeLayer({
+          layerId: "main",
+          targetLayerId: null
+        })
+      ]),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "invalid-command"
+  );
+  assert.throws(
+    () =>
+      facade.removeLayer({
+        extra: true,
+        layerId: "extra",
+        targetLayerId: null
+      }),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "invalid-command"
+  );
+  assert.throws(
+    () =>
+      facade.removeLayer({
+        layerId: "extra",
+        targetLayerId: "extra"
+      }),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "invalid-command"
+  );
+  await assert.rejects(
+    () =>
+      removeEditor.apply([
+        facade.removeLayer({
+          layerId: "missing",
+          targetLayerId: null
+        })
+      ]),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "layer-not-found"
+  );
+}
+
+{
+  const document = facade.defineDocument({
+    id: "remove-layer-move",
+    scene: {
+      id: "remove-layer-move-scene",
+      layers: [
+        { id: "main", name: "Main" },
+        { id: "extra", name: "Extra" }
+      ],
+      mode: "2d",
+      nodes: [
+        {
+          id: "rect-1",
+          layerId: "extra",
+          position: [0, 0],
+          size: [40, 24],
+          type: "rect"
+        }
+      ]
+    }
+  });
+  const moved = facade.applyNamedOperations(document, [
+    facade.removeLayer({
+      layerId: "extra",
+      targetLayerId: "main"
+    })
+  ]);
+  assert.equal(moved.changed, true);
+  assert.equal(
+    moved.document.scene.nodes.find((node) => node.id === "rect-1")?.layerId,
+    "main"
+  );
+  assert.deepEqual(
+    facade.listLayers(moved.document).map((layer) => layer.id),
+    ["main"]
+  );
+  assert.throws(
+    () =>
+      facade.applyNamedOperations(document, [
+        facade.removeLayer({
+          layerId: "extra",
+          targetLayerId: null
+        })
+      ]),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "invalid-command"
+  );
+  await assert.rejects(
+    () =>
+      facade.createEditor({ document }).apply([
+        facade.removeLayer({
+          layerId: "extra",
+          targetLayerId: "missing"
+        })
+      ]),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "layer-not-found"
+  );
+}
+
+{
+  const lastLayer = facade.defineDocument({
+    id: "remove-layer-last",
+    scene: {
+      id: "remove-layer-last-scene",
+      layers: [{ id: "main", name: "Main" }],
+      mode: "2d",
+      nodes: []
+    }
+  });
+  assert.throws(
+    () =>
+      facade.applyNamedOperations(lastLayer, [
+        facade.removeLayer({
+          layerId: "main",
+          targetLayerId: null
+        })
+      ]),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "invalid-command"
+  );
+}
+
+{
+  const lockedSource = facade.defineDocument({
+    id: "remove-layer-locked-source",
+    scene: {
+      id: "remove-layer-locked-source-scene",
+      layers: [
+        { id: "main", name: "Main" },
+        { id: "extra", locked: true, name: "Extra" }
+      ],
+      mode: "2d",
+      nodes: []
+    }
+  });
+  assert.throws(
+    () =>
+      facade.applyNamedOperations(lockedSource, [
+        facade.removeLayer({
+          layerId: "extra",
+          targetLayerId: null
+        })
+      ]),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "locked-target"
+  );
+
+  const lockedNode = facade.defineDocument({
+    id: "remove-layer-locked-node",
+    scene: {
+      id: "remove-layer-locked-node-scene",
+      layers: [
+        { id: "main", name: "Main" },
+        { id: "extra", name: "Extra" }
+      ],
+      mode: "2d",
+      nodes: [
+        {
+          id: "rect-1",
+          layerId: "extra",
+          locked: true,
+          position: [0, 0],
+          size: [40, 24],
+          type: "rect"
+        }
+      ]
+    }
+  });
+  assert.throws(
+    () =>
+      facade.applyNamedOperations(lockedNode, [
+        facade.removeLayer({
+          layerId: "extra",
+          targetLayerId: "main"
+        })
+      ]),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "locked-target"
+  );
+
+  const lockedTarget = facade.defineDocument({
+    id: "remove-layer-locked-target",
+    scene: {
+      id: "remove-layer-locked-target-scene",
+      layers: [
+        { id: "main", locked: true, name: "Main" },
+        { id: "extra", name: "Extra" }
+      ],
+      mode: "2d",
+      nodes: [
+        {
+          id: "rect-1",
+          layerId: "extra",
+          position: [0, 0],
+          size: [40, 24],
+          type: "rect"
+        }
+      ]
+    }
+  });
+  assert.throws(
+    () =>
+      facade.applyNamedOperations(lockedTarget, [
+        facade.removeLayer({
+          layerId: "extra",
+          targetLayerId: "main"
+        })
+      ]),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "locked-target"
+  );
+}
+
+{
+  const document = facade.defineDocument({
+    id: "add-layer-append",
+    scene: {
+      id: "add-layer-append-scene",
+      layers: [{ id: "main", name: "Main" }],
+      mode: "2d",
+      nodes: []
+    }
+  });
+  const append = facade.addLayer({
+    layerId: "notes",
+    name: "Notes"
+  });
+  const preview = facade.applyNamedOperations(document, [append]);
+  assert.equal(preview.changed, true);
+  assert.equal(preview.commands[0]?.type, "layer.add");
+  assert.deepEqual(
+    facade.listLayers(preview.document).map((layer) => layer.id),
+    ["main", "notes"]
+  );
+  assert.equal(
+    preview.document.scene.layers.find((layer) => layer.id === "notes")?.name,
+    "Notes"
+  );
+
+  const addEditor = facade.createEditor({ document });
+  const applied = await addEditor.apply([append]);
+  assert.equal(applied.changed, true);
+  assert.equal(addEditor.getState().history.undoDepth, 1);
+  assert.deepEqual(
+    facade.listLayers(applied.document).map((layer) => layer.id),
+    ["main", "notes"]
+  );
+
+  const inserted = facade.applyNamedOperations(document, [
+    facade.addLayer({
+      index: 0,
+      layerId: "front",
+      name: "Front"
+    })
+  ]);
+  assert.deepEqual(
+    facade.listLayers(inserted.document).map((layer) => layer.id),
+    ["front", "main"]
+  );
+
+  assert.throws(
+    () =>
+      facade.applyNamedOperations(document, [
+        facade.addLayer({
+          layerId: "main",
+          name: "Duplicate"
+        })
+      ]),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "layer-already-exists"
+  );
+  assert.throws(
+    () =>
+      facade.applyNamedOperations(document, [
+        facade.addLayer({
+          index: 2,
+          layerId: "notes",
+          name: "Notes"
+        })
+      ]),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "invalid-command"
+  );
+  assert.throws(
+    () =>
+      facade.addLayer({
+        extra: true,
+        layerId: "notes",
+        name: "Notes"
+      }),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "invalid-command"
+  );
+  assert.throws(
+    () =>
+      facade.addLayer({
+        layerId: "notes",
+        name: ""
+      }),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "invalid-command"
+  );
+  assert.throws(
+    () =>
+      facade.addLayer({
+        index: 1.5,
+        layerId: "notes",
+        name: "Notes"
+      }),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "invalid-command"
+  );
+}
+
+{
+  const document = facade.defineDocument({
+    id: "reorder-layer",
+    scene: {
+      id: "reorder-layer-scene",
+      layers: [
+        { id: "main", name: "Main" },
+        { id: "extra", name: "Extra" }
+      ],
+      mode: "2d",
+      nodes: []
+    }
+  });
+  const moveFront = facade.reorderLayer({
+    index: 0,
+    layerId: "extra"
+  });
+  const preview = facade.applyNamedOperations(document, [moveFront]);
+  assert.equal(preview.changed, true);
+  assert.equal(preview.commands[0]?.type, "layer.reorder");
+  assert.deepEqual(
+    facade.listLayers(preview.document).map((layer) => layer.id),
+    ["extra", "main"]
+  );
+
+  const alreadyThere = facade.applyNamedOperations(preview.document, [
+    facade.reorderLayer({
+      index: 0,
+      layerId: "extra"
+    })
+  ]);
+  assert.equal(alreadyThere.changed, false);
+  assert.deepEqual(alreadyThere.commands, []);
+
+  const reorderEditor = facade.createEditor({ document });
+  const applied = await reorderEditor.apply([moveFront]);
+  assert.equal(applied.changed, true);
+  assert.equal(reorderEditor.getState().history.undoDepth, 1);
+  assert.deepEqual(
+    facade.listLayers(applied.document).map((layer) => layer.id),
+    ["extra", "main"]
+  );
+
+  const noop = await reorderEditor.apply([
+    facade.reorderLayer({
+      index: 0,
+      layerId: "extra"
+    })
+  ]);
+  assert.equal(noop.changed, false);
+  assert.equal(reorderEditor.getState().history.undoDepth, 1);
+
+  assert.throws(
+    () =>
+      facade.applyNamedOperations(document, [
+        facade.reorderLayer({
+          index: 2,
+          layerId: "extra"
+        })
+      ]),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "invalid-command"
+  );
+  assert.throws(
+    () =>
+      facade.reorderLayer({
+        extra: true,
+        index: 0,
+        layerId: "extra"
+      }),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "invalid-command"
+  );
+  assert.throws(
+    () =>
+      facade.reorderLayer({
+        index: 1.5,
+        layerId: "extra"
+      }),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "invalid-command"
+  );
+  await assert.rejects(
+    () =>
+      reorderEditor.apply([
+        facade.reorderLayer({
+          index: 0,
+          layerId: "missing"
+        })
+      ]),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "layer-not-found"
   );
 }
 

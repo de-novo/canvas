@@ -6,7 +6,9 @@ Denovo Canvas must support view and edit workflows without tying editing
 semantics to React, Next.js, Three.js, or any single renderer.
 
 The editor is a document mutation engine. Renderers visualize state. Framework
-adapters expose that engine ergonomically to each ecosystem.
+adapters expose that engine ergonomically to each ecosystem. If the document
+does not draw, it cannot be edited. See
+[Product Identity](./product-identity.md).
 
 ## Principles
 

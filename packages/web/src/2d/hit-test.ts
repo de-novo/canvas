@@ -8,6 +8,8 @@
  */
 import {
   CANVAS_NODE_PORT_SIDES,
+  isCanvas2DPluginNode,
+  isPluginNodeType,
   type Canvas2DNode,
   type Canvas2DScene,
   type CanvasNodeTransformPreview
@@ -31,7 +33,6 @@ import {
   resolveCanvas2DConnectionHandlePoint,
   resolveCanvas2DEdgeGeometry,
   resolveCanvas2DNodeWorldBounds,
-  resolveCanvas2DNodeWorldCenter,
   resolveNodeRenderTransform,
   type Canvas2DEdgeNode
 } from "./geometry";
@@ -195,15 +196,14 @@ export function hitTestCanvas2DDrawableNode(
     case "text":
       return hitTestCanvas2DTextNode(context, node, localPoint);
     case "html": {
-      const worldCenter = resolveCanvas2DNodeWorldCenter(node, sceneGraph);
-      const w = node.width ?? 120;
-      const h = node.height ?? 40;
-      return Math.abs(worldCenter[0] - scenePoint[0]) <= w / 2 &&
-        Math.abs(worldCenter[1] - scenePoint[1]) <= h / 2
-        ? { node }
-        : null;
+      const bounds = resolveCanvas2DNodeWorldBounds(node, sceneGraph);
+      return isPointInsideRectangle(scenePoint, bounds) ? { node } : null;
     }
     default: {
+      if (isCanvas2DPluginNode(node)) {
+        const bounds = resolveCanvas2DNodeWorldBounds(node, sceneGraph);
+        return isPointInsideRectangle(scenePoint, bounds) ? { node } : null;
+      }
       const exhaustive: never = node;
       return exhaustive;
     }
@@ -414,6 +414,9 @@ export function isCanvas2DShapeNode(node: Canvas2DNode): node is Canvas2DShapeNo
     case "html":
       return false;
     default: {
+      if (isCanvas2DPluginNode(node)) {
+        return false;
+      }
       const exhaustive: never = node;
       return exhaustive;
     }
@@ -422,9 +425,13 @@ export function isCanvas2DShapeNode(node: Canvas2DNode): node is Canvas2DShapeNo
 export function assertCanvas2DTransformNode(
   node: Canvas2DNode
 ): asserts node is Canvas2DTransformNode {
-  if (!isCanvas2DShapeNode(node) && node.type !== "group") {
+  if (
+    !isCanvas2DShapeNode(node) &&
+    node.type !== "group" &&
+    !isPluginNodeType(node.type)
+  ) {
     throw new Error(
-      `Canvas2D transforms support rect, circle, and group nodes only; received ${node.type}: ${node.id}`
+      `Canvas2D transforms support rect, circle, group, and plugin nodes; received ${node.type}: ${node.id}`
     );
   }
 }

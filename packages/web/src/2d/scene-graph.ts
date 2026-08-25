@@ -5,14 +5,21 @@
  * frame, so lookups are map-backed rather than repeated array scans. Pure: no
  * renderer or module state.
  */
-import type { Canvas2DNode, Canvas2DScene } from "@denovo/canvas-core";
+import type {
+  Canvas2DNode,
+  Canvas2DPluginNode,
+  Canvas2DScene
+} from "@denovo/canvas-core";
 
 export type Canvas2DShapeNode = Extract<
   Canvas2DNode,
   { type: "circle" | "rect" }
 >;
 export type Canvas2DGroupNode = Extract<Canvas2DNode, { type: "group" }>;
-export type Canvas2DTransformNode = Canvas2DShapeNode | Canvas2DGroupNode;
+export type Canvas2DTransformNode =
+  | Canvas2DShapeNode
+  | Canvas2DGroupNode
+  | Canvas2DPluginNode;
 export type Canvas2DMeasurementNode = Extract<
   Canvas2DNode,
   { type: "measurement" }

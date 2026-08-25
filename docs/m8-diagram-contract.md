@@ -98,7 +98,10 @@ Attachment:
 Path style — two fields exist in `0.2.0` and both stay, but they are not
 equal. Implementations MUST resolve geometry in this order:
 
-1. `routing === "orthogonal"` → orthogonal waypoints from the two ports;
+1. `routing === "orthogonal"` → orthogonal waypoints from the two ports.
+   Named ports that no longer aim at the other node MUST be replaced at
+   render time with a facing pair from the current boxes. Facing port
+   stubs MUST NOT overshoot the gap between the endpoints;
 2. else `curve === "curved"` and `curveOffset !== 0` → one quadratic
    control offset from the chord;
 3. else a straight segment.
@@ -146,6 +149,10 @@ Rendering:
 - the 2D runtime calls the host `renderNode` callback when present;
 - if the callback returns an `HTMLElement`, the runtime mounts that
   element in the overlay and positions it in canvas CSS pixels;
+- on every view change the runtime sets the element's CSS `width` /
+  `height` to world size × zoom and `--dc-html-zoom` to the current
+  zoom. Hosts MUST NOT snapshot zoom at mount time. Card chrome SHOULD
+  read `--dc-html-zoom` for type and padding;
 - if the callback returns a `string`, the runtime sets `textContent`
   (not `innerHTML`);
 - if `renderNode` is absent, the node still participates in
@@ -157,7 +164,11 @@ DOM themselves and return the element. XSS is a host concern for that
 element, not a core `innerHTML` path.
 
 Off-screen `html` nodes MAY be hidden (`display: none`) without being
-destroyed. That is overlay culling, not list virtualization.
+destroyed. That is overlay culling, not list virtualization. Culling
+MUST use world-bounds intersection with the visible rect. It MUST NOT
+test only the node's transform origin. `html` origin is top-left; a
+point test at that origin hides a card whose body is still on screen
+while canvas edges keep drawing to the card's ports.
 
 Ungroup of an `html` child MUST bake the group's 2D transform.
 
