@@ -194,7 +194,7 @@ document.pluginState["threeui.warp-field"] = { speed: 15 };
 
 Humans and agents share one language.
 
-- Read: `listNodes(document)` and the document JSON.
+- Read: `listNodes(document)`, `listLabels(document)`, and the document JSON.
 - Write: `apply([namedOp, ...])` or a validated command.
 - No fluent `editor.field().speed(15)`.
 - No parallel agent protocol. The document is the protocol.
@@ -202,7 +202,7 @@ Humans and agents share one language.
 New named operations are added only when the change is sayable
 (`setLayerVisible`, `setLayerLocked`, `setLayerName`, `setFieldPattern`,
 `setSparklineStyle`, `setNodeVisible`, `setNodeLocked`, `setNodeLayer`,
-`setText`,
+`setText`, `setAnnotationText`, `listLabels`,
 `removeNode`,
 `removeEdge`, `removeLayer`, `addLayer`, `reorderLayer`). They compile to existing
 commands. They do not write renderer objects.

@@ -9,8 +9,8 @@
 - [M3 Authoring Contract](./m3-authoring-contract.md) defines authoring schema,
   tool, capability, package-responsibility, and no-fallback boundaries.
 - [Rendering Backend Strategy](./rendering-backend-strategy.md) defines
-  implemented Canvas2D/WebGL2 `auto` backends, explicit 3D WebGPU, and
-  strict backend selection.
+  implemented Canvas2D and 3D WebGPU/WebGL2 `auto` backends, explicit
+  3D WebGPU, and strict backend selection.
 - [Vision and Milestones](./vision-and-milestones.md) defines what Denovo
   Canvas should be able to express.
 - [Editing Model](./editing-model.md) defines how documents are changed.

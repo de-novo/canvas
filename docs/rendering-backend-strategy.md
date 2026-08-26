@@ -1,11 +1,12 @@
 # Rendering Backend Strategy
 
-Last reviewed: 2026-08-25.
+Last reviewed: 2026-08-26.
 
-Implemented `auto` backends are Canvas2D (2D) and WebGL2 (3D). Explicit
-`backend: "webgpu"` is a 3D built-in. The product contract must keep that
-name in the backend union without leaking any GPU API into persisted
-documents, and without letting `auto` report WebGPU as the current result.
+Implemented `auto` backends are Canvas2D (2D) and WebGPU or WebGL2 (3D).
+3D `auto` prefers WebGPU when `capabilities.webgpu` is true. Explicit
+`backend: "webgpu"` is still a 3D built-in and never falls back to
+WebGL2. The product contract must keep that name in the backend union
+without leaking any GPU API into persisted documents.
 
 ## Decision
 
@@ -24,14 +25,16 @@ The current built-in resolver applies these rules:
 
 1. a 2D scene resolves to Canvas2D only when the Canvas2D capability is
    available;
-2. a 3D scene resolves to the implemented WebGL2 runtime only when WebGL2 is
-   available;
+2. a 3D scene resolves to WebGPU when `capabilities.webgpu` is true,
+   otherwise to WebGL2 when WebGL2 is available;
 3. if the required compatible built-in is unavailable, resolution fails;
 4. `custom` requires an explicit adapter whose declared modes include the
    scene mode.
 
-`navigator.gpu` is capability detection for the explicit `webgpu` path.
-`auto` must not report or select WebGPU.
+`navigator.gpu` is the 3D `auto` preference signal and the explicit
+`webgpu` capability check. If `auto` selected WebGPU and device init
+fails, the runtime falls back to WebGL2 and reports that result.
+Pixel-sampling gates also disable WebGPU so they stay on WebGL2.
 
 Every non-`auto` request is strict. An unavailable or mode-incompatible
 `canvas2d`, `webgl2`, or `webgpu` request fails. `webgpu` is 3D-only.
@@ -112,8 +115,10 @@ from WebGL2 to WebGPU.
 
 The strategy is:
 
-- keep `WebGLRenderer` as the stable `auto` 3D compatibility path;
-- use Three.js `WebGPURenderer` for explicit `backend: "webgpu"`;
+- keep `WebGLRenderer` as the 3D compatibility path when WebGPU is
+  unavailable or explicitly requested;
+- use Three.js `WebGPURenderer` for 3D `auto` when WebGPU is available
+  and for explicit `backend: "webgpu"`;
 - expose underlying Three.js resources as escape hatches;
 - keep React Three Fiber as a React adapter, not the source of renderer truth;
 - avoid depending on Drei for core behavior.
@@ -179,6 +184,21 @@ implementation:
 - OffscreenCanvas transfer and context support when an OffscreenCanvas runtime
   is added.
 
+Applications can inspect capabilities before creating a canvas:
+
+```ts
+const capabilities = detectCanvasBackendCapabilities();
+if (capabilities.webgpu) {
+  createCanvas("#stage", {
+    renderer: { backend: "webgpu" },
+    scene
+  });
+}
+```
+
+3D `auto` uses `capabilities.webgpu` as the preference signal. A true
+flag is not a device; `runtime.ready` can still fail.
+
 Applications should be able to inspect the resolved backend:
 
 ```ts
@@ -223,17 +243,20 @@ performance features available on WebGL2 where possible.
 Short term:
 
 - keep `@denovo/canvas` as the default entrypoint;
-- keep `backend: "auto"` deterministic over Canvas2D and WebGL2;
-- keep Three.js WebGL2 as the `auto` 3D path;
-- keep explicit `backend: "webgpu"` on the existing 3D runtime.
+- keep `backend: "auto"` deterministic: Canvas2D for 2D, WebGPU then
+  WebGL2 for 3D;
+- keep Three.js WebGL2 as the 3D compatibility path;
+- keep explicit `backend: "webgpu"` strict and 3D-only;
+- keep mesh and instance `resolveSurfacePoint` on WebGPU and WebGL2.
 
 Medium term:
 
-- decide whether `auto` may select WebGPU;
-- add backend capability reporting;
 - add explicit backend-resolution and capability events if consumers need
   asynchronous observability beyond the existing error boundary;
-- add examples for an explicit WebGPU adapter and WebGL2-forced usage.
+- add examples for an explicit WebGL2-forced usage.
+
+3D `auto` may select WebGPU. Capability reporting before `createCanvas`
+is `detectCanvasBackendCapabilities()`.
 
 Long term:
 

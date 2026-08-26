@@ -11,7 +11,7 @@ import path from "node:path";
 import { spawn } from "node:child_process";
 import { pathToFileURL } from "node:url";
 
-import { chromium } from "playwright";
+import { launchPixelChromium } from "./lib/chromium.mjs";
 
 import { createCheckRunner } from "./lib/checks.mjs";
 
@@ -330,12 +330,54 @@ await check("named-ops-human-and-agent-share-the-same-list", async () => {
     renamedText.document.scene.nodes.find((node) => node.id === "label")?.text,
     "Done"
   );
+  assert.deepEqual(facade.listLabels(renamedText.document), [
+    {
+      id: "label",
+      layerId: "main",
+      text: "Done",
+      type: "text"
+    }
+  ]);
+
+  const annotated = facade.defineDocument({
+    id: "named-ops-set-annotation-text",
+    scene: {
+      id: "named-ops-set-annotation-text-scene",
+      layers: [{ id: "main", name: "Main" }],
+      mode: "2d",
+      nodes: [
+        {
+          anchor: [12, 8],
+          id: "callout",
+          layerId: "main",
+          text: "Callout",
+          type: "annotation"
+        }
+      ]
+    }
+  });
+  const renamedAnnotation = facade.applyNamedOperations(annotated, [
+    facade.setAnnotationText({
+      nodeId: "callout",
+      text: "Reviewed"
+    })
+  ]);
+  assert.equal(renamedAnnotation.changed, true);
+  assert.equal(renamedAnnotation.commands[0]?.type, "node.update");
+  assert.deepEqual(facade.listLabels(renamedAnnotation.document), [
+    {
+      id: "callout",
+      layerId: "main",
+      text: "Reviewed",
+      type: "annotation"
+    }
+  ]);
 });
 
 const server = await startApp("@denovo/canvas-bim-example", 5189);
 try {
   await check("named-ops-playground-hide-level-2-uses-the-helper", async () => {
-    const browser = await chromium.launch();
+    const browser = await launchPixelChromium();
     try {
       const page = await browser.newPage({
         viewport: { width: 1280, height: 800 }
@@ -423,7 +465,7 @@ try {
 const vanilla = await startApp("@denovo/canvas-vanilla-example", 5190);
 try {
   await check("named-ops-vanilla-stack-and-layer-toggles-use-the-helpers", async () => {
-    const browser = await chromium.launch();
+    const browser = await launchPixelChromium();
     try {
       const page = await browser.newPage({
         viewport: { width: 1280, height: 800 }

@@ -105,6 +105,11 @@ export type SetTextInput = {
   readonly text: string;
 };
 
+export type SetAnnotationTextInput = {
+  readonly nodeId: NodeId;
+  readonly text: string;
+};
+
 export type RemoveNodeInput = {
   readonly nodeId: NodeId;
 };
@@ -148,6 +153,19 @@ export type ListedLayer = {
   readonly locked: boolean;
 };
 
+export type ListLabelsOptions = {
+  readonly layerId?: CanvasLayerId;
+};
+
+export type ListedLabelType = "text" | "annotation";
+
+export type ListedLabel = {
+  readonly id: NodeId;
+  readonly type: ListedLabelType;
+  readonly layerId: CanvasLayerId;
+  readonly text: string;
+};
+
 const SET_LAYER_VISIBLE_KEYS = new Set(["layerId", "visible"]);
 const SET_LAYER_LOCKED_KEYS = new Set(["layerId", "locked"]);
 const SET_LAYER_NAME_KEYS = new Set(["layerId", "name"]);
@@ -157,6 +175,7 @@ const SET_NODE_VISIBLE_KEYS = new Set(["nodeId", "visible"]);
 const SET_NODE_LOCKED_KEYS = new Set(["nodeId", "locked"]);
 const SET_NODE_LAYER_KEYS = new Set(["nodeId", "layerId"]);
 const SET_TEXT_KEYS = new Set(["nodeId", "text"]);
+const SET_ANNOTATION_TEXT_KEYS = new Set(["nodeId", "text"]);
 const REMOVE_NODE_KEYS = new Set(["nodeId"]);
 const REMOVE_EDGE_KEYS = new Set(["nodeId"]);
 const REMOVE_LAYER_KEYS = new Set(["layerId", "targetLayerId"]);
@@ -749,6 +768,40 @@ export function setText(input: SetTextInput): NamedOperation {
   };
 }
 
+export function setAnnotationText(input: SetAnnotationTextInput): NamedOperation {
+  const parsed = parseSetAnnotationTextInput(input);
+
+  return (document) => {
+    const node = findNamedOperationNode(document, parsed.nodeId);
+
+    if (node.type !== "annotation") {
+      throw new CanvasEditorError(
+        "invalid-command",
+        `setAnnotationText requires an annotation node: ${node.id}`
+      );
+    }
+
+    const state = resolveEffectiveNodeState(document, node.id);
+
+    if (state.locked) {
+      throw new CanvasEditorError(
+        "locked-target",
+        `Node is locked: ${node.id}`
+      );
+    }
+
+    if (node.text === parsed.text) {
+      return {
+        changed: false,
+        commands: [],
+        document
+      };
+    }
+
+    return applyAnnotationTextUpdate(document, node, parsed.text);
+  };
+}
+
 export function listNodes(
   document: CanvasDocument,
   options?: ListNodesOptions
@@ -809,6 +862,51 @@ export function listLayers(
       name: layer.name,
       visible: layer.visible
     }))
+  );
+}
+
+export function listLabels(
+  document: CanvasDocument,
+  options?: ListLabelsOptions
+): readonly ListedLabel[] {
+  const parsedDocument = parseNamedOperationDocument(document);
+  const parsedOptions = parseListLabelsOptions(options);
+
+  if (parsedOptions.layerId !== undefined) {
+    const layer = parsedDocument.scene.layers.find(
+      (candidate) => candidate.id === parsedOptions.layerId
+    );
+
+    if (!layer) {
+      throw new CanvasEditorError(
+        "layer-not-found",
+        `Layer was not found: ${parsedOptions.layerId}`
+      );
+    }
+  }
+
+  const nodes =
+    parsedOptions.layerId === undefined
+      ? parsedDocument.scene.nodes
+      : parsedDocument.scene.nodes.filter(
+          (node) => node.layerId === parsedOptions.layerId
+        );
+
+  return freezeValue(
+    nodes.flatMap((node) => {
+      if (node.type !== "text" && node.type !== "annotation") {
+        return [];
+      }
+
+      return [
+        {
+          id: node.id,
+          layerId: node.layerId,
+          text: node.text,
+          type: node.type
+        }
+      ];
+    })
   );
 }
 
@@ -1495,6 +1593,42 @@ function parseNodeAddCommand(node: CanvasNodeByType<"3d", "box">): CanvasCommand
   }
 }
 
+function parseListLabelsOptions(
+  options: ListLabelsOptions | undefined
+): ListLabelsOptions {
+  if (options === undefined) {
+    return {};
+  }
+
+  if (!isPlainObject(options)) {
+    throw new CanvasEditorError(
+      "invalid-command",
+      "listLabels options must be an object. Use listLabels(document) or listLabels(document, { layerId })."
+    );
+  }
+
+  for (const key of Object.keys(options)) {
+    if (key !== "layerId") {
+      throw new CanvasEditorError(
+        "invalid-command",
+        `listLabels does not accept field: ${key}`
+      );
+    }
+  }
+
+  if (!("layerId" in options) || options.layerId === undefined) {
+    return {};
+  }
+
+  try {
+    return { layerId: CanvasLayerIdSchema.parse(options.layerId) };
+  } catch (cause) {
+    throw new CanvasEditorError("invalid-id", "Layer ID must be non-empty.", {
+      cause
+    });
+  }
+}
+
 function parseListNodesOptions(
   options: ListNodesOptions | undefined
 ): ListNodesOptions {
@@ -1901,6 +2035,93 @@ function applyNodeTextUpdate(
     throw new CanvasEditorError(
       "invalid-command",
       "setText could not compile to node.update.",
+      { cause, commandType: "node.update" }
+    );
+  }
+}
+
+function parseSetAnnotationTextInput(
+  input: SetAnnotationTextInput
+): SetAnnotationTextInput {
+  if (!isPlainObject(input)) {
+    throw new CanvasEditorError(
+      "invalid-command",
+      "setAnnotationText input must be an object."
+    );
+  }
+
+  for (const key of Object.keys(input)) {
+    if (!SET_ANNOTATION_TEXT_KEYS.has(key)) {
+      throw new CanvasEditorError(
+        "invalid-command",
+        `setAnnotationText does not accept field: ${key}`
+      );
+    }
+  }
+
+  if (!("nodeId" in input) || !("text" in input)) {
+    throw new CanvasEditorError(
+      "invalid-command",
+      "setAnnotationText requires nodeId and text."
+    );
+  }
+
+  let nodeId: NodeId;
+
+  try {
+    nodeId = NodeIdSchema.parse(input.nodeId);
+  } catch (cause) {
+    throw new CanvasEditorError("invalid-id", "Node ID must be non-empty.", {
+      cause
+    });
+  }
+
+  if (typeof input.text !== "string") {
+    throw new CanvasEditorError(
+      "invalid-command",
+      "setAnnotationText text must be a string."
+    );
+  }
+
+  if (input.text.length === 0) {
+    throw new CanvasEditorError(
+      "invalid-command",
+      "setAnnotationText text must be non-empty."
+    );
+  }
+
+  return { nodeId, text: input.text };
+}
+
+function applyAnnotationTextUpdate(
+  document: CanvasDocument,
+  node: Extract<CanvasNode, { type: "annotation" }>,
+  text: string
+): NamedOperationResult {
+  try {
+    const command = createNodeUpdateCommand(node, { text });
+
+    return {
+      changed: true,
+      commands: [command],
+      document: parseNamedOperationDocument({
+        ...document,
+        scene: {
+          ...document.scene,
+          nodes: document.scene.nodes.map((candidate) =>
+            candidate.id === node.id ? { ...candidate, text } : candidate
+          )
+        }
+      } as CanvasDocument)
+    };
+  } catch (cause) {
+    if (cause instanceof CanvasEditorError) {
+      throw cause;
+    }
+
+    throw new CanvasEditorError(
+      "invalid-command",
+      "setAnnotationText could not compile to node.update.",
       { cause, commandType: "node.update" }
     );
   }

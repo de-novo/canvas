@@ -10,7 +10,7 @@ import path from "node:path";
 import { spawn } from "node:child_process";
 import { pathToFileURL } from "node:url";
 
-import { chromium } from "playwright";
+import { launchPixelChromium } from "./lib/chromium.mjs";
 
 import { createCheckRunner } from "./lib/checks.mjs";
 
@@ -45,7 +45,7 @@ await check("official-sparkline-points-follow-style", () => {
 const server = await startApp("@denovo/canvas-vanilla-example", 5193);
 try {
   await check("official-sparkline-drawer-paints-not-marker", async () => {
-    const browser = await chromium.launch();
+    const browser = await launchPixelChromium();
     try {
       const page = await browser.newPage({
         viewport: { width: 1280, height: 800 }

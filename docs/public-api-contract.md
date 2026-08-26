@@ -27,6 +27,7 @@ instead of hardcoding a permanent brand name.
 The default package must expose:
 
 - `createCanvas`
+- `detectCanvasBackendCapabilities`
 - `defineCanvasConfig`
 - `defineCanvasPlugin`
 - `definePluginCommand`
@@ -55,9 +56,11 @@ The default package must expose:
 - `setLayerName`
 - `setNodeLayer`
 - `setText`
+- `setAnnotationText`
 - `stackBox`
 - `listNodes`
 - `listLayers`
+- `listLabels`
 - `setFieldPattern`
 - `setNodeVisible`
 - `setNodeLocked`
@@ -201,13 +204,20 @@ createCanvas("#stage", {
 - `backend` describes how the runtime renders it: `auto`, `webgpu`, `webgl2`,
   `canvas2d`, `offscreen-canvas2d`, or `custom`.
 
+`detectCanvasBackendCapabilities()` reports `{ canvas2d, webgl2, webgpu,
+offscreenCanvas2d }` before `createCanvas`. A true `webgpu` flag does
+not create a device. 3D `auto` that selected WebGPU may still fall
+back to WebGL2 if `runtime.ready` cannot create a device. Explicit
+`backend: "webgpu"` still fails with `capability-unavailable`.
+
 The facade reports resolved backend information through
-`canvas.config.renderer`. `auto` selects only an implemented backend compatible
-with the document mode and detected runtime capabilities. The current built-ins
-resolve 3D to the WebGL2-backed web runtime and 2D to Canvas2D. `resolved` is
+`canvas.config.renderer`. `auto` selects an implemented backend compatible
+with the document mode and detected runtime capabilities. The current
+built-ins resolve 2D to Canvas2D and 3D to WebGPU when
+`capabilities.webgpu` is true, otherwise WebGL2. `resolved` is
 `CanvasResolvedBackend` (`canvas2d` | `webgl2` | `webgpu` | `custom`).
-Explicit `backend: "webgpu"` is a 3D built-in. It is not an `auto` result.
-`offscreen-canvas2d` stays reserved (`CanvasUnimplementedBackend`).
+`CanvasImplementedBackend` includes `webgpu`. `offscreen-canvas2d` stays
+reserved (`CanvasUnimplementedBackend`).
 
 All explicit backend choices are strict. `offscreen-canvas2d` throws
 `CanvasBackendResolutionError` with `backend-unimplemented`. A 2D scene
@@ -572,6 +582,8 @@ that field. Unlocking the layer itself is allowed.
 `layerId`. A locked node or locked target layer is rejected.
 `setText({ nodeId, text })` compiles to one `node.update` of `text` on
 a 2D `text` node. Empty string is allowed. A non-text node is rejected.
+`setAnnotationText({ nodeId, text })` compiles to one `node.update` of
+`text` on a 2D or 3D `annotation` node. Empty string is rejected.
 `setNodeVisible({ nodeId, visible })` and
 `setNodeLocked({ nodeId, locked })` compile to one `node.update`. A locked
 node rejects visibility changes. Unlocking the node itself is allowed when
@@ -582,7 +594,9 @@ M3.1 analytic box-face offset; the source must be a world-aligned root
 `{ id, type, layerId, visible, locked }` using effective state; it does
 not return geometry arrays. `listLayers(document)` is a read-only
 summary of `{ id, name, visible, locked }` in document order; it does
-not return metadata. `removeNode({ nodeId })` compiles to one
+not return metadata. `listLabels(document, { layerId? })` is a
+read-only summary of `{ id, type, layerId, text }` for `text` and
+`annotation` nodes. `removeNode({ nodeId })` compiles to one
 `node.remove`. It fails on a missing, locked, edge-referenced, or
 non-empty group node. `removeEdge({ nodeId })` compiles to one
 `node.remove` of an `edge`. It fails when the node is not an edge.

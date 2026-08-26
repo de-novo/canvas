@@ -12,7 +12,7 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 
-import { chromium } from "playwright";
+import { launchPixelChromium } from "./lib/chromium.mjs";
 
 import { createCheckRunner } from "./lib/checks.mjs";
 
@@ -21,7 +21,7 @@ const { check, report } = createCheckRunner();
 const server = await startPlayground(5191);
 try {
   await check("mesh-surface-point-browser", async () => {
-    const browser = await chromium.launch();
+    const browser = await launchPixelChromium();
     try {
       const page = await browser.newPage({
         viewport: { width: 1280, height: 800 }
@@ -69,7 +69,7 @@ try {
   });
 
   await check("instances-surface-point-browser", async () => {
-    const browser = await chromium.launch();
+    const browser = await launchPixelChromium();
     try {
       const page = await browser.newPage({
         viewport: { width: 1280, height: 800 }

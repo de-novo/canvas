@@ -181,6 +181,7 @@ export type ThreeCanvasRuntime = Omit<CanvasHitTestRuntime<"3d">, "mode"> &
   CanvasNodeTransformHandleRuntime &
   CanvasNodeTransformRuntime<"3d"> & {
   readonly mode: "3d";
+  readonly gpuBackend: "webgl2" | "webgpu";
   readonly camera: PerspectiveCamera;
   readonly controls: OrbitControls | null;
   readonly objects: ReadonlyMap<string, Object3D>;
@@ -211,6 +212,7 @@ export function createCanvas3D(
   const resolved = resolveCanvas(target);
   const requestedGpuBackend =
     options.gpuBackend === "webgpu" ? "webgpu" : "webgl2";
+  let activeGpuBackend: "webgl2" | "webgpu" = requestedGpuBackend;
   let renderer: Canvas3DGpuRenderer | null =
     requestedGpuBackend === "webgl2"
       ? new WebGLRenderer({
@@ -1620,12 +1622,12 @@ export function createCanvas3D(
   function setSectionPlane(section: Canvas3DSectionPlaneInput | null): void {
     const plane = parseSectionPlane(section);
 
-    if (requestedGpuBackend === "webgpu" && !sectionClipRoot) {
+    if (activeGpuBackend === "webgpu" && !sectionClipRoot) {
       pendingSection = section;
       return;
     }
 
-    if (!renderer && requestedGpuBackend !== "webgpu") {
+    if (!renderer && activeGpuBackend !== "webgpu") {
       return;
     }
 
@@ -1638,7 +1640,7 @@ export function createCanvas3D(
       sectionClipRoot.enabled = plane !== null;
     }
 
-    if (renderer && requestedGpuBackend !== "webgpu") {
+    if (renderer && activeGpuBackend !== "webgpu") {
       renderer.clippingPlanes = plane ? [plane] : [];
     }
 
@@ -1675,6 +1677,84 @@ export function createCanvas3D(
     }
   }
 
+  function attachWebGpuRenderer(created: {
+    createClipRoot: () => Canvas3DSectionClipRoot;
+    renderer: Canvas3DGpuRenderer;
+  }) {
+    if (gpuDestroyed) {
+      created.renderer.dispose();
+      return;
+    }
+
+    renderer = created.renderer;
+    activeGpuBackend = "webgpu";
+    sectionClipRoot = created.createClipRoot();
+    scene.remove(content);
+    scene.remove(authoringPreviewRoot);
+    scene.remove(transformHandles);
+    sectionClipRoot.add(content);
+    sectionClipRoot.add(authoringPreviewRoot);
+    sectionClipRoot.add(transformHandles);
+    scene.add(sectionClipRoot);
+    if (pendingSection !== undefined) {
+      applySectionPlane(parseSectionPlane(pendingSection));
+      pendingSection = undefined;
+    }
+    runtime.resize();
+    runtime.render();
+  }
+
+  function attachWebGlFallback() {
+    if (gpuDestroyed) {
+      return;
+    }
+
+    renderer = new WebGLRenderer({
+      antialias: options.antialias ?? true,
+      canvas: resolved.canvas
+    });
+    activeGpuBackend = "webgl2";
+    if (pendingSection !== undefined) {
+      applySectionPlane(parseSectionPlane(pendingSection));
+      pendingSection = undefined;
+    }
+    runtime.resize();
+    runtime.render();
+  }
+
+  async function resolveWebGpuOrFallback() {
+    const adapter =
+      typeof navigator !== "undefined" && "gpu" in navigator && navigator.gpu
+        ? await navigator.gpu.requestAdapter()
+        : null;
+
+    if (!adapter) {
+      if (options.gpuBackendFallback !== "webgl2") {
+        throw new Error(
+          "Canvas backend webgpu is unavailable in the current environment."
+        );
+      }
+
+      attachWebGlFallback();
+      return;
+    }
+
+    try {
+      attachWebGpuRenderer(
+        await createWebGpuRenderer(
+          resolved.canvas,
+          options.antialias ?? true
+        )
+      );
+    } catch (cause) {
+      if (options.gpuBackendFallback !== "webgl2") {
+        throw cause;
+      }
+
+      attachWebGlFallback();
+    }
+  }
+
   runtime = {
     get canvas() {
       return resolved.canvas;
@@ -1692,31 +1772,11 @@ export function createCanvas3D(
     objects,
     ready:
       requestedGpuBackend === "webgpu"
-        ? createWebGpuRenderer(resolved.canvas, options.antialias ?? true).then(
-            (created) => {
-              if (gpuDestroyed) {
-                created.renderer.dispose();
-                return;
-              }
-
-              renderer = created.renderer;
-              sectionClipRoot = created.createClipRoot();
-              scene.remove(content);
-              scene.remove(authoringPreviewRoot);
-              scene.remove(transformHandles);
-              sectionClipRoot.add(content);
-              sectionClipRoot.add(authoringPreviewRoot);
-              sectionClipRoot.add(transformHandles);
-              scene.add(sectionClipRoot);
-              if (pendingSection !== undefined) {
-                applySectionPlane(parseSectionPlane(pendingSection));
-                pendingSection = undefined;
-              }
-              runtime.resize();
-              runtime.render();
-            }
-          )
+        ? resolveWebGpuOrFallback()
         : Promise.resolve(),
+    get gpuBackend() {
+      return activeGpuBackend;
+    },
     get renderer() {
       if (!renderer) {
         throw new Error("Canvas3D WebGPU renderer is not ready.");

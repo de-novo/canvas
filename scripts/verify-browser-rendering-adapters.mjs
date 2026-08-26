@@ -18,7 +18,8 @@ import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { inflateSync } from "node:zlib";
 
-import { chromium, devices } from "playwright";
+import { devices } from "playwright";
+import { launchPixelChromium } from "./lib/chromium.mjs";
 
 const VIEWPORTS = [
   { name: "desktop", width: 1280, height: 800 },
@@ -797,7 +798,7 @@ async function main() {
     }))
   );
 
-  const browser = await chromium.launch();
+  const browser = await launchPixelChromium();
   let failed = false;
 
   try {

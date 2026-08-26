@@ -3,7 +3,7 @@ import { spawn } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import path from "node:path";
 
-import { chromium } from "playwright";
+import { launchPixelChromium } from "./lib/chromium.mjs";
 
 import { createCheckRunner } from "./lib/checks.mjs";
 
@@ -110,7 +110,7 @@ check("hex-points-draw-per-point", () => {
 const server = await startPlayground(5189);
 try {
   await check("10k-point-field-browser", async () => {
-    const browser = await chromium.launch();
+    const browser = await launchPixelChromium();
     try {
       const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
       await page.goto(`${server.url}/?points=10000`, { waitUntil: "networkidle" });

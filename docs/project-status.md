@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: 2026-08-25.
+Last updated: 2026-08-26.
 
 This is the canonical project status index. Keep milestone definitions in
 [Vision and Milestones](./vision-and-milestones.md); keep chronological evidence
@@ -47,8 +47,8 @@ service map in `apps/playground-network`. See
 - Public API contract verification exists and passes.
 - Renderer backend vocabulary includes `auto`, `webgpu`, `webgl2`,
   `canvas2d`, `offscreen-canvas2d`, and `custom`. Implemented `auto`
-  results are Canvas2D and WebGL2. Explicit `backend: "webgpu"` is a 3D
-  built-in and is not an `auto` result.
+  results are Canvas2D, WebGL2, and WebGPU. 3D `auto` prefers WebGPU
+  when `capabilities.webgpu` is true, otherwise WebGL2.
 - Contributor/project/document/history management policy is defined for human
   and automated contributors.
 - Enforceable contributor rules are canonical; `AGENTS.md` adds only
@@ -217,10 +217,12 @@ service map in `apps/playground-network`. See
   Runtime replacement and disconnect invalidate pending resolver/provider work
   immediately, serialize preview cleanup through leases, and propagate cleanup
   failures without facade-owned fire-and-forget clearing.
-- Backend selection is strict. `auto` resolves only the implemented Canvas2D
-  or WebGL2 backend compatible with the current mode and capabilities.
-  Explicit `webgpu` is 3D-only. Unimplemented, unavailable, mismatched,
-  or adapter-less requests fail without substituting another backend.
+- Backend selection is strict. `auto` resolves the implemented Canvas2D,
+  WebGL2, or WebGPU backend compatible with the current mode and
+  capabilities. 3D prefers WebGPU when the probe is true. Explicit
+  `webgpu` is 3D-only and never falls back to WebGL2. Unimplemented,
+  unavailable, mismatched, or adapter-less requests fail without
+  substituting another backend.
 - The vanilla facade example exercises the authoring surface with explicit IDs,
   layers, work planes, grids, strict document reload, undo, and redo. Desktop
   mouse and real mobile touch acceptance covers the complete 2D/3D authoring
@@ -347,20 +349,23 @@ service map in `apps/playground-network`. See
    (`apps/playground-network`, `pnpm verify:network-showcase`) landed.
    `apps/playground-graph` stays the throughput bench. See
    [Product Identity](./product-identity.md).
-3. **Named authoring operations (slices 1–16 landed):**
+3. **Named authoring operations (slices 1–18 landed):**
    humans and agents share one function that compiles to existing
    commands. `setLayerVisible`, `setLayerLocked`, `setLayerName`,
-   document-only `stackBox`, read-only `listNodes` and `listLayers`,
+   document-only `stackBox`, read-only `listNodes`, `listLayers`, and
+   `listLabels`,
    `setFieldPattern`, `setSparklineStyle`, `setNodeVisible`, `setNodeLocked`,
-   `setNodeLayer`, `setText`,
+   `setNodeLayer`, `setText`, `setAnnotationText`,
    `removeNode`, `removeEdge`, `removeLayer`, `addLayer`, and
    `reorderLayer` are shipped.
    `listNodes` returns effective
    `{ id, type, layerId, visible, locked }` and no geometry.
    `listLayers` returns `{ id, name, visible, locked }` and no
-   metadata. See
+   metadata. `listLabels` returns `{ id, type, layerId, text }` for
+   `text` and `annotation` nodes. `setAnnotationText` writes
+   `annotation` copy in 2D and 3D. See
    [Named Authoring Operations](./named-authoring-operations.md) and
-   [2026-08-25 named operations setText](./history/2026-08-25-named-operations-set-text.md).
+   [2026-08-26 named operations setAnnotationText](./history/2026-08-26-named-operations-set-annotation-text.md).
 4. **Graph field throughput (not presentation):** time/relation layout
    adapters and a packed 2D point field exist. Canvas stops at measured
    10k-point draw cost and screen-size clamp. Hosts (for example haru)
@@ -378,8 +383,10 @@ service map in `apps/playground-network`. See
    [2026-08-22 mesh surface points](./history/2026-08-22-mesh-surface-points.md)
    and the extension section in
    [M3.1 Surface Placement Contract](./m3-1-surface-placement-contract.md).
-   The first explicit 3D WebGPU slice landed 2026-08-25; `auto` still
-   does not select it. A pinned-environment frame budget gate remains
+   The first explicit 3D WebGPU slice landed 2026-08-25; mesh and
+   instance surface points landed 2026-08-26; 3D `auto` prefers WebGPU
+   when the capability probe is true (2026-08-26). A pinned-environment
+   frame budget gate remains
    deferred (rationale in
    [2026-08-22 next contract decision](./history/2026-08-22-next-contract-decision.md)).
    See
@@ -403,6 +410,44 @@ service map in `apps/playground-network`. See
 
 ## Evidence
 
+- 3D `auto` prefers WebGPU (2026-08-26). When
+  `detectCanvasBackendCapabilities().webgpu` is true, 3D `auto`
+  resolves to `webgpu`. If `requestAdapter()` is empty, it falls
+  back to WebGL2 and reports that result. Pixel-sampling gates
+  stay on WebGL2. `pnpm typecheck` 36/36. `pnpm build` 25/25.
+  `pnpm verify:public-api` ok.   `pnpm verify:webgpu` 7/7.
+  `pnpm verify:browser-rendering` ok.
+  `pnpm verify:docs` 157 Markdown files, 501/501 local targets. See
+  [2026-08-26 WebGPU auto 3D](./history/2026-08-26-webgpu-auto-3d.md).
+- WebGPU mesh and instance surface points (2026-08-26). Explicit
+  `backend: "webgpu"` accepts the same `mesh` / `instances`
+  `resolveSurfacePoint` contract as WebGL2. `pnpm typecheck` 36/36.
+  `pnpm build` 25/25. `pnpm verify:webgpu` 6/6, desktop and mobile
+  `drawn`. `pnpm verify:docs` 156 Markdown files, 498/498 local
+  targets. See
+  [2026-08-26 WebGPU mesh and instance surface points](./history/2026-08-26-webgpu-mesh-instances-surface.md).
+- Named operations `setAnnotationText` (2026-08-26). Compiles to
+  `node.update` of `text` on a 2D or 3D `annotation` node. Empty
+  string and non-annotation nodes are `invalid-command`.
+  `pnpm typecheck` 36/36. `pnpm build` 25/25.
+  `pnpm verify:public-api` ok. `pnpm verify:editor-core` ok.
+  `pnpm verify:named-operations` 3/3. `pnpm verify:docs` pending this
+  run. See
+  [2026-08-26 named operations setAnnotationText](./history/2026-08-26-named-operations-set-annotation-text.md).
+- WebGPU capability detect (2026-08-26).
+  `detectCanvasBackendCapabilities()` is public and detection-only.
+  `auto` still never selects WebGPU. `pnpm typecheck` 36/36.
+  `pnpm build` 25/25. `pnpm verify:public-api` ok.
+  `pnpm verify:webgpu` 4/4, desktop and mobile `drawn`.
+  `pnpm verify:docs` 154 Markdown files, 493/493 local targets. See
+  [2026-08-26 WebGPU capability detect](./history/2026-08-26-webgpu-capability-detect.md).
+- Named operations `listLabels` (2026-08-26). Read-only
+  `{ id, type, layerId, text }` for `text` and `annotation` nodes.
+  `pnpm typecheck` 36/36. `pnpm build` 25/25.
+  `pnpm verify:public-api` ok. `pnpm verify:editor-core` ok.
+  `pnpm verify:named-operations` 3/3. `pnpm verify:docs` 153 Markdown
+  files, 491/491 local targets. See
+  [2026-08-26 named operations listLabels](./history/2026-08-26-named-operations-list-labels.md).
 - Vanilla layer toggles (2026-08-25). Hide and lock call
   `setLayerVisible` / `setLayerLocked` instead of raw `layer.update`.
   `pnpm verify:named-operations` 3/3.

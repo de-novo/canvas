@@ -6,6 +6,7 @@ import {
   create3DSurfacePlacementTool,
   createAnnotationTool,
   createCanvas,
+  detectCanvasBackendCapabilities,
   createDistanceMeasurementTool,
   createEditor,
   createEmptySelection,
@@ -603,6 +604,9 @@ const requestedBackend = new URLSearchParams(window.location.search).get(
   "backend"
 );
 
+const detectedBackends = detectCanvasBackendCapabilities();
+canvasStage.dataset.denovoCapabilityWebgpu = String(detectedBackends.webgpu);
+
 runtime = createCanvas(canvasStage, {
   controls: {
     enablePan: true,
@@ -612,8 +616,8 @@ runtime = createCanvas(canvasStage, {
     minDistance: 1
   },
   document: initialDocument,
-  ...(requestedBackend === "webgpu"
-    ? { renderer: { backend: "webgpu" as const } }
+  ...(requestedBackend === "webgpu" || requestedBackend === "webgl2"
+    ? { renderer: { backend: requestedBackend } }
     : {}),
   plugins: [sceneCommandPlugin],
   onFrame: ({ elapsed, render: renderStats }) => {

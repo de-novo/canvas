@@ -4,7 +4,8 @@ import { createHash } from "node:crypto";
 import { mkdir, unlink, writeFile } from "node:fs/promises";
 import { inflateSync } from "node:zlib";
 
-import { chromium, devices } from "playwright";
+import { devices } from "playwright";
+import { launchPixelChromium } from "./lib/chromium.mjs";
 import { expect } from "playwright/test";
 
 import { createCheckRunner } from "./lib/checks.mjs";
@@ -34,6 +35,7 @@ const viewportChecks = [
 ];
 
 const allowedConsoleWarningPatterns = [
+  /^No available adapters\.$/,
   /^WARNING: Too many active WebGL contexts\. Oldest context will be lost\.$/,
   /^\[\.WebGL-0x[0-9a-f]+\]GL Driver Message \(OpenGL, Performance, GL_CLOSE_PATH_NV, High\): GPU stall due to ReadPixels$/,
   /^\[\.WebGL-0x[0-9a-f]+\]GL Driver Message \(OpenGL, Performance, GL_CLOSE_PATH_NV, High\): GPU stall due to ReadPixels \(this message will no longer repeat\)$/,
@@ -190,7 +192,7 @@ async function startViteServer() {
 }
 
 async function withFreshBrowser(run) {
-  const browser = await chromium.launch({ headless: true });
+  const browser = await launchPixelChromium({ headless: true });
 
   try {
     return await run(browser);

@@ -15,7 +15,7 @@
 import { spawn } from "node:child_process";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 
-import { chromium } from "playwright";
+import { launchPixelChromium } from "./lib/chromium.mjs";
 
 const WORKLOADS = [
   { label: "100-boxes", nodeCount: 100 },
@@ -77,7 +77,7 @@ async function measureWorkload(baseUrl, workload) {
   const url = `${baseUrl}perf-bench.html?count=${workload.nodeCount}&frames=${CAPTURE_FRAMES}`;
   await writeFile(PERF_HTML, perfBenchHtml());
 
-  const browser = await chromium.launch({ headless: true });
+  const browser = await launchPixelChromium({ headless: true });
   try {
     const page = await browser.newPage({
       viewport: { height: 800, width: 1280 }

@@ -124,9 +124,16 @@ export type CreateCanvasOptions = {
   devicePixelRatio?: number;
   /**
    * Built-in 3D GPU backend. Default WebGL2. The facade sets `webgpu`
-   * only after resolving an explicit `backend: "webgpu"` request.
+   * after resolving `backend: "webgpu"` or 3D `auto` when WebGPU is
+   * available.
    */
   gpuBackend?: "webgl2" | "webgpu";
+  /**
+   * When `gpuBackend` is `webgpu` and init fails, create a WebGL2
+   * renderer instead. The facade sets this only for 3D `auto`. Explicit
+   * `backend: "webgpu"` must not pass it.
+   */
+  gpuBackendFallback?: "webgl2";
   /**
    * Session geometry buffers for `mesh.geometryAssetId`. Tessellation stays
    * out of the document JSON; the runtime looks up buffers here.

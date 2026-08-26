@@ -91,6 +91,7 @@ function to `applyNamedOperations` / `editor.apply` is the list path.
 | `stackBox` | `@denovo/canvas-editor` | `@denovo/canvas` |
 | `listNodes` | `@denovo/canvas-editor` | `@denovo/canvas` |
 | `listLayers` | `@denovo/canvas-editor` | `@denovo/canvas` |
+| `listLabels` | `@denovo/canvas-editor` | `@denovo/canvas` |
 | `removeNode` | `@denovo/canvas-editor` | `@denovo/canvas` |
 | `removeEdge` | `@denovo/canvas-editor` | `@denovo/canvas` |
 | `removeLayer` | `@denovo/canvas-editor` | `@denovo/canvas` |
@@ -102,6 +103,7 @@ function to `applyNamedOperations` / `editor.apply` is the list path.
 | `setNodeLocked` | `@denovo/canvas-editor` | `@denovo/canvas` |
 | `setNodeLayer` | `@denovo/canvas-editor` | `@denovo/canvas` |
 | `setText` | `@denovo/canvas-editor` | `@denovo/canvas` |
+| `setAnnotationText` | `@denovo/canvas-editor` | `@denovo/canvas` |
 | `applyNamedOperations` | `@denovo/canvas-editor` | `@denovo/canvas` |
 | `CanvasEditor.apply` | `@denovo/canvas-editor` | through the editor instance |
 
@@ -333,15 +335,49 @@ Document-only. Source MUST be a 2D `text` node. Compiles to one
 Already the same text does not grow history. Extra fields fail.
 Annotation and HTML stay off this helper.
 
+## Slice 17 — `listLabels`
+
+```ts
+listLabels(
+  document: CanvasDocument,
+  options?: { layerId?: CanvasLayerId }
+): readonly ListedLabel[]
+
+type ListedLabel = {
+  id: NodeId;
+  type: "text" | "annotation";
+  layerId: CanvasLayerId;
+  text: string;
+};
+```
+
+Read-only. Document order. Only `text` and `annotation` nodes. No
+geometry, fill, or HTML. Unknown `layerId` fails; an empty match
+returns `[]`. Extra fields fail.
+
+## Slice 18 — `setAnnotationText`
+
+```ts
+setAnnotationText({ nodeId: NodeId, text: string }): NamedOperation
+```
+
+Document-only. Source MUST be an `annotation` node in 2D or 3D.
+Compiles to one `node.update` of `text`. Empty string is
+`invalid-command` because the schema requires `min(1)`. A non-annotation
+node is `invalid-command`. An effectively locked node is
+`locked-target`. Already the same text does not grow history. Extra
+fields fail. `setText` still writes only 2D `text` nodes.
+
 ## Verification (when a slice ships)
 
 - editor-core: pure path and `editor.apply` leave the same document;
   already-in-state does not grow history; unknown id fails;
 - public-api: `setLayerVisible`, `setLayerLocked`, `stackBox`,
-  `setNodeVisible`, `setNodeLocked`, `setNodeLayer`, `setText`, `removeNode`, `removeEdge`,
+  `setNodeVisible`, `setNodeLocked`, `setNodeLayer`, `setText`, `setAnnotationText`, `removeNode`, `removeEdge`,
   `removeLayer`, `addLayer`, `reorderLayer`, `setSparklineStyle`, and
   `setLayerName` are `NamedOperation`s; `listNodes` returns `ListedNode[]` without
   geometry; `listLayers` returns `ListedLayer[]` without metadata;
+  `listLabels` returns `ListedLabel[]` without geometry;
   extra fields and illegal unions are `@ts-expect-error`;
 - playground storey isolation calls `setLayerVisible` and reads Level 2
   through `listNodes`, not a hand-built `layer.update`. Vanilla layer
@@ -369,6 +405,8 @@ Annotation and HTML stay off this helper.
 14. `setLayerName`.
 15. `setNodeLayer`.
 16. `setText`.
+17. `listLabels`.
+18. `setAnnotationText`.
 
 Do not start a later slice until the previous slice has types and
 editor-core evidence.
@@ -377,4 +415,5 @@ editor-core evidence.
 
 Unchanged. These calls are backend-agnostic. Explicit
 `backend: "webgpu"` MUST accept the same document and the same
-operations. `auto` still resolves 3D to WebGL2.
+operations. 3D `auto` prefers WebGPU when the capability probe is
+true, otherwise WebGL2.

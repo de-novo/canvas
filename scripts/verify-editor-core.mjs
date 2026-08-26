@@ -48,6 +48,8 @@ assert.equal(typeof editorCore.setNodeLayer, "function");
 assert.equal(typeof facade.setNodeLayer, "function");
 assert.equal(typeof editorCore.setText, "function");
 assert.equal(typeof facade.setText, "function");
+assert.equal(typeof editorCore.setAnnotationText, "function");
+assert.equal(typeof facade.setAnnotationText, "function");
 assert.equal(typeof editorCore.setFieldPattern, "function");
 assert.equal(typeof facade.setFieldPattern, "function");
 assert.equal(typeof editorCore.setSparklineStyle, "function");
@@ -72,6 +74,8 @@ assert.equal(typeof editorCore.listNodes, "function");
 assert.equal(typeof facade.listNodes, "function");
 assert.equal(typeof editorCore.listLayers, "function");
 assert.equal(typeof facade.listLayers, "function");
+assert.equal(typeof editorCore.listLabels, "function");
+assert.equal(typeof facade.listLabels, "function");
 assert.equal(typeof editorCore.applyNamedOperations, "function");
 assert.equal(typeof facade.applyNamedOperations, "function");
 assert.equal(typeof editorCore.applyCommandsToStoredDocument, "function");
@@ -4306,6 +4310,78 @@ try {
       error.code === "invalid-command"
   );
 
+  const labeled = facade.defineDocument({
+    id: "list-labels",
+    scene: {
+      id: "list-labels-scene",
+      layers: [
+        { id: "main", name: "Main" },
+        { id: "notes", name: "Notes" }
+      ],
+      mode: "2d",
+      nodes: [
+        {
+          id: "label",
+          layerId: "main",
+          position: [0, 0],
+          text: "Draft",
+          type: "text"
+        },
+        {
+          anchor: [12, 8],
+          id: "callout",
+          layerId: "notes",
+          text: "Callout",
+          type: "annotation"
+        },
+        {
+          id: "rect-1",
+          layerId: "main",
+          position: [80, 0],
+          size: [80, 40],
+          type: "rect"
+        }
+      ]
+    }
+  });
+  const listedLabels = facade.listLabels(labeled);
+  assert.deepEqual(listedLabels, [
+    {
+      id: "label",
+      layerId: "main",
+      text: "Draft",
+      type: "text"
+    },
+    {
+      id: "callout",
+      layerId: "notes",
+      text: "Callout",
+      type: "annotation"
+    }
+  ]);
+  assert.equal("position" in listedLabels[0], false);
+  assert.equal("fill" in listedLabels[0], false);
+  assert.deepEqual(facade.listLabels(labeled, { layerId: "notes" }), [
+    {
+      id: "callout",
+      layerId: "notes",
+      text: "Callout",
+      type: "annotation"
+    }
+  ]);
+  assert.throws(
+    () => facade.listLabels(labeled, { layerId: "missing" }),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "layer-not-found"
+  );
+  assert.throws(
+    () => facade.listLabels(labeled, { extra: true }),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "invalid-command"
+  );
+
   await editor.apply([
     facade.setLayerVisible({ layerId: "main", visible: false })
   ]);
@@ -4982,6 +5058,158 @@ try {
     () =>
       textEditor.apply([
         facade.setText({ nodeId: "missing", text: "Done" })
+      ]),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "node-not-found"
+  );
+}
+
+{
+  const document = facade.defineDocument({
+    id: "set-annotation-text",
+    scene: {
+      id: "set-annotation-text-scene",
+      layers: [{ id: "main", name: "Main" }],
+      mode: "2d",
+      nodes: [
+        {
+          anchor: [12, 8],
+          id: "callout",
+          layerId: "main",
+          text: "Callout",
+          type: "annotation"
+        },
+        {
+          anchor: [24, 8],
+          id: "callout-locked",
+          layerId: "main",
+          locked: true,
+          text: "Locked",
+          type: "annotation"
+        },
+        {
+          id: "label",
+          layerId: "main",
+          position: [0, 0],
+          text: "Draft",
+          type: "text"
+        }
+      ]
+    }
+  });
+  const rename = facade.setAnnotationText({
+    nodeId: "callout",
+    text: "Reviewed"
+  });
+  const preview = facade.applyNamedOperations(document, [rename]);
+  assert.equal(preview.changed, true);
+  assert.equal(preview.commands[0]?.type, "node.update");
+  assert.equal(
+    preview.document.scene.nodes.find((node) => node.id === "callout")?.text,
+    "Reviewed"
+  );
+
+  const alreadyNamed = facade.applyNamedOperations(preview.document, [rename]);
+  assert.equal(alreadyNamed.changed, false);
+  assert.deepEqual(alreadyNamed.commands, []);
+
+  const annotationEditor = facade.createEditor({ document });
+  const applied = await annotationEditor.apply([rename]);
+  assert.equal(applied.changed, true);
+  assert.equal(annotationEditor.getState().history.undoDepth, 1);
+  const again = await annotationEditor.apply([rename]);
+  assert.equal(again.changed, false);
+  assert.equal(annotationEditor.getState().history.undoDepth, 1);
+
+  const scene3d = facade.defineDocument({
+    id: "set-annotation-text-3d",
+    scene: {
+      id: "set-annotation-text-3d-scene",
+      layers: [{ id: "main", name: "Main" }],
+      mode: "3d",
+      nodes: [
+        {
+          anchor: [0, 1, 0],
+          id: "note",
+          layerId: "main",
+          text: "Note",
+          type: "annotation"
+        }
+      ]
+    }
+  });
+  const renamed3d = facade.applyNamedOperations(scene3d, [
+    facade.setAnnotationText({
+      nodeId: "note",
+      text: "Pinned"
+    })
+  ]);
+  assert.equal(renamed3d.changed, true);
+  assert.equal(
+    renamed3d.document.scene.nodes.find((node) => node.id === "note")?.text,
+    "Pinned"
+  );
+
+  assert.throws(
+    () =>
+      facade.applyNamedOperations(document, [
+        facade.setAnnotationText({
+          nodeId: "callout-locked",
+          text: "Nope"
+        })
+      ]),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "locked-target"
+  );
+  assert.throws(
+    () =>
+      facade.applyNamedOperations(document, [
+        facade.setAnnotationText({
+          nodeId: "label",
+          text: "Nope"
+        })
+      ]),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "invalid-command"
+  );
+  assert.throws(
+    () =>
+      facade.setAnnotationText({
+        extra: true,
+        nodeId: "callout",
+        text: "Reviewed"
+      }),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "invalid-command"
+  );
+  assert.throws(
+    () =>
+      facade.setAnnotationText({
+        nodeId: "callout",
+        text: 1
+      }),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "invalid-command"
+  );
+  assert.throws(
+    () =>
+      facade.setAnnotationText({
+        nodeId: "callout",
+        text: ""
+      }),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "invalid-command"
+  );
+  await assert.rejects(
+    () =>
+      annotationEditor.apply([
+        facade.setAnnotationText({ nodeId: "missing", text: "Reviewed" })
       ]),
     (error) =>
       error instanceof facade.CanvasEditorError &&

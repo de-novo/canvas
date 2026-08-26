@@ -187,10 +187,16 @@ function mountImported(
   imported: Awaited<ReturnType<WebIfcBimAdapter["toDocument"]>>
 ): void {
   const { document, geometryStore } = imported;
+  const requestedBackend = new URLSearchParams(window.location.search).get(
+    "backend"
+  );
   const runtime = createCanvas(stage, {
     document,
     editable: true,
-    geometryStore
+    geometryStore,
+    ...(requestedBackend === "webgpu" || requestedBackend === "webgl2"
+      ? { renderer: { backend: requestedBackend } }
+      : {})
   });
   const nextEditor = createEditor({ document });
   const disconnect = connectEditorToCanvas(nextEditor, runtime);

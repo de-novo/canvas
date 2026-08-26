@@ -386,6 +386,7 @@ for (const exportName of [
   "reorderLayer",
   "listNodes",
   "listLayers",
+  "listLabels",
   "setFieldPattern",
   "setSparklineStyle",
   "setLayerLocked",
@@ -394,6 +395,7 @@ for (const exportName of [
   "setNodeLayer",
   "setNodeLocked",
   "setNodeVisible",
+  "setAnnotationText",
   "setText",
   "removeNode",
   "removeEdge",
@@ -422,6 +424,7 @@ for (const exportName of [
   "createAnnotationTool",
   "createConnectorTool",
   "createCanvas",
+  "detectCanvasBackendCapabilities",
   "createCanvas2D",
   "createCanvas3D",
   "createDistanceMeasurementTool",
@@ -2007,6 +2010,7 @@ writeFileSync(
   path.join(tmpDir, "smoke.ts"),
   `import {
   createCanvas,
+  detectCanvasBackendCapabilities,
   createCanvas2D,
   createCanvas3D,
   create2DShapeTool,
@@ -2022,6 +2026,7 @@ writeFileSync(
   applyCommandsToStoredDocument,
   addLayer,
   applyNamedOperations,
+  listLabels,
   listLayers,
   listNodes,
   reorderLayer,
@@ -2030,6 +2035,7 @@ writeFileSync(
   setLayerLocked,
   setLayerName,
   setLayerVisible,
+  setAnnotationText,
   setNodeLayer,
   setNodeLocked,
   setNodeVisible,
@@ -2086,6 +2092,7 @@ writeFileSync(
   type AssetRecord,
   type CanvasStorageAdapter,
   type CanvasBackend,
+  type CanvasBackendCapabilities,
   type CanvasImplementedBackend,
   type CanvasResolvedBackend,
   type CanvasUnimplementedBackend,
@@ -2102,8 +2109,10 @@ writeFileSync(
   type CanvasFacadeRendererRuntime,
   type CanvasEditor,
   type CanvasPersistenceEvent,
+  type ListedLabel,
   type ListedLayer,
   type ListedNode,
+  type ListLabelsOptions,
   type ListNodesOptions,
   type AddLayerInput,
   type ReorderLayerInput,
@@ -2120,6 +2129,7 @@ writeFileSync(
   type SetLayerLockedInput,
   type SetLayerNameInput,
   type SetLayerVisibleInput,
+  type SetAnnotationTextInput,
   type SetNodeLayerInput,
   type SetTextInput,
   type RemoveEdgeInput,
@@ -2155,19 +2165,28 @@ import { parseSceneEffect } from "@denovo/canvas-core/effect";
 
 const backend: CanvasBackend = "auto";
 const implementedBackend: CanvasImplementedBackend = "webgl2";
+const implementedWebgpu: CanvasImplementedBackend = "webgpu";
 const reservedBackend: CanvasUnimplementedBackend = "offscreen-canvas2d";
 const resolvedBackend: CanvasResolvedBackend = "canvas2d";
 const resolvedWebgpu: CanvasResolvedBackend = "webgpu";
-// @ts-expect-error auto still does not resolve to WebGPU
-const invalidImplementedWebgpu: CanvasImplementedBackend = "webgpu";
+// @ts-expect-error offscreen is not an auto result
+const invalidImplementedOffscreen: CanvasImplementedBackend =
+  "offscreen-canvas2d";
 // @ts-expect-error auto is a selector, not a resolved backend.
 const invalidResolvedAuto: CanvasResolvedBackend = "auto";
 void implementedBackend;
+void implementedWebgpu;
 void reservedBackend;
 void resolvedBackend;
 void resolvedWebgpu;
-void invalidImplementedWebgpu;
+void invalidImplementedOffscreen;
 void invalidResolvedAuto;
+const detectedBackends: CanvasBackendCapabilities =
+  detectCanvasBackendCapabilities();
+const detectedWebgpu: boolean = detectedBackends.webgpu;
+void detectedWebgpu;
+// @ts-expect-error capabilities are a closed object
+detectedBackends.metal;
 const controls: CanvasCameraControlsOptions = {
   enablePan: true,
   enableRotate: true,
@@ -2248,6 +2267,18 @@ void renameText;
 setText({ extra: true, nodeId: "label", text: "Done" });
 // @ts-expect-error text must be a string
 setText({ nodeId: "label", text: 1 });
+const renameAnnotationInput: SetAnnotationTextInput = {
+  nodeId: "callout",
+  text: "Reviewed"
+};
+const renameAnnotation: NamedOperation = setAnnotationText(
+  renameAnnotationInput
+);
+void renameAnnotation;
+// @ts-expect-error extra fields are rejected
+setAnnotationText({ extra: true, nodeId: "callout", text: "Reviewed" });
+// @ts-expect-error text must be a string
+setAnnotationText({ nodeId: "callout", text: 1 });
 const hideNodeInput: SetNodeVisibleInput = {
   nodeId: "box-1",
   visible: false
@@ -2353,6 +2384,17 @@ void listedLayerName;
 listedLayer.metadata;
 // @ts-expect-error listLayers does not take a filter
 listLayers(document, { extra: true });
+const listedLabels: readonly ListedLabel[] = listLabels(document);
+declare const listedLabel: ListedLabel;
+const listedLabelText: string = listedLabel.text;
+void listedLabels;
+void listedLabelText;
+// @ts-expect-error listed labels omit geometry
+listedLabel.position;
+// @ts-expect-error extra fields are rejected
+listLabels(document, { extra: true, layerId: "main" });
+const listedLabelOptions: ListLabelsOptions = { layerId: "main" };
+void listLabels(document, listedLabelOptions);
 const timeLayoutOptions: TimeGraphLayoutOptions = {
   columnGap: 88,
   origin: [80, 160]
@@ -3102,6 +3144,7 @@ writeFileSync(
   createPanOrbitTool,
   createSelectTool,
   createTransformTool,
+  listLabels,
   listLayers,
   listNodes,
   setFieldPattern,
@@ -3109,6 +3152,7 @@ writeFileSync(
   setLayerLocked,
   setLayerName,
   setLayerVisible,
+  setAnnotationText,
   setNodeLayer,
   setNodeLocked,
   setNodeVisible,
@@ -3121,8 +3165,10 @@ writeFileSync(
   type ReorderLayerInput,
   type CanvasEditor,
   type CanvasPersistenceEvent,
+  type ListedLabel,
   type ListedLayer,
   type ListedNode,
+  type ListLabelsOptions,
   type NamedOperation,
   type NamedOperationResult,
   type SetFieldPatternInput,
@@ -3132,6 +3178,7 @@ writeFileSync(
   type RemoveNodeInput,
   type SetLayerLockedInput,
   type SetLayerNameInput,
+  type SetAnnotationTextInput,
   type SetNodeLayerInput,
   type SetNodeLockedInput,
   type SetNodeVisibleInput,
@@ -3202,6 +3249,18 @@ void renameText;
 setText({ extra: true, nodeId: "label", text: "Done" });
 // @ts-expect-error text must be a string
 setText({ nodeId: "label", text: 1 });
+const renameAnnotationInput: SetAnnotationTextInput = {
+  nodeId: "callout",
+  text: "Reviewed"
+};
+const renameAnnotation: NamedOperation = setAnnotationText(
+  renameAnnotationInput
+);
+void renameAnnotation;
+// @ts-expect-error extra fields are rejected
+setAnnotationText({ extra: true, nodeId: "callout", text: "Reviewed" });
+// @ts-expect-error text must be a string
+setAnnotationText({ nodeId: "callout", text: 1 });
 const stackInput: StackBoxInput = {
   createId: () => "stacked-box",
   face: "+y",
@@ -3345,6 +3404,17 @@ declare const listedLayer: ListedLayer;
 listedLayer.metadata;
 // @ts-expect-error listLayers does not take a filter
 listLayers(editor.getState().document, { extra: true });
+const listedLabels: readonly ListedLabel[] = listLabels(
+  editor.getState().document
+);
+void listedLabels;
+declare const listedLabel: ListedLabel;
+// @ts-expect-error listed labels omit geometry
+listedLabel.position;
+// @ts-expect-error extra fields are rejected
+listLabels(editor.getState().document, { extra: true });
+const listedLabelOptions: ListLabelsOptions = { layerId: "main" };
+void listLabels(editor.getState().document, listedLabelOptions);
 const disconnect = connectEditorToRuntime(editor, {
   update(scene) {
     void scene;

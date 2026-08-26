@@ -32,7 +32,13 @@
       geometryStore.set("bench-mesh-geometry", geometry);
 
       try {
+        const requestedBackend = new URLSearchParams(window.location.search).get(
+          "backend"
+        );
         const runtime = createCanvas(document.getElementById("stage"), {
+          ...(requestedBackend === "webgpu"
+            ? { renderer: { backend: "webgpu" } }
+            : {}),
           geometryStore,
           scene: {
             background: "#111827",

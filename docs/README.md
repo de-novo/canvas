@@ -38,9 +38,10 @@ Repository governance files live at the repo root:
   surface-query capability, lifecycle, no-fallback, and verification contract.
 - [Named Authoring Operations](./named-authoring-operations.md): sayable
   helpers (`setLayerVisible`, `setLayerLocked`, `stackBox`, `listNodes`,
-  `listLayers`, `setNodeVisible`, `setNodeLocked`, `removeNode`,
+  `listLayers`, `listLabels`, `setNodeVisible`, `setNodeLocked`, `removeNode`,
   `removeEdge`, `removeLayer`, `addLayer`, `reorderLayer`,
-  `setSparklineStyle`, `setLayerName`, `setNodeLayer`, `setText`) that compile to
+  `setSparklineStyle`, `setLayerName`, `setNodeLayer`, `setText`,
+  `setAnnotationText`) that compile to
   existing commands so host UI and agents share one function.
 - [M8 Diagram Contract](./m8-diagram-contract.md): 2D `edge` / `text` / `html`
   vocabulary frozen in `0.2.0`, port and path-style rules, graph paste/delete,
@@ -49,7 +50,7 @@ Repository governance files live at the repo root:
   policy, default import shape, backend config, and smoke verification.
 - [Architecture](./architecture.md): package layers and runtime boundaries.
 - [Rendering Backend Strategy](./rendering-backend-strategy.md): implemented
-  Canvas2D/WebGL2 `auto` backends, explicit 3D WebGPU, strict explicit
+  Canvas2D and 3D WebGPU/WebGL2 `auto` backends, explicit 3D WebGPU, strict explicit
   selection, and capability detection.
 - [Vision and Milestones](./vision-and-milestones.md): what the SDK should be
   able to express and the staged roadmap.

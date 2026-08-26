@@ -9,7 +9,13 @@
       // Three unit boxes in a row; the centre instance sits at the origin,
       // so a centre-viewport ray must hit index 1 with normal ≈ +z.
       try {
+        const requestedBackend = new URLSearchParams(window.location.search).get(
+          "backend"
+        );
         const runtime = createCanvas(document.getElementById("stage"), {
+          ...(requestedBackend === "webgpu"
+            ? { renderer: { backend: "webgpu" } }
+            : {}),
           scene: {
             background: "#111827",
             camera: { fov: 50, position: [0, 0, 10], target: [0, 0, 0] },

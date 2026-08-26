@@ -69,6 +69,7 @@ export {
   applyCommandsToStoredDocument,
   addLayer,
   applyNamedOperations,
+  listLabels,
   listLayers,
   listNodes,
   removeEdge,
@@ -80,6 +81,7 @@ export {
   setLayerLocked,
   setLayerName,
   setLayerVisible,
+  setAnnotationText,
   setNodeLayer,
   setNodeLocked,
   setNodeVisible,
@@ -139,8 +141,11 @@ export type {
   CanvasTransformToolOptions,
   CreateCanvasEditorOptions,
   AddLayerInput,
+  ListedLabel,
+  ListedLabelType,
   ListedLayer,
   ListedNode,
+  ListLabelsOptions,
   ListNodesOptions,
   NamedOperation,
   NamedOperationResult,
@@ -154,6 +159,7 @@ export type {
   SetLayerLockedInput,
   SetLayerNameInput,
   SetLayerVisibleInput,
+  SetAnnotationTextInput,
   SetNodeLayerInput,
   SetNodeLockedInput,
   SetNodeVisibleInput,
@@ -251,10 +257,10 @@ export type CanvasFacadeRendererAdapter = CanvasRendererAdapter<
 /**
  * Renderer backend selector.
  *
- * `auto` resolves only to an implemented built-in: Canvas2D for 2D scenes and
- * WebGL2 for 3D scenes. Explicit `webgpu` is a 3D built-in and is never an
- * `auto` result. `offscreen-canvas2d` stays reserved; requesting it fails
- * with `backend-unimplemented` until a runtime exists.
+ * `auto` resolves to an implemented built-in: Canvas2D for 2D scenes and
+ * WebGPU or WebGL2 for 3D scenes. 3D prefers WebGPU when
+ * `capabilities.webgpu` is true. `offscreen-canvas2d` stays reserved;
+ * requesting it fails with `backend-unimplemented` until a runtime exists.
  */
 export type CanvasBackend =
   | "auto"
@@ -264,14 +270,11 @@ export type CanvasBackend =
   | "offscreen-canvas2d"
   | "custom";
 /** Built-in backends that `auto` may currently resolve to. */
-export type CanvasImplementedBackend = "canvas2d" | "webgl2";
+export type CanvasImplementedBackend = "canvas2d" | "webgl2" | "webgpu";
 /** Reserved built-in names. Requests fail until a runtime is implemented. */
 export type CanvasUnimplementedBackend = "offscreen-canvas2d";
 /** Successful resolution result. Never `auto` or an unimplemented built-in. */
-export type CanvasResolvedBackend =
-  | CanvasImplementedBackend
-  | "webgpu"
-  | "custom";
+export type CanvasResolvedBackend = CanvasImplementedBackend | "custom";
 export type CanvasBuiltInBackend = Exclude<CanvasBackend, "custom">;
 export type RendererPreset = CanvasBuiltInBackend | "three";
 export type CanvasThemePreset = "dark" | "light";
@@ -683,7 +686,14 @@ export function createCanvas(
       ? {}
       : { geometryStore: config.geometryStore }),
     ...(config.renderNode === undefined ? {} : { renderNode: config.renderNode }),
-    ...(renderer.resolved === "webgpu" ? { gpuBackend: "webgpu" as const } : {})
+    ...(renderer.resolved === "webgpu"
+      ? {
+          gpuBackend: "webgpu" as const,
+          ...(resolveRequestedBackend(config.renderer) === "auto"
+            ? { gpuBackendFallback: "webgl2" as const }
+            : {})
+        }
+      : {})
   };
   const customAdapter = resolveRendererAdapter(config.renderer);
   const runtime = createResolvedRendererRuntime(
@@ -922,6 +932,21 @@ export function createCanvas(
   facadeRegistryControllers.set(facadeRuntime, registryController);
   void facadeRuntime.ready.then(
     () => {
+      const gpuBackend = readRuntimeGpuBackend(runtime);
+
+      if (
+        gpuBackend !== null &&
+        gpuBackend !== renderer.resolved &&
+        renderer.requested === "auto"
+      ) {
+        renderer = {
+          ...renderer,
+          resolved: gpuBackend
+        };
+        resolvedConfig.renderer = renderer;
+        host.dataset.denovoBackend = gpuBackend;
+      }
+
       host.dataset.denovoReady = "true";
     },
     () => {
@@ -2142,10 +2167,13 @@ function resolveBackend(
   capabilities: CanvasBackendCapabilities
 ): CanvasResolvedBackend {
   if (requested === "auto") {
-    // `capabilities.webgpu` is detection-only. Auto never selects WebGPU.
     if (mode === "2d") {
       requireBackendCapability("canvas2d", mode, capabilities.canvas2d);
       return "canvas2d";
+    }
+
+    if (capabilities.webgpu) {
+      return "webgpu";
     }
 
     requireBackendCapability("webgl2", mode, capabilities.webgl2);
@@ -2221,7 +2249,22 @@ function requireBackendCapability(
   }
 }
 
-function detectCanvasBackendCapabilities(): CanvasBackendCapabilities {
+function readRuntimeGpuBackend(
+  runtime: DynamicCanvasRuntime | CanvasFacadeRendererRuntime
+): "webgl2" | "webgpu" | null {
+  if (
+    typeof runtime === "object" &&
+    runtime !== null &&
+    "gpuBackend" in runtime &&
+    (runtime.gpuBackend === "webgl2" || runtime.gpuBackend === "webgpu")
+  ) {
+    return runtime.gpuBackend;
+  }
+
+  return null;
+}
+
+export function detectCanvasBackendCapabilities(): CanvasBackendCapabilities {
   const canvas2d = Boolean(createProbeCanvas()?.getContext("2d"));
   const webgl2 = Boolean(createProbeCanvas()?.getContext("webgl2"));
   const offscreenCanvas2d =

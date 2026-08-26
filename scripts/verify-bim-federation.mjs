@@ -10,7 +10,7 @@ import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { spawn } from "node:child_process";
 
-import { chromium } from "playwright";
+import { launchPixelChromium } from "./lib/chromium.mjs";
 
 import { createCheckRunner } from "./lib/checks.mjs";
 
@@ -24,7 +24,7 @@ const screenshotPath = path.resolve(
 const server = await startPlayground(5188);
 try {
   await check("bim-federation-browser-places-offset-copy", async () => {
-    const browser = await chromium.launch();
+    const browser = await launchPixelChromium();
     try {
       const page = await browser.newPage({
         viewport: { width: 1280, height: 800 }

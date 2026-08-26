@@ -1,8 +1,10 @@
 // @ts-check
 /**
- * Explicit 3D `backend: "webgpu"` proof. `auto` stays Canvas2D/WebGL2.
- * Headless hosts without a GPU still pass when the request fails
- * explicitly instead of falling back to WebGL2.
+ * 3D WebGPU proof. `auto` prefers WebGPU when `navigator.gpu` is
+ * present. Explicit `backend: "webgpu"` stays strict. Headless hosts
+ * without a GPU still pass when the request fails instead of falling
+ * back to WebGL2. Mesh and instance surface points use the same
+ * document contract as WebGL2.
  */
 
 import assert from "node:assert/strict";
@@ -12,9 +14,10 @@ import { spawn } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { inflateSync } from "node:zlib";
 
-import { chromium, devices } from "playwright";
+import { devices } from "playwright";
 
 import { createCheckRunner } from "./lib/checks.mjs";
+import { launchWebGpuChromium } from "./lib/chromium.mjs";
 
 const { check, report } = createCheckRunner();
 
@@ -27,12 +30,22 @@ const mobileShot = path.resolve(
   root,
   "artifacts/verification/webgpu-vanilla-mobile.png"
 );
+const autoShot = path.resolve(
+  root,
+  "artifacts/verification/webgpu-vanilla-auto.png"
+);
 
 const facade = await import(
   pathToFileURL(path.join(root, "packages/canvas/dist/index.js")).href
 );
 
 await check("webgpu-node-resolution-stays-explicit", () => {
+  const detected = facade.detectCanvasBackendCapabilities();
+  assert.equal(detected.webgpu, false);
+  assert.equal(typeof detected.canvas2d, "boolean");
+  assert.equal(typeof detected.webgl2, "boolean");
+  assert.equal(typeof detected.offscreenCanvas2d, "boolean");
+
   const target = {
     append() {},
     classList: { add() {} },
@@ -93,6 +106,19 @@ try {
     );
   });
 
+  await check("webgpu-vanilla-auto-selects-3d", async () => {
+    const outcome = await verifyVanillaWebgpu({
+      path: "/",
+      screenshotPath: autoShot,
+      viewport: { height: 800, width: 1280 }
+    });
+    assert.equal(
+      outcome,
+      "drawn",
+      `desktop Chromium auto must resolve 3D to webgpu, got ${outcome}`
+    );
+  });
+
   await check("webgpu-vanilla-mobile-is-explicit", async () => {
     const outcome = await verifyVanillaWebgpu({
       screenshotPath: mobileShot,
@@ -105,10 +131,50 @@ try {
     );
   });
 
-  await check("webgpu-section-plane-uses-clipping-group", async () => {
-    const browser = await chromium.launch({
-      args: ["--enable-unsafe-webgpu", "--enable-webgpu-developer-features"]
+  await check("webgpu-mesh-surface-point", async () => {
+    const outcome = await verifyWebgpuSurfaceBench({
+      expected: {
+        hitNodeId: "bench-mesh",
+        missOutsideGeometry: true,
+        normalUnit: true,
+        normalFacesCamera: true,
+        pointOnQuad: true,
+        triangleIndexInRange: true
+      },
+      errorKey: "__meshSurfaceError",
+      path: "mesh-surface-bench.html",
+      resultKey: "__meshSurfaceResult"
     });
+    assert.equal(
+      outcome,
+      "drawn",
+      `desktop Chromium must resolve mesh surface points on webgpu, got ${outcome}`
+    );
+  });
+
+  await check("webgpu-instances-surface-point", async () => {
+    const outcome = await verifyWebgpuSurfaceBench({
+      expected: {
+        hitNodeId: "bench-instances",
+        instanceIndexIsCentre: true,
+        missOutsideGeometry: true,
+        normalUnit: true,
+        normalFacesCamera: true,
+        pointOnCentreBox: true
+      },
+      errorKey: "__instancesSurfaceError",
+      path: "instances-surface-bench.html",
+      resultKey: "__instancesSurfaceResult"
+    });
+    assert.equal(
+      outcome,
+      "drawn",
+      `desktop Chromium must resolve instance surface points on webgpu, got ${outcome}`
+    );
+  });
+
+  await check("webgpu-section-plane-uses-clipping-group", async () => {
+    const browser = await launchWebGpuChromium();
     try {
       const page = await browser.newPage({
         viewport: { height: 800, width: 1280 }
@@ -150,14 +216,13 @@ report({ outcomes });
 
 /**
  * @param {{
+ *   path?: string;
  *   screenshotPath: string;
  *   viewport: { height: number; width: number };
  * }} options
  */
 async function verifyVanillaWebgpu(options) {
-  const browser = await chromium.launch({
-    args: ["--enable-unsafe-webgpu", "--enable-webgpu-developer-features"]
-  });
+  const browser = await launchWebGpuChromium();
 
   try {
     const page = await browser.newPage({ viewport: options.viewport });
@@ -165,7 +230,7 @@ async function verifyVanillaWebgpu(options) {
     const pageErrors = [];
     page.on("pageerror", (error) => pageErrors.push(String(error)));
 
-    await page.goto(`${server.url}/?backend=webgpu`, {
+    await page.goto(`${server.url}${options.path ?? "/?backend=webgpu"}`, {
       waitUntil: "networkidle"
     });
 
@@ -229,6 +294,11 @@ async function verifyVanillaWebgpu(options) {
       );
       assert.ok(triangles > 0, `WebGPU issued no triangles (${triangles})`);
       assert.ok(drawCalls > 0, `WebGPU issued no draw calls (${drawCalls})`);
+      assert.equal(
+        await page.locator("#stage").getAttribute("data-denovo-capability-webgpu"),
+        "true",
+        "detectCanvasBackendCapabilities must report webgpu before a drawn explicit request"
+      );
       mkdirSync(path.dirname(options.screenshotPath), { recursive: true });
       const screenshot = await page.screenshot({
         path: options.screenshotPath,
@@ -255,6 +325,64 @@ async function verifyVanillaWebgpu(options) {
       []
     );
     return result;
+  } finally {
+    await browser.close();
+  }
+}
+
+/**
+ * @param {{
+ *   expected: Record<string, boolean | string>;
+ *   errorKey: string;
+ *   path: string;
+ *   resultKey: string;
+ * }} options
+ */
+async function verifyWebgpuSurfaceBench(options) {
+  const browser = await launchWebGpuChromium();
+
+  try {
+    const page = await browser.newPage({
+      viewport: { height: 800, width: 1280 }
+    });
+    /** @type {string[]} */
+    const pageErrors = [];
+    page.on("pageerror", (error) => pageErrors.push(String(error)));
+
+    await page.goto(`${server.url}/${options.path}?backend=webgpu`, {
+      waitUntil: "networkidle"
+    });
+
+    if (
+      pageErrors.some((message) =>
+        /capability-unavailable|mode-mismatch/.test(message)
+      )
+    ) {
+      return "unavailable";
+    }
+
+    await page.waitForFunction(
+      ({ errorKey, resultKey }) =>
+        Boolean(window[resultKey]) || Boolean(window[errorKey]),
+      { errorKey: options.errorKey, resultKey: options.resultKey },
+      { timeout: 60_000 }
+    );
+
+    const error = await page.evaluate(
+      (errorKey) => window[errorKey],
+      options.errorKey
+    );
+    assert.equal(error ?? null, null, `${options.path} errored: ${error}`);
+
+    const backend = await page.locator("#stage").getAttribute("data-denovo-backend");
+    assert.equal(backend, "webgpu", `${options.path} must stay on webgpu`);
+
+    const result = await page.evaluate(
+      (resultKey) => window[resultKey],
+      options.resultKey
+    );
+    assert.deepEqual(result, options.expected);
+    return "drawn";
   } finally {
     await browser.close();
   }

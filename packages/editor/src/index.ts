@@ -250,6 +250,7 @@ export type {
 export {
   addLayer,
   applyNamedOperations,
+  listLabels,
   listLayers,
   listNodes,
   removeEdge,
@@ -261,6 +262,7 @@ export {
   setLayerLocked,
   setLayerName,
   setLayerVisible,
+  setAnnotationText,
   setNodeLayer,
   setNodeLocked,
   setNodeVisible,
@@ -269,8 +271,11 @@ export {
 } from "./authoring/named-operations.js";
 export type {
   AddLayerInput,
+  ListedLabel,
+  ListedLabelType,
   ListedLayer,
   ListedNode,
+  ListLabelsOptions,
   ListNodesOptions,
   NamedOperation,
   NamedOperationResult,
@@ -283,6 +288,7 @@ export type {
   SetLayerLockedInput,
   SetLayerNameInput,
   SetLayerVisibleInput,
+  SetAnnotationTextInput,
   SetNodeLayerInput,
   SetNodeLockedInput,
   SetNodeVisibleInput,

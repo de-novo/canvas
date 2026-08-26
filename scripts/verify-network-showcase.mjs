@@ -10,7 +10,8 @@ import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { spawn } from "node:child_process";
 
-import { chromium, devices } from "playwright";
+import { devices } from "playwright";
+import { launchPixelChromium } from "./lib/chromium.mjs";
 
 import { createCheckRunner } from "./lib/checks.mjs";
 
@@ -30,7 +31,7 @@ const server = await startApp("@denovo/canvas-network-example", 5183);
 
 try {
   await check("network-showcase-desktop-absorbs-and-layouts", async () => {
-    const browser = await chromium.launch();
+    const browser = await launchPixelChromium();
     try {
       const page = await browser.newPage({
         viewport: { width: 1280, height: 800 }
@@ -221,7 +222,7 @@ try {
   });
 
   await check("network-showcase-mobile-paints-without-iframe", async () => {
-    const browser = await chromium.launch();
+    const browser = await launchPixelChromium();
     try {
       const page = await browser.newPage({
         ...devices["iPhone 14"]
