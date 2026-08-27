@@ -1,12 +1,12 @@
 # Rendering Backend Strategy
 
-Last reviewed: 2026-08-26.
+Last reviewed: 2026-08-27.
 
 Implemented `auto` backends are Canvas2D (2D) and WebGPU or WebGL2 (3D).
 3D `auto` prefers WebGPU when `capabilities.webgpu` is true. Explicit
-`backend: "webgpu"` is still a 3D built-in and never falls back to
-WebGL2. The product contract must keep that name in the backend union
-without leaking any GPU API into persisted documents.
+`backend: "webgpu"` is valid for 2D and 3D and never falls back to
+WebGL2 or Canvas2D. The product contract must keep that name in the
+backend union without leaking any GPU API into persisted documents.
 
 ## Decision
 
@@ -37,12 +37,13 @@ fails, the runtime falls back to WebGL2 and reports that result.
 Pixel-sampling gates also disable WebGPU so they stay on WebGL2.
 
 Every non-`auto` request is strict. An unavailable or mode-incompatible
-`canvas2d`, `webgl2`, or `webgpu` request fails. `webgpu` is 3D-only.
+`canvas2d`, `webgl2`, or `webgpu` request fails. `webgpu` is valid for
+2D and 3D. `webgl2` stays 3D-only. `canvas2d` stays 2D-only.
 `offscreen-canvas2d` stays unimplemented and fails with
 `backend-unimplemented`. `custom` without an adapter fails with
 `adapter-required`. No explicit request silently changes to another
 backend. Three.js must not keep a WebGL2 fallback when `webgpu` was
-requested.
+requested. 2D WebGPU has no Canvas2D fallback on the same canvas.
 
 The scene/document model must not store `webgpu`, `webgl2`, or `three` as
 semantic requirements. Those are runtime adapter choices.
@@ -147,7 +148,8 @@ Canvas2D is the default lightweight 2D backend. It is simple, broadly
 available, and good enough for early shape editing, annotations, diagrams, and
 small authoring tools.
 
-WebGPU should become an optional high-scale 2D backend when the workload needs:
+Explicit `backend: "webgpu"` is the optional high-scale 2D backend.
+2D `auto` stays Canvas2D. Use WebGPU when the workload needs:
 
 - thousands or millions of repeated shapes;
 - large CAD-like overlays;
@@ -246,7 +248,7 @@ Short term:
 - keep `backend: "auto"` deterministic: Canvas2D for 2D, WebGPU then
   WebGL2 for 3D;
 - keep Three.js WebGL2 as the 3D compatibility path;
-- keep explicit `backend: "webgpu"` strict and 3D-only;
+- keep explicit `backend: "webgpu"` strict for 2D and 3D;
 - keep mesh and instance `resolveSurfacePoint` on WebGPU and WebGL2.
 
 Medium term:

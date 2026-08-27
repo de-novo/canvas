@@ -1,10 +1,10 @@
 // @ts-check
 /**
- * 3D WebGPU proof. `auto` prefers WebGPU when `navigator.gpu` is
- * present. Explicit `backend: "webgpu"` stays strict. Headless hosts
- * without a GPU still pass when the request fails instead of falling
- * back to WebGL2. Mesh and instance surface points use the same
- * document contract as WebGL2.
+ * WebGPU proof. 3D `auto` prefers WebGPU when `navigator.gpu` is
+ * present. Explicit `backend: "webgpu"` is valid for 2D and 3D and
+ * stays strict. Headless hosts without a GPU still pass when the
+ * request fails instead of falling back. Mesh and instance surface
+ * points use the same document contract as WebGL2.
  */
 
 import assert from "node:assert/strict";
@@ -74,7 +74,7 @@ await check("webgpu-node-resolution-stays-explicit", () => {
       }),
     (error) =>
       error instanceof facade.CanvasBackendResolutionError &&
-      error.code === "mode-mismatch"
+      error.code === "capability-unavailable"
   );
   assert.throws(
     () =>
@@ -170,6 +170,25 @@ try {
       outcome,
       "drawn",
       `desktop Chromium must resolve instance surface points on webgpu, got ${outcome}`
+    );
+  });
+
+  await check("webgpu-2d-draws-official-nodes", async () => {
+    const outcome = await verifyWebgpuSurfaceBench({
+      expected: {
+        backend: "webgpu",
+        drawCalls: true,
+        hitRect: true,
+        triangles: true
+      },
+      errorKey: "__webgpu2dError",
+      path: "2d-webgpu-bench.html",
+      resultKey: "__webgpu2dResult"
+    });
+    assert.equal(
+      outcome,
+      "drawn",
+      `desktop Chromium must draw a 2D document on webgpu, got ${outcome}`
     );
   });
 
@@ -347,7 +366,15 @@ async function verifyWebgpuSurfaceBench(options) {
     });
     /** @type {string[]} */
     const pageErrors = [];
+    /** @type {string[]} */
+    const gpuErrors = [];
     page.on("pageerror", (error) => pageErrors.push(String(error)));
+    page.on("console", (msg) => {
+      const text = msg.text();
+      if (/Error while parsing WGSL|Invalid RenderPipeline|Invalid ShaderModule/.test(text)) {
+        gpuErrors.push(text);
+      }
+    });
 
     await page.goto(`${server.url}/${options.path}?backend=webgpu`, {
       waitUntil: "networkidle"
@@ -382,6 +409,7 @@ async function verifyWebgpuSurfaceBench(options) {
       options.resultKey
     );
     assert.deepEqual(result, options.expected);
+    assert.deepEqual(gpuErrors, [], "WebGPU shader/pipeline must stay valid");
     return "drawn";
   } finally {
     await browser.close();

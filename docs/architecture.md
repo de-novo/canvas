@@ -10,7 +10,7 @@
   tool, capability, package-responsibility, and no-fallback boundaries.
 - [Rendering Backend Strategy](./rendering-backend-strategy.md) defines
   implemented Canvas2D and 3D WebGPU/WebGL2 `auto` backends, explicit
-  3D WebGPU, and strict backend selection.
+  2D and 3D WebGPU, and strict backend selection.
 - [Vision and Milestones](./vision-and-milestones.md) defines what Denovo
   Canvas should be able to express.
 - [Editing Model](./editing-model.md) defines how documents are changed.
@@ -63,7 +63,7 @@
 ## Rendering Strategy
 
 - Implemented `auto` backends are Canvas2D (2D) and WebGL2 (3D). Explicit
-  `backend: "webgpu"` is a 3D built-in and is not a current `auto` result.
+  `backend: "webgpu"` is a 2D and 3D built-in. 2D `auto` does not select it.
 - Runtime backend selection should default to `auto`. It may select only a
   genuinely implemented, mode-compatible backend with the required runtime
   capability.

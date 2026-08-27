@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+  <head><meta charset="utf-8" /><title>2d-webgpu-bench</title></head>
+  <body style="margin:0;background:#111827;color:#e2e8f0;font:14px sans-serif;">
+    <div id="status" style="position:fixed;z-index:2;left:12px;top:12px;padding:6px 10px;border-radius:6px;background:#0f172acc;">starting</div>
+    <div id="stage" style="position:fixed;inset:0;"></div>
+    <script type="module">
+      import { createCanvas, defineDocument } from "@denovo/canvas";
+
+      const documentModel = defineDocument({
+        id: "webgpu-2d-bench",
+        scene: {
+          background: "#111827",
+          id: "webgpu-2d-bench-scene",
+          layers: [{ id: "main", name: "Main" }],
+          mode: "2d",
+          nodes: [
+            {
+              fill: "#22c55e",
+              id: "bench-rect",
+              layerId: "main",
+              position: [80, 80],
+              size: [160, 100],
+              type: "rect"
+            },
+            {
+              fill: "#38bdf8",
+              id: "bench-circle",
+              layerId: "main",
+              position: [360, 140],
+              radius: 48,
+              type: "circle"
+            },
+            {
+              fill: "#f8fafc",
+              fontSize: 20,
+              id: "bench-text",
+              layerId: "main",
+              position: [80, 220],
+              text: "WebGPU 2D",
+              type: "text"
+            },
+            {
+              anchor: [360, 240],
+              id: "bench-note",
+              layerId: "main",
+              text: "annotation",
+              type: "annotation"
+            }
+          ]
+        }
+      });
+
+      try {
+        const requestedBackend = new URLSearchParams(window.location.search).get(
+          "backend"
+        );
+        const runtime = createCanvas(document.getElementById("stage"), {
+          document: documentModel,
+          ...(requestedBackend === "webgpu"
+            ? { renderer: { backend: "webgpu" } }
+            : {})
+        });
+        await runtime.ready;
+        runtime.render();
+        const stats = runtime.getRenderStats();
+        const hit = runtime.hitTest({ point: [120, 120] });
+        const backend =
+          document.getElementById("stage")?.getAttribute("data-denovo-backend");
+        window.__webgpu2dResult = {
+          backend,
+          drawCalls: (stats?.drawCalls ?? 0) > 0,
+          hitRect: hit.kind === "node" && hit.nodeId === "bench-rect",
+          triangles: (stats?.triangles ?? 0) > 0
+        };
+        document.getElementById("status").textContent =
+          `${backend} ready · triangles ${stats?.triangles ?? 0}`;
+      } catch (error) {
+        window.__webgpu2dError = String(error);
+        document.getElementById("status").textContent = String(error);
+      }
+    </script>
+  </body>
+</html>

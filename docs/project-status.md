@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: 2026-08-26.
+Last updated: 2026-08-27.
 
 This is the canonical project status index. Keep milestone definitions in
 [Vision and Milestones](./vision-and-milestones.md); keep chronological evidence
@@ -220,9 +220,9 @@ service map in `apps/playground-network`. See
 - Backend selection is strict. `auto` resolves the implemented Canvas2D,
   WebGL2, or WebGPU backend compatible with the current mode and
   capabilities. 3D prefers WebGPU when the probe is true. Explicit
-  `webgpu` is 3D-only and never falls back to WebGL2. Unimplemented,
-  unavailable, mismatched, or adapter-less requests fail without
-  substituting another backend.
+  `webgpu` is valid for 2D and 3D and never falls back to WebGL2 or
+  Canvas2D. Unimplemented, unavailable, mismatched, or adapter-less
+  requests fail without substituting another backend.
 - The vanilla facade example exercises the authoring surface with explicit IDs,
   layers, work planes, grids, strict document reload, undo, and redo. Desktop
   mouse and real mobile touch acceptance covers the complete 2D/3D authoring
@@ -410,6 +410,14 @@ service map in `apps/playground-network`. See
 
 ## Evidence
 
+- Explicit 2D WebGPU (2026-08-27). `backend: "webgpu"` on a 2D
+  document draws official 2D nodes through a GPU canvas context.
+  2D `auto` stays Canvas2D. Missing GPU is `capability-unavailable`.
+  Named operations and hit-testing stay on the same document.
+  `pnpm typecheck` 36/36. `pnpm build` 25/25.
+  `pnpm verify:public-api` ok. `pnpm verify:webgpu` 8/8.
+  `pnpm verify:docs` 158 Markdown files, 503/503 local targets. See
+  [2026-08-27 WebGPU 2D](./history/2026-08-27-webgpu-2d.md).
 - 3D `auto` prefers WebGPU (2026-08-26). When
   `detectCanvasBackendCapabilities().webgpu` is true, 3D `auto`
   resolves to `webgpu`. If `requestAdapter()` is empty, it falls

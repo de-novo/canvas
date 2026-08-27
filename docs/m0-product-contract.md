@@ -67,13 +67,14 @@ runtime objects, or app-specific storage clients.
 ## Renderer Backend Contract
 
 Implemented `auto` backends are Canvas2D (2D) and WebGL2 (3D). Explicit
-`backend: "webgpu"` is a 3D built-in and is not a current `auto` result.
+`backend: "webgpu"` is a 2D and 3D built-in. 2D `auto` does not select it.
 
 M0 separates document `mode` from runtime `backend`:
 
 - `mode`: persistent scene intent, currently `2d` or `3d`.
 - `backend`: runtime implementation, such as `webgpu`, `webgl2`, `canvas2d`, or
-  `custom`. `webgpu` is an explicit 3D built-in; `auto` does not select it.
+  `custom`. `webgpu` is an explicit 2D and 3D built-in; 2D `auto` does not
+  select it.
 
 The target default is:
 
@@ -88,9 +89,9 @@ createCanvas("#stage", {
 
 `backend: "auto"` resolves only to a genuinely implemented backend compatible
 with the scene mode and current runtime capabilities. The current `auto`
-built-ins resolve 3D to WebGL2 and 2D to Canvas2D. Requesting `webgpu` on a
-3D scene uses the WebGPU runtime when `navigator.gpu` is present; a 2D
-scene throws `mode-mismatch`. An explicitly requested backend is never
+built-ins resolve 3D to WebGPU when `navigator.gpu` is present, otherwise
+WebGL2, and 2D to Canvas2D. Requesting `webgpu` uses the WebGPU runtime
+for 2D or 3D when `navigator.gpu` is present. An explicitly requested backend is never
 silently replaced: unimplemented, unavailable, or mode-incompatible choices
 fail with a backend-resolution error. Backend choice remains a runtime
 concern and is not embedded into saved documents.

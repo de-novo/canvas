@@ -259,8 +259,9 @@ export type CanvasFacadeRendererAdapter = CanvasRendererAdapter<
  *
  * `auto` resolves to an implemented built-in: Canvas2D for 2D scenes and
  * WebGPU or WebGL2 for 3D scenes. 3D prefers WebGPU when
- * `capabilities.webgpu` is true. `offscreen-canvas2d` stays reserved;
- * requesting it fails with `backend-unimplemented` until a runtime exists.
+ * `capabilities.webgpu` is true. Explicit `backend: "webgpu"` is valid
+ * for 2D and 3D. `offscreen-canvas2d` stays reserved; requesting it
+ * fails with `backend-unimplemented` until a runtime exists.
  */
 export type CanvasBackend =
   | "auto"
@@ -2209,7 +2210,6 @@ function resolveBackend(
         "The built-in offscreen Canvas2D runtime is not implemented. Install and select a custom renderer adapter instead."
       );
     case "webgpu":
-      requireBackendMode(requested, mode, "3d");
       requireBackendCapability(requested, mode, capabilities.webgpu);
       return requested;
     default: {
@@ -2252,13 +2252,22 @@ function requireBackendCapability(
 function readRuntimeGpuBackend(
   runtime: DynamicCanvasRuntime | CanvasFacadeRendererRuntime
 ): "webgl2" | "webgpu" | null {
-  if (
+  const candidate =
     typeof runtime === "object" &&
     runtime !== null &&
-    "gpuBackend" in runtime &&
-    (runtime.gpuBackend === "webgl2" || runtime.gpuBackend === "webgpu")
+    "current" in runtime &&
+    typeof runtime.current === "object" &&
+    runtime.current !== null
+      ? runtime.current
+      : runtime;
+
+  if (
+    typeof candidate === "object" &&
+    candidate !== null &&
+    "gpuBackend" in candidate &&
+    (candidate.gpuBackend === "webgl2" || candidate.gpuBackend === "webgpu")
   ) {
-    return runtime.gpuBackend;
+    return candidate.gpuBackend;
   }
 
   return null;

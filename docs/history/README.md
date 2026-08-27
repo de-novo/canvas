@@ -147,6 +147,7 @@ Each entry should include:
 - [2026-08-26 Named operations setAnnotationText](./2026-08-26-named-operations-set-annotation-text.md)
 - [2026-08-26 WebGPU capability detect](./2026-08-26-webgpu-capability-detect.md)
 - [2026-08-26 WebGPU mesh and instance surface points](./2026-08-26-webgpu-mesh-instances-surface.md)
+- [2026-08-27 WebGPU 2D](./2026-08-27-webgpu-2d.md)
 - [2026-08-26 WebGPU auto 3D](./2026-08-26-webgpu-auto-3d.md)
 - [2026-08-25 Explicit WebGPU 3D](./2026-08-25-webgpu-explicit-3d.md)
 - [2026-08-25 WebGPU section plane](./2026-08-25-webgpu-section-plane.md)

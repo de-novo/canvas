@@ -88,6 +88,7 @@ import {
   type Canvas2DContentColors,
   type Canvas2DTransformHandleColors
 } from "./2d/render";
+import { createCanvas2DWebGpuPresenter, type Canvas2DWebGpuPresenter } from "./2d/webgpu";
 import type { Canvas2DRenderNodeContext } from "./types";
 import type {
   Canvas2DMinimapOptions,
@@ -136,6 +137,7 @@ export type Canvas2DRuntime = Omit<CanvasHitTestRuntime<"2d">, "mode"> &
   CanvasNodeTransformHandleRuntime & {
   readonly mode: "2d";
   readonly context: CanvasRenderingContext2D;
+  readonly gpuBackend?: "webgpu";
   readonly objects: ReadonlyMap<string, Canvas2DObject>;
 };
 
@@ -165,15 +167,10 @@ export function createCanvas2D(
 
   const store = createCanvasStore<"2d">(initialScene);
   const resolved = resolveCanvas(target);
-  const context = resolved.canvas.getContext("2d", {
-    alpha: false
-  });
-
-  if (!context) {
-    throw new Error("2D canvas context is not available.");
-  }
-
-  const context2d: CanvasRenderingContext2D = context;
+  const useWebGpu =
+    options.gpuBackend === "webgpu" &&
+    options.gpuBackendFallback !== "webgl2";
+  const context2d = createCanvas2DMeasureContext(resolved.canvas, useWebGpu);
   const objects = new Map<string, Canvas2DObject>();
   const overlayElements = new Map<string, HTMLElement>();
   const renderNode = options.renderNode;
@@ -222,6 +219,7 @@ export function createCanvas2D(
   const minimap = createCanvas2DMinimap(resolved, options.canvas2d?.minimap);
   let frameId: number | null = null;
   let previousTime = 0;
+  let gpuPresenter: Canvas2DWebGpuPresenter | null = null;
   let runtime: Canvas2DRuntime;
   let resizeState = {
     height: 0,
@@ -269,7 +267,7 @@ export function createCanvas2D(
       return {
         kind: "empty",
         point: [x, y],
-        renderer: "canvas2d"
+        renderer: hitRenderer()
       };
     }
 
@@ -296,7 +294,7 @@ export function createCanvas2D(
           kind: "node",
           nodeId: connectionHit.nodeId,
           point: [x, y],
-          renderer: "canvas2d",
+          renderer: hitRenderer(),
           subTarget: connectionHit.subTarget
         };
       }
@@ -319,7 +317,7 @@ export function createCanvas2D(
         kind: "node",
         nodeId: hit.node.id,
         point: [x, y],
-        renderer: "canvas2d",
+        renderer: hitRenderer(),
         ...(effectivelyLocked
           ? { subTarget: "locked" }
           : hit.subTarget === undefined
@@ -331,7 +329,7 @@ export function createCanvas2D(
     return {
       kind: "empty",
       point: [x, y],
-      renderer: "canvas2d"
+      renderer: hitRenderer()
     };
   }
 
@@ -601,7 +599,52 @@ export function createCanvas2D(
     render();
   }
 
+  function hitRenderer(): "canvas2d" | "webgpu" {
+    return useWebGpu ? "webgpu" : "canvas2d";
+  }
+
+  function renderGpu() {
+    if (!gpuPresenter) {
+      return;
+    }
+
+    gpuPresenter.render({
+      authoringPreviews,
+      connectionHandlesVisible,
+      contentColors,
+      hoveredId,
+      measureContext: context2d,
+      resizeState,
+      scene: currentScene,
+      sceneGraph,
+      selectedIds: selectionIds,
+      transformHandleColors,
+      transformHandlePosition: getTransformHandlePosition(),
+      transformHandleTarget,
+      transformPreview,
+      viewState
+    });
+    syncOverlayElements();
+    if (minimap) {
+      renderCanvas2DMinimap(
+        minimap,
+        currentScene,
+        sceneGraph,
+        getCanvas2DVisibleBounds(viewState, {
+          width: resizeState.width,
+          height: resizeState.height
+        }),
+        contentColors
+      );
+    }
+  }
+
   function render() {
+    if (useWebGpu) {
+      renderGpu();
+      return;
+    }
+
     context2d.save();
     context2d.fillStyle = currentScene.background;
     context2d.fillRect(0, 0, resizeState.width, resizeState.height);
@@ -721,7 +764,8 @@ export function createCanvas2D(
       {
         delta,
         elapsed: time,
-        scene: currentScene
+        scene: currentScene,
+        ...(gpuPresenter ? { render: gpuPresenter.getRenderStats() } : {})
       },
       runtime
     );
@@ -778,7 +822,10 @@ export function createCanvas2D(
       resolved.canvas.height = canvasHeight;
       resolved.canvas.style.width = `${width}px`;
       resolved.canvas.style.height = `${height}px`;
-      context2d.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+      if (!useWebGpu) {
+        context2d.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+      }
+      gpuPresenter?.resize(canvasWidth, canvasHeight);
       resizeState = {
         height,
         pixelRatio,
@@ -791,6 +838,8 @@ export function createCanvas2D(
 
   function destroy() {
     runtime.stop();
+    gpuPresenter?.destroy();
+    gpuPresenter = null;
     store.getState().setStatus("destroyed");
     resizeScheduler.cancel();
     resizeObserver.disconnect();
@@ -848,12 +897,12 @@ export function createCanvas2D(
     },
     context: context2d,
     objects,
-    ready: Promise.resolve(),
+    ready: useWebGpu ? attachWebGpuPresenter() : Promise.resolve(),
+    ...(useWebGpu ? { gpuBackend: "webgpu" as const } : {}),
     store,
     destroy,
     getScene: () => currentScene,
-    // Canvas2D does not track GPU render stats; left undefined on purpose.
-    getRenderStats: () => undefined,
+    getRenderStats: () => gpuPresenter?.getRenderStats(),
     hitTest,
     render,
     resetViewState,
@@ -1273,7 +1322,7 @@ export function createCanvas2D(
       kind: "handle" as const,
       nodeId: transformHandleTarget.nodeId,
       point: [x, y] as [number, number],
-      renderer: "canvas2d"
+      renderer: hitRenderer()
     };
 
     switch (transformHandleTarget.kind) {
@@ -1352,14 +1401,51 @@ export function createCanvas2D(
     viewState,
     viewportSize: { width: resizeState.width, height: resizeState.height }
   }, resolved.overlay);
-  runtime.resize();
-  runtime.render();
+  if (!useWebGpu) {
+    runtime.resize();
+    runtime.render();
+  }
 
   if (options.autoStart ?? true) {
     runtime.start();
   }
 
   return runtime;
+
+  async function attachWebGpuPresenter(): Promise<void> {
+    gpuPresenter = await createCanvas2DWebGpuPresenter(resolved.canvas);
+    if (store.getState().status === "destroyed") {
+      gpuPresenter.destroy();
+      gpuPresenter = null;
+      return;
+    }
+    runtime.resize();
+    runtime.render();
+  }
+}
+
+function createCanvas2DMeasureContext(
+  canvas: HTMLCanvasElement,
+  useWebGpu: boolean
+): CanvasRenderingContext2D {
+  if (!useWebGpu) {
+    const context = canvas.getContext("2d", {
+      alpha: false
+    });
+    if (!context) {
+      throw new Error("2D canvas context is not available.");
+    }
+    return context;
+  }
+
+  const measure = canvas.ownerDocument.createElement("canvas");
+  measure.width = 1;
+  measure.height = 1;
+  const context = measure.getContext("2d");
+  if (!context) {
+    throw new Error("2D canvas context is not available.");
+  }
+  return context;
 }
 
 type ResolvedCanvas2DNavigationOptions = Required<Canvas2DNavigationOptions>;

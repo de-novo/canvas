@@ -573,7 +573,7 @@ assert.throws(
     error.message.includes("requires an explicit renderer adapter")
 );
 for (const [renderer, scene, code] of [
-  ["webgpu", strictBackendScene, "mode-mismatch"],
+  ["webgpu", strictBackendScene, "capability-unavailable"],
   ["offscreen-canvas2d", strictBackendScene, "backend-unimplemented"],
   ["webgpu", strictBackend3dScene, "capability-unavailable"]
 ]) {

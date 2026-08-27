@@ -123,15 +123,16 @@ export type CreateCanvasOptions = {
   controls?: CanvasCameraControlsInput;
   devicePixelRatio?: number;
   /**
-   * Built-in 3D GPU backend. Default WebGL2. The facade sets `webgpu`
-   * after resolving `backend: "webgpu"` or 3D `auto` when WebGPU is
-   * available.
+   * Built-in GPU backend. The facade sets `webgpu` after resolving
+   * `backend: "webgpu"`, or 3D `auto` when WebGPU is available. 2D
+   * `auto` never sets this; explicit 2D `webgpu` does.
    */
   gpuBackend?: "webgl2" | "webgpu";
   /**
    * When `gpuBackend` is `webgpu` and init fails, create a WebGL2
    * renderer instead. The facade sets this only for 3D `auto`. Explicit
-   * `backend: "webgpu"` must not pass it.
+   * `backend: "webgpu"` must not pass it. 2D WebGPU has no Canvas2D
+   * fallback on the same canvas.
    */
   gpuBackendFallback?: "webgl2";
   /**

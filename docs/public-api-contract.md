@@ -220,11 +220,12 @@ built-ins resolve 2D to Canvas2D and 3D to WebGPU when
 reserved (`CanvasUnimplementedBackend`).
 
 All explicit backend choices are strict. `offscreen-canvas2d` throws
-`CanvasBackendResolutionError` with `backend-unimplemented`. A 2D scene
-with `webgpu` throws `mode-mismatch`. Unavailable Canvas2D, WebGL2, or
-WebGPU throws `capability-unavailable`. `custom` without an adapter throws
-`adapter-required`. No explicit request silently selects a different
-backend. Three.js must not substitute WebGL2 when `webgpu` was requested.
+`CanvasBackendResolutionError` with `backend-unimplemented`. Unavailable
+Canvas2D, WebGL2, or WebGPU throws `capability-unavailable`. `custom`
+without an adapter throws `adapter-required`. No explicit request
+silently selects a different backend. Three.js must not substitute
+WebGL2 when `webgpu` was requested. Explicit `webgpu` is valid for 2D
+and 3D. 2D `auto` stays Canvas2D.
 
 ## Camera Controls Contract
 

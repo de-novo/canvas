@@ -41,7 +41,8 @@ libraries where appropriate and turn them into a simpler product-facing SDK.
 
 Implemented `auto` backends are Canvas2D, WebGPU, and WebGL2. 3D
 `auto` prefers WebGPU when the capability probe is true. Explicit
-`backend: "webgpu"` is 3D-only and never falls back to WebGL2.
+`backend: "webgpu"` is valid for 2D and 3D and never falls back to
+WebGL2 or Canvas2D.
 The document model should describe what a scene is, while runtime adapters
 decide how it is rendered on the current device. Explicit backend requests are
 strict; only `auto` may choose among genuinely implemented, compatible

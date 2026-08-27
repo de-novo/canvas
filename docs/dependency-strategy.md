@@ -118,18 +118,20 @@ Specialized packages should be optional:
 Rendering backend choice should use progressive enhancement without silent
 substitution:
 
-- WebGL2 for implemented 3D;
-- Canvas2D for implemented 2D;
-- WebGPU as an explicit 3D built-in, never a current `auto` result;
-- custom adapters for BIM, domain renderers, and a future WebGPU-native 2D.
+- WebGL2 for implemented 3D compatibility;
+- Canvas2D for implemented 2D `auto`;
+- WebGPU as an explicit 2D and 3D built-in, and the 3D `auto` preference
+  when `navigator.gpu` is present;
+- custom adapters for BIM and domain renderers.
 
 An explicit `webgpu`, `webgl2`, `canvas2d`, `offscreen-canvas2d`, or `custom`
 request either creates that backend or fails with a backend-resolution error.
 It must not select a different implementation. `auto` is the only selector
 that may choose among backends, and it may choose only an implemented,
 mode-compatible backend whose required capability is available. The current
-built-ins therefore resolve 2D to Canvas2D and 3D to WebGL2. Explicit
-`webgpu` is 3D-only. OffscreenCanvas2D requests fail as unimplemented.
+built-ins therefore resolve 2D to Canvas2D and 3D to WebGPU when the
+probe is true, otherwise WebGL2. OffscreenCanvas2D requests fail as
+unimplemented.
 
 See [Rendering Backend Strategy](./rendering-backend-strategy.md).
 
