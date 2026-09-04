@@ -151,3 +151,4 @@ Each entry should include:
 - [2026-08-26 WebGPU auto 3D](./2026-08-26-webgpu-auto-3d.md)
 - [2026-08-25 Explicit WebGPU 3D](./2026-08-25-webgpu-explicit-3d.md)
 - [2026-08-25 WebGPU section plane](./2026-08-25-webgpu-section-plane.md)
+- [2026-09-04 Extension surface decision](./2026-09-04-extension-surface-decision.md)

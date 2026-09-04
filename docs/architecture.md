@@ -18,6 +18,10 @@
   assets, and patches are stored.
 - [Extensibility](./extensibility.md) defines how renderers, tools, formats, and
   frameworks are added.
+- [Extension Surface Decision](./extension-surface-decision.md) decides which
+  extension mechanisms are product surface (kinds and named operations),
+  which are plumbing (host bundles and adapters), and which are not allowed
+  to carry a visual (`pluginState`).
 - [Developer Experience](./developer-experience.md) defines how the SDK hides
   low-level rendering/editor complexity while preserving escape hatches.
 - [Dependency Strategy](./dependency-strategy.md) defines how proven libraries

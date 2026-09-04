@@ -27,6 +27,9 @@ Repository governance files live at the repo root:
 - [Framework Surface](./framework-surface.md): kinds, properties, and
   operations humans and agents write; engines and backends stay off that
   path.
+- [Extension Surface Decision](./extension-surface-decision.md): the kind is
+  the only product-level extension seam; `CanvasPlugin` is a host bundle;
+  `pluginState` is bookkeeping; the plugin taxonomy is superseded.
 - [M0 Product Contract](./m0-product-contract.md): the first stable public
   contract for packages, documents, commands, storage, extension, styling, and
   the default facade.
