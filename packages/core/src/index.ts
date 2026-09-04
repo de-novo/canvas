@@ -726,6 +726,9 @@ export const CanvasDocumentSchema = z
     scene: CanvasSceneSchema,
     assets: z.array(AssetRefSchema).default([]),
     metadata: CanvasMetadataSchema,
+    // Host bookkeeping only. Nothing here draws, picks, or undoes; a visual
+    // that lives only in pluginState fails the absorption test. Make it a
+    // kind node instead. See docs/extension-surface-decision.md.
     pluginState: z.record(z.string(), JsonValueSchema).default({})
   })
   .strict()
@@ -2657,6 +2660,13 @@ export type CanvasPluginToolDefinition<
   TId extends CanvasPluginToolId = CanvasPluginToolId
 > = CanvasToolDefinition<TId>;
 
+/**
+ * Setup context for a host bundle. It registers per-canvas command handlers
+ * and tools only. Node kinds are not registered here: they use
+ * `definePluginNodeKind` / `registerPluginNodeKind` and draw through an
+ * official drawer. Renderer, storage, importer, and worker registration are
+ * adapters, not bundle capabilities. See `docs/extension-surface-decision.md`.
+ */
 export type CanvasPluginContext = {
   coreVersion: typeof CANVAS_DOCUMENT_SCHEMA_VERSION;
   registerCommand: <
@@ -2669,6 +2679,14 @@ export type CanvasPluginContext = {
   registerTool: (definition: CanvasPluginToolDefinition) => void;
 };
 
+/**
+ * A per-canvas host bundle of tools and host-private `plugin.*` commands,
+ * installed atomically by the facade connectors and removed on disconnect.
+ * Bundle commands are bound to a connected editor; they are not part of the
+ * shared document language and do not replay through
+ * `applyCommandsToDocument`. Vocabulary that humans and agents share belongs
+ * in kinds and named operations, not here.
+ */
 export type CanvasPlugin = {
   name: string;
   setup?: (context: CanvasPluginContext) => void | Promise<void>;
