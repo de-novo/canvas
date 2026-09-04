@@ -15,6 +15,79 @@ The product shape is inspired by Better Auth: one high-level setup API with
 adapters, plugins, storage integrations, framework helpers, and eventually CLI
 generation/migration support.
 
+## Architecture
+
+```text
+Humans and AI agents write the same three things: a kind with JSON
+properties, a named operation, and the document itself.
+                                   |
++----------------------------------v----------------------------------+
+| HOST APP    vanilla / Next.js / Vue / Svelte / Solid / agent host   |
+|                                                                     |
+| CanvasPlugin = host bundle: per-canvas tools + private plugin.*     |
+| commands. Plumbing for one host. NOT the product extension seam.    |
++----------------------------------+----------------------------------+
+                                   |  createCanvas / createEditor
+                                   |  editor.apply([ namedOp, ... ])
++----------------------------------v----------------------------------+
+| @denovo/canvas    facade: the default import, re-exports the seam   |
++-----------------+-----------------------------------+---------------+
+                  |                                   |
++-----------------v----------------+  +---------------v---------------+
+| @denovo/canvas-core              |  | @denovo/canvas-editor         |
+| document schema 0.2.0 (JSON)     |  | commands, transactions,       |
+|                                  |  | undo/redo, selection, tools   |
+| KINDS  =  THE EXTENSION SEAM     |  |                               |
+|  built-in: rect, box, mesh, edge |  | NAMED OPERATIONS              |
+|  plugin.<owner>.<kind> registry  |  |   setLayerVisible, stackBox,  |
+|  official: plugin.denovo.field,  |  |   setFieldPattern, listNodes, |
+|    and plugin.denovo.sparkline   |  |   (document) -> { document,   |
+|                                  |  |     changed, commands }       |
+| pluginState = bookkeeping only.  |  | compile to canonical commands |
+|  Nothing draws from here.        |  |                               |
++-----------------+----------------+  +-------------------------------+
+                  |  scene JSON
++-----------------v---------------------------------------------------+
+| RUNTIMES draw the document                                          |
+|   @denovo/canvas-web    Canvas2D / WebGL2 / WebGPU, kind drawers    |
+|   @denovo/canvas-three  Three.js helpers, the official field drawer |
++---------------------------------------------------------------------+
+
+OPTIONAL ENGINES are packages that emit core kinds (not plugins)
+  @denovo/canvas-bim     IFC -> mesh nodes + storey layers + metadata
+  diagram                edge / text / html are built-in 0.2.0 kinds
+FRAMEWORK ADAPTERS mount the facade (adapter -> facade, never back)
+  @denovo/react-canvas, vue-canvas, svelte-canvas, solid-canvas
+SERVER / WORKER
+  @denovo/canvas-server  storage adapters replay canonical commands
+  @denovo/canvas-worker  heavy parsing off the main thread
+```
+
+Kinds and named operations are the extension seam. `CanvasPlugin` is a
+per-canvas bundle of host tools and commands, and `pluginState` never carries
+a visual. Why, and what not to build next:
+[Extension Surface Decision](./docs/extension-surface-decision.md).
+
+The same structure for GitHub's diagram renderer:
+
+```mermaid
+flowchart TD
+  Host["Host app or agent<br/>(CanvasPlugin = host tool/command bundle)"]
+  Facade["@denovo/canvas (facade)"]
+  Core["@denovo/canvas-core<br/>document 0.2.0, kinds = the seam,<br/>pluginState = bookkeeping only"]
+  Editor["@denovo/canvas-editor<br/>commands, history, named operations"]
+  Runtime["@denovo/canvas-web + canvas-three<br/>Canvas2D / WebGL2 / WebGPU drawers"]
+  Bim["@denovo/canvas-bim<br/>emits mesh nodes + layers"]
+  Adapters["react / vue / svelte / solid adapters<br/>mount the facade"]
+  Host -->|"createCanvas, editor.apply([...])"| Facade
+  Facade --> Core
+  Facade --> Editor
+  Editor -->|"canonical commands"| Core
+  Core -->|"scene JSON"| Runtime
+  Bim -->|"core kinds"| Core
+  Adapters --> Facade
+```
+
 ## Package Shape
 
 - `@denovo/canvas`: default user-facing facade for quick setup, CSS/theme
@@ -95,6 +168,7 @@ pnpm dev --filter @denovo/canvas-next-playground
 - [Contributor Rules](./docs/contributor-rules.md)
 - [Contributor Automation](./docs/contributor-automation.md)
 - [Project Status](./docs/project-status.md)
+- [Extension Surface Decision](./docs/extension-surface-decision.md)
 - [M4 Performance Thresholds](./docs/m4-performance-thresholds.md)
 - [M0 Product Contract](./docs/m0-product-contract.md)
 - [M3 Authoring Contract](./docs/m3-authoring-contract.md)

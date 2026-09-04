@@ -1,5 +1,14 @@
 # Better Auth Style Architecture
 
+## Decision Status
+
+The `plugins:` lists, `@denovo/canvas/plugins/*` subpaths, `storage:` config
+field, and CLI commands in this document are target sketches from before the
+[Extension Surface Decision](./extension-surface-decision.md) (2026-09-04).
+None of them exist, and that decision does not schedule them. What stands
+from this document is the facade-first setup function and the adapter idea
+for renderers, storage, and frameworks. Plugins as product vocabulary do not.
+
 ## Why This Model
 
 Better Auth is a useful reference because it does not try to own every database,

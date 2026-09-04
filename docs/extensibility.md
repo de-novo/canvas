@@ -1,5 +1,17 @@
 # Extensibility
 
+## Decision Status
+
+The plugin categories, registration sketches, and capability-graph target in
+this document predate the
+[Extension Surface Decision](./extension-surface-decision.md) (2026-09-04).
+That decision supersedes them as direction: the kind (schema, official
+drawer, named operations) is the only product-level extension seam;
+`CanvasPlugin` is a per-canvas host bundle of tools and commands; optional
+engines are packages that emit core kinds. The implemented surface described
+under "Facade Registration" below remains accurate. Treat the rest of this
+file as historical context for that decision, not as a roadmap.
+
 ## Goal
 
 Denovo Canvas should be extensible without making the core package depend on

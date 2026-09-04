@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: 2026-08-27.
+Last updated: 2026-09-04.
 
 This is the canonical project status index. Keep milestone definitions in
 [Vision and Milestones](./vision-and-milestones.md); keep chronological evidence
@@ -38,6 +38,11 @@ case is Warp Field restated as `plugin.denovo.field` in
 `apps/playground-field`. The first absorbed graph catalog case is the
 service map in `apps/playground-network`. See
 [Framework Surface](./framework-surface.md).
+
+The extension surface is decided (2026-09-04): the kind is the only
+product-level extension seam, `CanvasPlugin` is a host bundle, and
+`pluginState` is bookkeeping. See
+[Extension Surface Decision](./extension-surface-decision.md).
 
 ## Complete
 
@@ -252,6 +257,17 @@ service map in `apps/playground-network`. See
 
 ## Active
 
+- Extension surface decision (2026-09-04): kinds (schema, official
+  drawer, named operations) are the only product-level extension seam.
+  Optional engines are packages that emit core kinds. `CanvasPlugin`
+  stays a per-canvas host bundle of tools and commands and must not
+  grow node, renderer, storage, importer, or worker registration.
+  `pluginState` may not carry a visual. The plugin taxonomy in
+  [Extensibility](./extensibility.md) and the `plugins/*` shape in
+  [Better Auth Style Architecture](./better-auth-style-architecture.md)
+  are superseded as direction. See
+  [Extension Surface Decision](./extension-surface-decision.md) and
+  [2026-09-04 extension surface decision](./history/2026-09-04-extension-surface-decision.md).
 - Framework surface (2026-08-25): 3D and 2D plugin nodes, official
   `plugin.denovo.field`, official `plugin.denovo.sparkline`, the Warp
   Field catalog, and the service-map graph catalog have landed. A
@@ -403,6 +419,16 @@ service map in `apps/playground-network`. See
    [2026-08-23 BIM multi-model federation](./history/2026-08-23-bim-multi-model-federation.md),
    and
    [2026-08-23 BIM federated origin](./history/2026-08-23-bim-federated-origin.md).
+7. **Extension surface (decided 2026-09-04):** next contract candidates
+   are a per-kind drawer seam in `@denovo/canvas-web` so a host
+   `plugin.<org>.<kind>` stops drawing as a marker without a custom
+   renderer, and a read-only `listPluginNodeKinds()`. Write the drawer
+   seam contract before implementing it. Do not add
+   `CanvasPluginContext` methods, `pluginState` consumers, ThreeUI
+   rooms, a photo-editor vocabulary, BIM UI, a capability graph, or an
+   agent protocol package. The region/mask need elsewhere is served by
+   `rect` / `circle` plus host `metadata` today. See
+   [Extension Surface Decision](./extension-surface-decision.md).
 
 ## Blocked
 
@@ -410,6 +436,12 @@ service map in `apps/playground-network`. See
 
 ## Evidence
 
+- Extension surface decision (2026-09-04). Documentation plus JSDoc on
+  `CanvasPlugin` and `pluginState`; no export or schema change.
+  `pnpm verify:docs` 160 Markdown files, 542/542 local targets.
+  `pnpm typecheck` 36/36. Build, public API, browser, and editor-core
+  gates not run (no behavior changed). See
+  [2026-09-04 extension surface decision](./history/2026-09-04-extension-surface-decision.md).
 - Explicit 2D WebGPU (2026-08-27). `backend: "webgpu"` on a 2D
   document draws official 2D nodes through a GPU canvas context.
   2D `auto` stays Canvas2D. Missing GPU is `capability-unavailable`.
