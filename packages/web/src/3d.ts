@@ -99,17 +99,18 @@ import {
   resolveCanvas,
   resolveCanvasCssColor
 } from "./dom";
-import type {
-  CanvasAuthoringRuntime,
-  CanvasCameraControlsInput,
-  CanvasHitTestRuntime,
-  CanvasNavigationInputRuntime,
-  CanvasNodeTransformHandleRuntime,
-  CanvasNodeTransformRuntime,
-  CanvasRenderStats,
-  CanvasTarget,
-  Canvas3DSectionPlaneInput,
-  CreateCanvasOptions
+import {
+  CanvasReadPixelsUnsupportedError,
+  type CanvasAuthoringRuntime,
+  type CanvasCameraControlsInput,
+  type CanvasHitTestRuntime,
+  type CanvasNavigationInputRuntime,
+  type CanvasNodeTransformHandleRuntime,
+  type CanvasNodeTransformRuntime,
+  type CanvasRenderStats,
+  type CanvasTarget,
+  type Canvas3DSectionPlaneInput,
+  type CreateCanvasOptions
 } from "./types";
 
 const NODE_ID_USER_DATA_KEY = "denovoNodeId";
@@ -196,6 +197,7 @@ export type ThreeCanvasRuntime = Omit<CanvasHitTestRuntime<"3d">, "mode"> &
   readonly objects: ReadonlyMap<string, Object3D>;
   readonly renderer: Canvas3DGpuRenderer;
   readonly scene: Scene;
+  readPixels: () => Promise<ImageData>;
 };
 
 export function createCanvas3D(
@@ -1836,6 +1838,8 @@ export function createCanvas3D(
     destroy,
     getScene: () => currentScene,
     getRenderStats: (): CanvasRenderStats | undefined => captureRenderStats(),
+    readPixels: (): Promise<ImageData> =>
+      Promise.reject(new CanvasReadPixelsUnsupportedError(activeGpuBackend)),
     hitTest,
     render,
     resolveNodeTransform,

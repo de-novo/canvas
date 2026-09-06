@@ -1,6 +1,6 @@
 # M4 Performance Thresholds
 
-Last reviewed: 2026-07-17.
+Last reviewed: 2026-09-06.
 
 This document defines the measurable workloads and acceptance thresholds M4
 optimizations must hold against. It exists because
@@ -265,13 +265,22 @@ starts clean. Semantics are covered by `pnpm verify:m4-performance`
 
 ### Batching gate (done)
 
-`pnpm verify:performance` now hard-fails unless every workload renders
-through exactly one draw call (`drawCalls=1` with `batch: true`). Frame
-times stay recorded baselines, not gates: headless numbers are
-machine-dependent (1k-boxes p50 measured 50.0 ms on 2026-08-21 vs
-66.3 ms on 2026-08-22 on the same commit family). A 16 ms frame-budget
-gate needs a defined measurement environment before it can be enforced;
-until then it remains a documented target, not a test.
+`pnpm verify:performance` hard-fails unless every workload renders
+through exactly one draw call (`drawCalls=1` with `batch: true`). The
+16 ms 1k-boxes budget is gated only when the unmasked GL renderer is a
+GPU. Software GL (SwiftShader, llvmpipe, and the other labels in
+`scripts/lib/frame-budget.mjs`) is recorded with `gated: false` and
+does not fail the run. The report writes `environment` and
+`frameBudget` next to the workload table so a 9–11 ms GPU canvas and a
+44 ms software-GL sample cannot be quoted as the same number. The 2026-08-22
+deferral still applies to claiming a pinned CI machine; this gate is the
+honest substitute until that pin exists.
+
+Measured 2026-09-06 via `pnpm verify:performance` (Playwright headless
+Chromium 149, macOS, unmasked renderer `ANGLE (Google, Vulkan 1.3.0
+(SwiftShader Device ...))`): 1k-boxes p50 108.10 ms, `kind=software`,
+budget not gated. 100-boxes p50 16.70 ms and 10k-boxes p50 166.60 ms
+are the same software-GL session.
 
 ### Memory
 

@@ -76,12 +76,15 @@ const FLOATS_PER_VERTEX = 12;
 const SHAPE_RECT = 0;
 const SHAPE_CIRCLE = 1;
 const ATLAS_SIZE = 2048;
+const GPU_BUFFER_USAGE_MAP_READ = 0x0001;
 const GPU_BUFFER_USAGE_VERTEX = 0x0020;
 const GPU_BUFFER_USAGE_UNIFORM = 0x0040;
 const GPU_BUFFER_USAGE_COPY_DST = 0x0008;
+const GPU_TEXTURE_USAGE_COPY_SRC = 0x01;
 const GPU_TEXTURE_USAGE_COPY_DST = 0x02;
 const GPU_TEXTURE_USAGE_TEXTURE_BINDING = 0x04;
 const GPU_TEXTURE_USAGE_RENDER_ATTACHMENT = 0x10;
+const GPU_MAP_READ = 0x0001;
 const GPU_SHADER_STAGE_VERTEX = 0x1;
 const GPU_SHADER_STAGE_FRAGMENT = 0x2;
 
@@ -191,6 +194,7 @@ export type Canvas2DWebGpuFrame = {
 export type Canvas2DWebGpuPresenter = {
   destroy(): void;
   getRenderStats(): CanvasRenderStats;
+  readPixels(): Promise<ImageData>;
   render(frame: Canvas2DWebGpuFrame): void;
   resize(pixelWidth: number, pixelHeight: number): void;
 };
@@ -224,7 +228,7 @@ export async function createCanvas2DWebGpuPresenter(
     alphaMode: "opaque",
     device,
     format,
-    usage: GPU_TEXTURE_USAGE_RENDER_ATTACHMENT
+    usage: GPU_TEXTURE_USAGE_RENDER_ATTACHMENT | GPU_TEXTURE_USAGE_COPY_SRC
   });
 
   const shader = device.createShaderModule({ code: COLOR_SHADER });
@@ -311,6 +315,13 @@ export async function createCanvas2DWebGpuPresenter(
   let drawCalls = 0;
   let triangles = 0;
   let destroyed = false;
+  let lastFrame: Canvas2DWebGpuFrame | null = null;
+  let pendingReadback: {
+    buffer: GPUBuffer;
+    bytesPerRow: number;
+    height: number;
+    width: number;
+  } | null = null;
 
   function destroy() {
     if (destroyed) {
@@ -399,10 +410,11 @@ export async function createCanvas2DWebGpuPresenter(
 
     const clear = cssToRgba(frame.measureContext, frame.scene.background);
     const encoder = device.createCommandEncoder();
+    const colorTexture = context.getCurrentTexture();
     const pass = encoder.beginRenderPass({
       colorAttachments: [
         {
-          view: context.getCurrentTexture().createView(),
+          view: colorTexture.createView(),
           clearValue: { r: clear[0], g: clear[1], b: clear[2], a: 1 },
           loadOp: "clear",
           storeOp: "store"
@@ -416,15 +428,91 @@ export async function createCanvas2DWebGpuPresenter(
       pass.draw(vertexCount);
     }
     pass.end();
+    if (pendingReadback) {
+      encoder.copyTextureToBuffer(
+        { texture: colorTexture },
+        {
+          buffer: pendingReadback.buffer,
+          bytesPerRow: pendingReadback.bytesPerRow
+        },
+        { width: pendingReadback.width, height: pendingReadback.height }
+      );
+    }
     device.queue.submit([encoder.finish()]);
+    lastFrame = frame;
+  }
+
+  async function readPixels(): Promise<ImageData> {
+    if (destroyed) {
+      throw new Error("Canvas2D WebGPU presenter has been destroyed.");
+    }
+    if (!lastFrame) {
+      throw new Error("Canvas2D WebGPU has not rendered yet.");
+    }
+
+    const width = Math.max(1, canvas.width);
+    const height = Math.max(1, canvas.height);
+    const bytesPerRow = Math.ceil((width * 4) / 256) * 256;
+    const buffer = device.createBuffer({
+      size: bytesPerRow * height,
+      usage: GPU_BUFFER_USAGE_COPY_DST | GPU_BUFFER_USAGE_MAP_READ
+    });
+    pendingReadback = { buffer, bytesPerRow, height, width };
+    let mapped = false;
+    try {
+      render(lastFrame);
+      await buffer.mapAsync(GPU_MAP_READ);
+      mapped = true;
+      const src = new Uint8Array(buffer.getMappedRange());
+      const image = new ImageData(width, height);
+      image.data.set(canvasBytesToRgba(src, format, width, height, bytesPerRow));
+      return image;
+    } finally {
+      pendingReadback = null;
+      if (mapped) {
+        buffer.unmap();
+      }
+      buffer.destroy();
+    }
   }
 
   return {
     destroy,
     getRenderStats: () => ({ drawCalls, triangles }),
+    readPixels,
     render,
     resize
   };
+}
+
+function canvasBytesToRgba(
+  src: Uint8Array,
+  format: GPUTextureFormat,
+  width: number,
+  height: number,
+  bytesPerRow: number
+): Uint8ClampedArray {
+  const data = new Uint8ClampedArray(width * height * 4);
+  const bgra = format === "bgra8unorm" || format === "bgra8unorm-srgb";
+  for (let row = 0; row < height; row += 1) {
+    const sourceRow = row * bytesPerRow;
+    for (let column = 0; column < width; column += 1) {
+      const source = sourceRow + column * 4;
+      const dest = (row * width + column) * 4;
+      if (bgra) {
+        data[dest] = src[source + 2] ?? 0;
+        data[dest + 1] = src[source + 1] ?? 0;
+        data[dest + 2] = src[source] ?? 0;
+        data[dest + 3] = src[source + 3] ?? 0;
+      } else {
+        data[dest] = src[source] ?? 0;
+        data[dest + 1] = src[source + 1] ?? 0;
+        data[dest + 2] = src[source + 2] ?? 0;
+        data[dest + 3] = src[source + 3] ?? 0;
+      }
+    }
+  }
+  return data;
 }
 
 class VertexBatch {

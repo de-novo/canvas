@@ -43,6 +43,7 @@ import {
   type ConnectEditorToStorageOptions
 } from "@denovo/canvas-editor";
 import {
+  CanvasReadPixelsUnsupportedError,
   connectCanvasSelection,
   connectCanvasToolInput,
   createCanvas as createWebCanvas,
@@ -497,6 +498,8 @@ export type ConnectEditorToCanvasOptions = CanvasPointerSelectionOptions & {
   syncDocument?: boolean;
 };
 
+export { CanvasReadPixelsUnsupportedError };
+
 export class CanvasHitTestUnsupportedError extends Error {
   readonly renderer: string;
 
@@ -867,6 +870,14 @@ export function createCanvas(
     },
     getRenderStats() {
       return runtime.getRenderStats();
+    },
+    readPixels() {
+      if (typeof runtime.readPixels !== "function") {
+        return Promise.reject(
+          new CanvasReadPixelsUnsupportedError(renderer.adapterName)
+        );
+      }
+      return runtime.readPixels();
     },
     hitTest(input: CanvasHitTestInput): CanvasHitResult {
       if (!isCanvasHitTestRuntime(runtime)) {

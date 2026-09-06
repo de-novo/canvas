@@ -36,6 +36,16 @@ export type CanvasTarget = HTMLElement | HTMLCanvasElement;
  * backend, fields that have no Canvas2D equivalent are left `undefined` rather
  * than fabricated.
  */
+export class CanvasReadPixelsUnsupportedError extends Error {
+  readonly renderer: string;
+
+  constructor(renderer: string) {
+    super(`Canvas renderer does not support pixel readback: ${renderer}`);
+    this.name = "CanvasReadPixelsUnsupportedError";
+    this.renderer = renderer;
+  }
+}
+
 export type CanvasRenderStats = {
   /** Number of draw calls issued in the last render. */
   readonly drawCalls?: number;
@@ -174,6 +184,14 @@ type WebCanvasRuntimeForMode<TMode extends CanvasMode> = {
    * `onFrame` callback.
    */
   getRenderStats: () => CanvasRenderStats | undefined;
+  /**
+   * Copy the last 2D frame into an `ImageData`. Canvas2D uses
+   * `getImageData`; 2D WebGPU uses `copyTextureToBuffer` because the
+   * GPU canvas is not visible to `drawImage` or Playwright screenshots.
+   * Built-in 3D runtimes reject with `CanvasReadPixelsUnsupportedError`.
+   * Custom adapters may omit it.
+   */
+  readPixels?: () => Promise<ImageData>;
   render: () => void;
   resize: () => void;
   /** Three.js runtime only. Sets/clears the renderer-level section plane. */
@@ -193,6 +211,7 @@ type WebCanvasRuntimeForAnyMode = {
   destroy: () => void;
   getScene: () => CanvasSceneForMode<CanvasMode>;
   getRenderStats: () => CanvasRenderStats | undefined;
+  readPixels?: () => Promise<ImageData>;
   render: () => void;
   resize: () => void;
   setSectionPlane?: (section: Canvas3DSectionPlaneInput | null) => void;

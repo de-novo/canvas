@@ -3,6 +3,12 @@
   <head><meta charset="utf-8" /><title>region-mask-bench</title></head>
   <body>
     <div id="stage" style="position:fixed;inset:0;"></div>
+    <canvas
+      id="mask-preview"
+      width="640"
+      height="400"
+      style="position:fixed;right:12px;bottom:12px;width:320px;height:200px;border:1px solid #334155;background:#020617;"
+    ></canvas>
     <script type="module">
       import {
         connectEditorToCanvas,
@@ -12,9 +18,17 @@
         listNodes,
         setNodeVisible
       } from "@denovo/canvas";
+      import {
+        applyRegionMask,
+        rasterizeRegionMask,
+        sampleRegionMask
+      } from "./src/rasterize-region-mask.mjs";
 
       const MASK_RECT = [225, 29, 72];
       const MASK_CIRCLE = [34, 197, 94];
+      const IMAGE_COLOR = [30, 41, 59];
+      const MASK_ORIGIN = [40, 40];
+      const MASK_SIZE = { height: 400, width: 640 };
 
       const documentModel = defineDocument({
         id: "region-mask-bench",
@@ -83,6 +97,32 @@
         return context.getImageData(0, 0, scratch.width, scratch.height);
       }
 
+      function rasterizeFromDocument(documentModel) {
+        return rasterizeRegionMask(documentModel, {
+          height: MASK_SIZE.height,
+          origin: MASK_ORIGIN,
+          width: MASK_SIZE.width
+        });
+      }
+
+      function paintMaskedPreview(mask) {
+        const preview = document.getElementById("mask-preview");
+        const context = preview.getContext("2d");
+        const pixels = applyRegionMask(mask, IMAGE_COLOR);
+        context.putImageData(
+          new ImageData(pixels, mask.width, mask.height),
+          0,
+          0
+        );
+        let painted = 0;
+        for (let index = 3; index < pixels.length; index += 4) {
+          if ((pixels[index] ?? 0) > 127) {
+            painted += 1;
+          }
+        }
+        return painted;
+      }
+
       const host = document.getElementById("stage");
       try {
         const runtime = createCanvas(host, { document: documentModel });
@@ -96,20 +136,32 @@
           .map((node) => node.id);
         const before = sample(runtime);
         const rectHit = runtime.hitTest({ point: [120, 120] });
+        const maskBefore = rasterizeFromDocument(editor.getState().document);
+        const maskedImagePixels = paintMaskedPreview(maskBefore);
         await editor.apply([
           setNodeVisible({ nodeId: "mask-rect", visible: false })
         ]);
         const after = sample(runtime);
+        const maskAfter = rasterizeFromDocument(editor.getState().document);
         window.__regionMaskBench = {
+          circleSampleAfter: sampleRegionMask(maskAfter, 360, 180),
+          greenAfter: countColor(after, MASK_CIRCLE),
           iframeCount: document.querySelectorAll("iframe").length,
-          listedIds: listed.map((node) => node.id),
           listedHasMetadata: listed.some((node) => "metadata" in node),
+          listedIds: listed.map((node) => node.id),
           maskIds,
+          maskPixelsAfter: maskAfter.pixelCount,
+          maskPixelsBefore: maskBefore.pixelCount,
+          maskedImagePixels,
+          outsideSample: sampleRegionMask(maskBefore, 10, 10),
           rectHit: rectHit.kind === "node" && rectHit.nodeId === "mask-rect",
+          rectSampleAfter: sampleRegionMask(maskAfter, 80, 80),
+          rectSampleBefore: sampleRegionMask(maskBefore, 80, 80),
           redAfter: countColor(after, MASK_RECT),
           redBefore: countColor(before, MASK_RECT),
-          greenAfter: countColor(after, MASK_CIRCLE),
           undoDepth: editor.getState().history.undoDepth,
+          unsupportedKinds: maskBefore.unsupportedKinds,
+          usedHostRasterizer: true,
           visibleAfter: listNodes(editor.getState().document).map((node) => ({
             id: node.id,
             visible: node.visible

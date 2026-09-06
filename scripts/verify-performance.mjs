@@ -1,21 +1,63 @@
 // @ts-check
 /**
- * M4 Performance baseline measurement.
+ * M4 Performance measurement plus the labeled 16 ms frame-budget gate.
  *
  * Writes a temporary Vite-served HTML page into the vanilla example, builds
- * large instanced 3D scenes (1k, 10k boxes), and captures frame timing plus
- * WebGL render stats (draw calls, triangles, geometries, textures) via the
- * `onFrame` `frame.render` field and the `getRenderStats()` runtime capability.
+ * large instanced 3D scenes (100 / 1k / 10k boxes), and captures frame timing
+ * plus WebGL render stats. Draw-call batching is always gated. The 16 ms
+ * 1k-boxes budget is gated only when the unmasked GL renderer is a GPU;
+ * software GL is recorded and skipped.
  *
- * Output: a JSON report at artifacts/verification/performance-report.json and
- * a console summary. Baselines only — no pass/fail gates (those live in
- * docs/m4-performance-thresholds.md once baselines are captured).
+ * Output: a JSON report at artifacts/verification/performance-report.json.
  */
 
+import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 
 import { launchPixelChromium } from "./lib/chromium.mjs";
+import {
+  FRAME_BUDGET_MS,
+  FRAME_BUDGET_WORKLOAD,
+  classifyGlRenderer,
+  evaluateFrameBudget
+} from "./lib/frame-budget.mjs";
+
+assert.equal(classifyGlRenderer("Google SwiftShader"), "software");
+assert.equal(
+  classifyGlRenderer("ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device))"),
+  "software"
+);
+assert.equal(classifyGlRenderer(""), "unknown");
+{
+  const software = evaluateFrameBudget({
+    kind: "software",
+    p50: 44,
+    workload: FRAME_BUDGET_WORKLOAD
+  });
+  assert.equal(software.gated, false);
+  assert.equal(software.passed, true);
+  const over = evaluateFrameBudget({
+    kind: "gpu",
+    p50: 17,
+    workload: FRAME_BUDGET_WORKLOAD
+  });
+  assert.equal(over.gated, true);
+  assert.equal(over.passed, false);
+  const under = evaluateFrameBudget({
+    kind: "gpu",
+    p50: 15,
+    workload: FRAME_BUDGET_WORKLOAD
+  });
+  assert.equal(under.gated, true);
+  assert.equal(under.passed, true);
+  const other = evaluateFrameBudget({
+    kind: "gpu",
+    p50: 40,
+    workload: "100-boxes"
+  });
+  assert.equal(other.gated, false);
+}
 
 const WORKLOADS = [
   { label: "100-boxes", nodeCount: 100 },
@@ -28,12 +70,13 @@ const REPORT_PATH = "artifacts/verification/performance-report.json";
 const PERF_HTML = "apps/vanilla/perf-bench.html";
 
 const server = await startViteServer();
-/** @type {{ workloads: any[] }} */
-const report = { workloads: [] };
+/** @type {{ environment: any, frameBudget: any, workloads: any[] }} */
+const report = { environment: null, frameBudget: null, workloads: [] };
 
 try {
   for (const workload of WORKLOADS) {
     const result = await measureWorkload(server.url, workload);
+    report.environment ??= result.environment ?? null;
     report.workloads.push(result);
     console.log(
       `[perf] ${workload.label}: ` +
@@ -65,6 +108,40 @@ for (const workload of report.workloads) {
 }
 console.log("[perf] batching gate passed: drawCalls=1 across all workloads");
 
+const rendererName = report.environment?.renderer ?? "";
+const kind = classifyGlRenderer(rendererName);
+const oneK = report.workloads.find((workload) => workload.label === FRAME_BUDGET_WORKLOAD);
+if (!oneK) {
+  throw new Error(`[perf] missing ${FRAME_BUDGET_WORKLOAD} workload`);
+}
+const frameBudget = evaluateFrameBudget({
+  kind,
+  p50: oneK.frameTimeMs.p50,
+  targetMs: FRAME_BUDGET_MS,
+  workload: FRAME_BUDGET_WORKLOAD
+});
+report.frameBudget = {
+  ...frameBudget,
+  kind,
+  p50: oneK.frameTimeMs.p50,
+  renderer: rendererName,
+  targetMs: FRAME_BUDGET_MS,
+  userAgent: report.environment?.userAgent ?? "",
+  vendor: report.environment?.vendor ?? "",
+  workload: FRAME_BUDGET_WORKLOAD
+};
+console.log(
+  `[perf] frame budget: gated=${frameBudget.gated} passed=${frameBudget.passed} ` +
+    `kind=${kind} p50=${oneK.frameTimeMs.p50.toFixed(2)}ms target=${FRAME_BUDGET_MS}ms ` +
+    `renderer=${rendererName || "unknown"}`
+);
+if (frameBudget.gated && !frameBudget.passed) {
+  throw new Error(
+    `[perf] 16ms frame budget failed for ${FRAME_BUDGET_WORKLOAD}: ` +
+      `p50=${oneK.frameTimeMs.p50.toFixed(2)}ms on GPU renderer ${rendererName}`
+  );
+}
+
 await mkdir("artifacts/verification", { recursive: true });
 await writeFile(REPORT_PATH, JSON.stringify(report, null, 2) + "\n");
 console.log(`[perf] report written to ${REPORT_PATH}`);
@@ -91,6 +168,7 @@ async function measureWorkload(baseUrl, workload) {
     await page.waitForFunction(
       // @ts-ignore — __perfResult is set by the injected page script
       () => Boolean(window.__perfResult),
+      undefined,
       { timeout: 180_000 }
     );
     const samples = await page.evaluate(
@@ -106,6 +184,7 @@ async function measureWorkload(baseUrl, workload) {
     return {
       label: workload.label,
       nodeCount: workload.nodeCount,
+      environment: samples.environment ?? null,
       sceneNodeCount: samples.sceneNodeCount,
       threeChildCount: samples.threeChildCount,
       contextLostCount: samples.contextLostCount,
@@ -167,6 +246,29 @@ function perfBenchHtml() {
     "        collected.push({ delta: frame.delta, stats: frame.render });",
     "      }",
     "    });",
+    "    function describeEnvironment() {",
+    "      const probe = document.createElement(\"canvas\");",
+    "      const gl = probe.getContext(\"webgl2\") || probe.getContext(\"webgl\");",
+    "      let renderer = \"unavailable\";",
+    "      let vendor = \"unavailable\";",
+    "      if (gl) {",
+    "        const info = gl.getExtension(\"WEBGL_debug_renderer_info\");",
+    "        if (info) {",
+    "          renderer = String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL) || renderer);",
+    "          vendor = String(gl.getParameter(info.UNMASKED_VENDOR_WEBGL) || vendor);",
+    "        } else {",
+    "          renderer = String(gl.getParameter(gl.RENDERER) || renderer);",
+    "          vendor = String(gl.getParameter(gl.VENDOR) || vendor);",
+    "        }",
+    "      }",
+    "      return {",
+    "        devicePixelRatio: window.devicePixelRatio,",
+    "        hardwareConcurrency: navigator.hardwareConcurrency,",
+    "        renderer,",
+    "        userAgent: navigator.userAgent,",
+    "        vendor",
+    "      };",
+    "    }",
     "    runtime.start();",
     "    const canvas = host.querySelector(\"canvas\");",
     "    if (canvas) {",
@@ -180,6 +282,7 @@ function perfBenchHtml() {
     "        const threeScene = current && current.scene ? current.scene : null;",
     "        window.__perfResult = {",
     "          collected,",
+    "          environment: describeEnvironment(),",
     "          finalStats: runtime.getRenderStats(),",
     "          sceneNodeCount: runtime.getScene().nodes.length,",
     "          threeChildCount: threeScene ? threeScene.children.length : null,",

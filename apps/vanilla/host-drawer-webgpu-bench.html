@@ -91,19 +91,14 @@
         const hit = runtime.hitTest({ point: [80, 80] });
         let sampledHost = 0;
         let sampledMarker = 0;
+        let readback = "none";
         try {
-          const canvas = runtime.canvas;
-          const scratch = document.createElement("canvas");
-          scratch.width = canvas.width;
-          scratch.height = canvas.height;
-          const context = scratch.getContext("2d");
-          context.drawImage(canvas, 0, 0);
-          const image = context.getImageData(0, 0, scratch.width, scratch.height);
+          const image = await runtime.readPixels();
           sampledHost = countColor(image, HOST);
           sampledMarker = countColor(image, MARKER);
-        } catch {
-          sampledHost = 0;
-          sampledMarker = 0;
+          readback = "ok";
+        } catch (error) {
+          readback = String(error);
         }
         const stats = runtime.getRenderStats();
         window.__hostDrawerWebgpu = {
@@ -113,6 +108,7 @@
           host: sampledHost,
           iframeCount: document.querySelectorAll("iframe").length,
           marker: sampledMarker,
+          readback,
           triangles: stats?.triangles ?? 0
         };
         host.setAttribute("data-denovo-ready", "true");

@@ -13,6 +13,11 @@ import { pathToFileURL } from "node:url";
 import { launchPixelChromium } from "./lib/chromium.mjs";
 
 import { createCheckRunner } from "./lib/checks.mjs";
+import {
+  applyRegionMask,
+  rasterizeRegionMask,
+  sampleRegionMask
+} from "../apps/vanilla/src/rasterize-region-mask.mjs";
 
 const { check, report } = createCheckRunner();
 const root = path.resolve(import.meta.dirname, "..");
@@ -94,6 +99,98 @@ await check("region-mask-document-uses-rect-circle-metadata", () => {
   );
 });
 
+await check("region-mask-host-rasterizes-rect-circle-from-json", () => {
+  const document = facade.defineDocument({
+    id: "region-mask-raster",
+    scene: {
+      id: "region-mask-raster-scene",
+      layers: [
+        { id: "image", name: "Image" },
+        { id: "mask", name: "Mask" }
+      ],
+      mode: "2d",
+      nodes: [
+        {
+          fill: "#1e293b",
+          id: "stand-in",
+          layerId: "image",
+          metadata: { role: "image" },
+          position: [40, 40],
+          size: [640, 400],
+          type: "rect"
+        },
+        {
+          fill: "#e11d48",
+          id: "mask-rect",
+          layerId: "mask",
+          metadata: { role: "mask" },
+          position: [80, 80],
+          size: [160, 120],
+          type: "rect"
+        },
+        {
+          fill: "#22c55e",
+          id: "mask-circle",
+          layerId: "mask",
+          metadata: { role: "mask" },
+          position: [400, 220],
+          radius: 56,
+          type: "circle"
+        }
+      ]
+    }
+  });
+  const origin = [40, 40];
+  const width = 640;
+  const height = 400;
+  const mask = rasterizeRegionMask(document, { height, origin, width });
+  const expectedCircle = countDiskPixels(360, 180, 56, width, height);
+  assert.deepEqual(mask.kinds, ["rect", "circle"]);
+  assert.deepEqual(mask.unsupportedKinds, []);
+  assert.equal(mask.pixelCount, 160 * 120 + expectedCircle);
+  assert.equal(sampleRegionMask(mask, 80, 80), 255);
+  assert.equal(sampleRegionMask(mask, 360, 180), 255);
+  assert.equal(sampleRegionMask(mask, 10, 10), 0);
+  const applied = applyRegionMask(mask, [30, 41, 59]);
+  let appliedCount = 0;
+  for (let index = 3; index < applied.length; index += 4) {
+    if ((applied[index] ?? 0) > 127) {
+      appliedCount += 1;
+    }
+  }
+  assert.equal(appliedCount, mask.pixelCount);
+  const hidden = facade.applyNamedOperations(document, [
+    facade.setNodeVisible({ nodeId: "mask-rect", visible: false })
+  ]);
+  const after = rasterizeRegionMask(hidden.document, { height, origin, width });
+  assert.equal(after.pixelCount, expectedCircle);
+  assert.equal(sampleRegionMask(after, 80, 80), 0);
+  assert.equal(sampleRegionMask(after, 360, 180), 255);
+});
+
+await check("region-mask-host-reports-unknown-kinds-without-inventing", () => {
+  const raster = rasterizeRegionMask(
+    {
+      scene: {
+        layers: [{ id: "mask", visible: true }],
+        mode: "2d",
+        nodes: [
+          {
+            id: "poly",
+            layerId: "mask",
+            metadata: { role: "mask" },
+            type: "polyline",
+            visible: true
+          }
+        ]
+      }
+    },
+    { height: 8, origin: [0, 0], width: 8 }
+  );
+  assert.deepEqual(raster.unsupportedKinds, ["polyline"]);
+  assert.equal(raster.pixelCount, 0);
+});
+
 const server = await startApp("@denovo/canvas-vanilla-example", 5195);
 try {
   await check("region-mask-hides-with-setNodeVisible", async () => {
@@ -142,6 +239,21 @@ try {
         result.greenAfter > 80,
         "hiding the rect must leave the circle mask"
       );
+      assert.equal(result.usedHostRasterizer, true);
+      assert.deepEqual(result.unsupportedKinds, []);
+      assert.equal(result.rectSampleBefore, 255);
+      assert.equal(result.rectSampleAfter, 0);
+      assert.equal(result.circleSampleAfter, 255);
+      assert.equal(result.outsideSample, 0);
+      assert.ok(
+        result.maskPixelsBefore > 20_000,
+        `host mask must cover rect+circle, got ${result.maskPixelsBefore}`
+      );
+      assert.ok(
+        result.maskPixelsAfter < result.maskPixelsBefore / 2,
+        `hiding the rect must drop host mask pixels (${result.maskPixelsBefore} → ${result.maskPixelsAfter})`
+      );
+      assert.equal(result.maskedImagePixels, result.maskPixelsBefore);
       const hidden = result.visibleAfter.find((node) => node.id === "mask-rect");
       assert.equal(hidden?.visible, false);
       mkdirSync(path.dirname(screenshotPath), { recursive: true });
@@ -156,6 +268,25 @@ try {
 }
 
 report();
+
+function countDiskPixels(centerX, centerY, radius, width, height) {
+  const radiusSquared = radius * radius;
+  let count = 0;
+  const minX = Math.max(0, Math.floor(centerX - radius));
+  const minY = Math.max(0, Math.floor(centerY - radius));
+  const maxX = Math.min(width, Math.ceil(centerX + radius));
+  const maxY = Math.min(height, Math.ceil(centerY + radius));
+  for (let row = minY; row < maxY; row += 1) {
+    for (let column = minX; column < maxX; column += 1) {
+      const dx = column + 0.5 - centerX;
+      const dy = row + 0.5 - centerY;
+      if (dx * dx + dy * dy <= radiusSquared) {
+        count += 1;
+      }
+    }
+  }
+  return count;
+}
 
 function startApp(filter, port) {
   return new Promise((resolve, reject) => {

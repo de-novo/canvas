@@ -491,6 +491,11 @@ assert.equal(
   "facade must export the ordinary hit-test capability error"
 );
 assert.equal(
+  typeof facadeModule.CanvasReadPixelsUnsupportedError,
+  "function",
+  "facade must export the ordinary pixel-readback capability error"
+);
+assert.equal(
   typeof facadeModule.CanvasPluginError,
   "function",
   "facade must export the ordinary plugin lifecycle error"
@@ -2156,6 +2161,7 @@ writeFileSync(
   createGroupNodesCommand,
   createNodeUpdateCommand,
   CanvasPluginError,
+  CanvasReadPixelsUnsupportedError,
   connectCanvasToolInput,
   connectEditorToCanvas,
   connectEditorToRuntime,
@@ -2264,7 +2270,9 @@ writeFileSync(
   type CanvasTarget,
   type CanvasToolNavigationPolicy,
   type CanvasToolInput,
+  type Canvas2DRuntime,
   type DenovoCanvasConfig,
+  type DenovoCanvasRuntime,
   type DynamicCanvasRuntime,
   type WebCanvasRuntime
 } from "${facadeName}";
@@ -2346,6 +2354,19 @@ void namedChanged;
 void namedCommandType;
 const namedApply = editor.apply([hideLayer]);
 void namedApply;
+declare const twoDRuntime: Canvas2DRuntime;
+const readPixelsResult: Promise<ImageData> = twoDRuntime.readPixels();
+void readPixelsResult;
+// @ts-expect-error readPixels is async
+const syncPixels: ImageData = twoDRuntime.readPixels();
+void syncPixels;
+declare const facadeRuntime: DenovoCanvasRuntime;
+const facadePixels: Promise<ImageData> = facadeRuntime.readPixels();
+void facadePixels;
+const readPixelsError: CanvasReadPixelsUnsupportedError =
+  new CanvasReadPixelsUnsupportedError("webgl2");
+const readPixelsRenderer: string = readPixelsError.renderer;
+void readPixelsRenderer;
 // @ts-expect-error extra fields are rejected
 setLayerVisible({ layerId: "main", visible: false, extra: true });
 // @ts-expect-error visible must be boolean

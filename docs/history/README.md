@@ -159,3 +159,4 @@ Each entry should include:
 - [2026-09-06 Kind drawer seam and kind enumeration](./2026-09-06-kind-drawer-seam.md)
 - [2026-09-06 Kind colocation, named-operation catalog, and 2D WebGPU host drawers](./2026-09-06-kind-catalog-webgpu-drawer.md)
 - [2026-09-06 Region/mask document and host-drawer pixels](./2026-09-06-region-mask-and-host-drawer-pixels.md)
+- [2026-09-06 Host mask rasterization, 2D WebGPU readback, frame budget](./2026-09-06-host-mask-webgpu-readback-frame-budget.md)

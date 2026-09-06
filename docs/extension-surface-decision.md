@@ -283,8 +283,10 @@ decision:
   `metadata` (for example a role) and rasterizes the mask from the JSON in
   its own pipeline. `listNodes`, `setNodeVisible`, `setNodeLocked`,
   `setNodeLayer`, and `removeNode` already cover the operations an agent
-  would call. Vanilla proof: `apps/vanilla/region-mask-bench.html` and
-  `pnpm verify:region-mask`.
+  would call. Vanilla proof: `apps/vanilla/src/rasterize-region-mask.mjs`
+  plus `apps/vanilla/region-mask-bench.html` and
+  `pnpm verify:region-mask`. The host rasterizer reports unknown mask
+  kinds instead of inventing a polygon.
 - **Polygon or freeform regions** are a kind, not a built-in. `line`,
   `polyline`, and `path` are explicitly not implicit `0.2.0` fallbacks
   ([M8 Diagram Contract](./m8-diagram-contract.md)), and `0.2.0` built-ins
@@ -332,7 +334,8 @@ decision:
    parse.
 5. For the region/mask need, prototype in the consuming product with
    `rect` and `circle` plus `metadata`, and report whether polygons are
-   required before any canvas change is scheduled.
+   required before any canvas change is scheduled. Vanilla now
+   rasterizes that JSON in `apps/vanilla/src/rasterize-region-mask.mjs`.
 
 ## Consequences
 

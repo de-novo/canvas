@@ -133,6 +133,7 @@ The default package must expose:
 - `CanvasDocumentParseError`
 - `CanvasDocumentVersionError`
 - `CanvasHitTestUnsupportedError`
+- `CanvasReadPixelsUnsupportedError`
 - `CanvasPluginError`
 - core document, command, storage, renderer, plugin, and selection types
 

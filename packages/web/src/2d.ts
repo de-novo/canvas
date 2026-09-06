@@ -139,6 +139,7 @@ export type Canvas2DRuntime = Omit<CanvasHitTestRuntime<"2d">, "mode"> &
   readonly context: CanvasRenderingContext2D;
   readonly gpuBackend?: "webgpu";
   readonly objects: ReadonlyMap<string, Canvas2DObject>;
+  readPixels: () => Promise<ImageData>;
 };
 
 export function createCanvas2D(
@@ -877,6 +878,8 @@ export function createCanvas2D(
     }
   }
 
+  const ready = useWebGpu ? attachWebGpuPresenter() : Promise.resolve();
+
   runtime = {
     get canvas() {
       return resolved.canvas;
@@ -897,12 +900,29 @@ export function createCanvas2D(
     },
     context: context2d,
     objects,
-    ready: useWebGpu ? attachWebGpuPresenter() : Promise.resolve(),
+    ready,
     ...(useWebGpu ? { gpuBackend: "webgpu" as const } : {}),
     store,
     destroy,
     getScene: () => currentScene,
     getRenderStats: () => gpuPresenter?.getRenderStats(),
+    async readPixels() {
+      if (useWebGpu) {
+        await ready;
+        if (!gpuPresenter) {
+          throw new Error("Canvas2D WebGPU presenter is not available.");
+        }
+        render();
+        return gpuPresenter.readPixels();
+      }
+      render();
+      return context2d.getImageData(
+        0,
+        0,
+        resolved.canvas.width,
+        resolved.canvas.height
+      );
+    },
     hitTest,
     render,
     resetViewState,

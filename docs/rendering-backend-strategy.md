@@ -1,6 +1,6 @@
 # Rendering Backend Strategy
 
-Last reviewed: 2026-09-02.
+Last reviewed: 2026-09-06.
 
 Implemented `auto` backends are Canvas2D (2D) and WebGPU or WebGL2 (3D).
 3D `auto` prefers WebGPU when `capabilities.webgpu` is true. Explicit
@@ -34,7 +34,9 @@ The current built-in resolver applies these rules:
 `navigator.gpu` is the 3D `auto` preference signal and the explicit
 `webgpu` capability check. If `auto` selected WebGPU and device init
 fails, the runtime falls back to WebGL2 and reports that result.
-Pixel-sampling gates also disable WebGPU so they stay on WebGL2.
+Pixel-sampling gates that use `drawImage` or Playwright screenshots
+disable WebGPU so they stay on WebGL2 or Canvas2D. 2D WebGPU exposes
+`readPixels()` for GPU-canvas color checks.
 
 Every non-`auto` request is strict. An unavailable or mode-incompatible
 `canvas2d`, `webgl2`, or `webgpu` request fails. `webgpu` is valid for

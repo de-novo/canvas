@@ -242,6 +242,7 @@ try {
       const result = await page.evaluate(() => window.__hostDrawerWebgpu);
       assert.notEqual(result.backend, "webgpu");
       assert.equal(result.hitHost, true);
+      assert.equal(result.readback, "ok", `Canvas2D readPixels failed: ${result.readback}`);
       assert.ok(
         result.host > 80,
         `Canvas2D host drawer must paint non-marker pixels, got ${result.host}`
@@ -524,24 +525,24 @@ async function verifyHostDrawerWebgpu() {
       result.drawCalls > 0,
       `2D WebGPU host drawer must issue draw calls, got ${result.drawCalls}`
     );
+    assert.equal(
+      result.readback,
+      "ok",
+      `2D WebGPU readPixels must succeed, got ${result.readback}`
+    );
+    assert.ok(
+      result.host > 80,
+      `2D WebGPU host drawer must paint non-marker pixels via readPixels, got ${result.host}`
+    );
+    assert.ok(
+      result.host > result.marker,
+      `2D WebGPU host drawer must outpaint the gray marker (host ${result.host}, marker ${result.marker})`
+    );
     mkdirSync(path.dirname(screenshotPath), { recursive: true });
-    const screenshot = await page.screenshot({
+    await page.screenshot({
       path: screenshotPath,
       fullPage: true
     });
-    let host = result.host;
-    let marker = result.marker;
-    if (host === 0) {
-      const png = decodePng(screenshot);
-      host = countPngColor(png, [225, 29, 72], 28);
-      marker = countPngColor(png, [100, 116, 139], 28);
-    }
-    if (host > 0) {
-      assert.ok(
-        host > marker,
-        `host drawer must outpaint the gray marker (host ${host}, marker ${marker})`
-      );
-    }
     assert.deepEqual(
       pageErrors.filter((message) => !/WebGPU/.test(message)),
       []
@@ -550,26 +551,6 @@ async function verifyHostDrawerWebgpu() {
   } finally {
     await browser.close();
   }
-}
-
-/**
- * @param {{ height: number, pixels: Uint8Array, width: number }} png
- * @param {readonly [number, number, number]} target
- * @param {number} tolerance
- */
-function countPngColor(png, target, tolerance) {
-  let count = 0;
-  for (let index = 0; index < png.width * png.height; index += 1) {
-    const offset = index * 4;
-    if (
-      Math.abs((png.pixels[offset] ?? 0) - target[0]) < tolerance &&
-      Math.abs((png.pixels[offset + 1] ?? 0) - target[1]) < tolerance &&
-      Math.abs((png.pixels[offset + 2] ?? 0) - target[2]) < tolerance
-    ) {
-      count += 1;
-    }
-  }
-  return count;
 }
 
 function startApp(filter, port) {

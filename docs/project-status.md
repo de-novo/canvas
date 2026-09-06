@@ -257,6 +257,12 @@ product-level extension seam, `CanvasPlugin` is a host bundle, and
 
 ## Active
 
+- Host region/mask rasterization, 2D WebGPU `readPixels`, and a labeled
+  16 ms frame-budget gate (2026-09-06): the vanilla host rasterizes
+  `rect` / `circle` mask JSON, 2D WebGPU copies swapchain pixels for
+  the host-drawer color gate, and `pnpm verify:performance` enforces
+  16 ms on 1k-boxes only when the unmasked GL renderer is a GPU. See
+  [2026-09-06 host mask, WebGPU readback, frame budget](./history/2026-09-06-host-mask-webgpu-readback-frame-budget.md).
 - Region/mask document and host-drawer pixels (2026-09-06): mask
   regions are `rect` / `circle` plus `metadata.role`. Host drawers
   register through `@denovo/canvas/web`. See
@@ -426,11 +432,14 @@ product-level extension seam, `CanvasPlugin` is a host bundle, and
    [M3.1 Surface Placement Contract](./m3-1-surface-placement-contract.md).
    The first explicit 3D WebGPU slice landed 2026-08-25; mesh and
    instance surface points landed 2026-08-26; 3D `auto` prefers WebGPU
-   when the capability probe is true (2026-08-26). A pinned-environment
-   frame budget gate remains
-   deferred (rationale in
+   when the capability probe is true (2026-08-26). A labeled 16 ms
+   1k-boxes gate now runs in `pnpm verify:performance`: GPU renderers
+   fail over 16 ms; software GL is recorded and skipped. A named CI
+   machine is still not pinned (rationale in
    [2026-08-22 next contract decision](./history/2026-08-22-next-contract-decision.md)).
    See
+   [2026-09-06 host mask, WebGPU readback, frame budget](./history/2026-09-06-host-mask-webgpu-readback-frame-budget.md)
+   and
    [2026-08-25 explicit WebGPU 3D](./history/2026-08-25-webgpu-explicit-3d.md).
 6. **B-item residual risks (complete):** storey layers (2026-08-22),
    instance surface points (2026-08-22), and BIM multi-model federation
@@ -453,7 +462,8 @@ product-level extension seam, `CanvasPlugin` is a host bundle, and
    ThreeUI rooms, a photo-editor vocabulary, BIM UI, a capability
    graph, or an agent protocol package. The region/mask need is served
    by `rect` / `circle` plus host `metadata`; vanilla proof is
-   `pnpm verify:region-mask`. See
+   `pnpm verify:region-mask` including host rasterization from JSON.
+   See
    [Kind Drawer Seam](./kind-drawer-seam.md) and
    [Extension Surface Decision](./extension-surface-decision.md).
 
@@ -463,6 +473,15 @@ product-level extension seam, `CanvasPlugin` is a host bundle, and
 
 ## Evidence
 
+- Host region/mask rasterization, 2D WebGPU `readPixels`, and labeled
+  16 ms frame budget (2026-09-06). `pnpm typecheck` 36/36.
+  `pnpm build` 25/25. `pnpm verify:public-api` ok.
+  `pnpm verify:region-mask` 4/4. `pnpm verify:webgpu` 11/11 including
+  host-drawer WebGPU color via `readPixels`. `pnpm verify:performance`
+  batching `drawCalls=1` on 100/1k/10k; 1k-boxes p50 108.10 ms on
+  SwiftShader, frame budget `gated=false` (`environment-software`).
+  `pnpm verify:docs` 169 Markdown files, 590/590 local targets. See
+  [2026-09-06 host mask, WebGPU readback, frame budget](./history/2026-09-06-host-mask-webgpu-readback-frame-budget.md).
 - Region/mask document and host-drawer pixels (2026-09-06).
   `pnpm verify:region-mask` 2/2. `pnpm verify:webgpu` 11/11 including
   host-drawer WebGPU hit/triangles and Canvas2D non-marker pixels.

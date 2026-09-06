@@ -44,6 +44,7 @@ export type DynamicCanvasRuntime = CanvasNavigationInputRuntime &
   getScene: () => CanvasScene;
   getRenderStats: () => CanvasRenderStats | undefined;
   hitTest: (input: CanvasHitTestInput) => CanvasHitResult;
+  readPixels: () => Promise<ImageData>;
   render: () => void;
   resolveNodeTransform: (
     input: CanvasNodeTransformInput
@@ -191,6 +192,9 @@ export function createCanvas(
     },
     hitTest(input) {
       return current.hitTest(input);
+    },
+    readPixels() {
+      return current.readPixels();
     },
     render() {
       current.render();
@@ -382,6 +386,7 @@ export type { Canvas2DRectBounds, Canvas2DViewportSize, Canvas2DViewState, Canva
 export type { Canvas2DRenderNode, Canvas2DRenderNodeContext } from "./types";
 export type { Canvas3DSectionPlaneInput } from "./types";
 export type { Canvas3DGpuRenderer, ThreeCanvasRuntime } from "./3d";
+export { CanvasReadPixelsUnsupportedError } from "./types";
 export type {
   CanvasCameraControlsInput,
   CanvasCameraControlsOptions,

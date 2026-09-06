@@ -61,7 +61,10 @@ const unregister = registerPluginNodeDrawer({
 
 2D WebGPU rasterizes `draw2d` into the existing text atlas when the
 local size fits. If the stamp does not fit, the gray marker is used
-and the presenter does not throw.
+and the presenter does not throw. GPU canvas pixels are not visible to
+`drawImage` or Playwright screenshots; `readPixels()` copies the
+swapchain with `copyTextureToBuffer` so host-drawer color can be gated
+on WebGPU. 3D runtimes reject with `CanvasReadPixelsUnsupportedError`.
 
 ## Acceptance
 
