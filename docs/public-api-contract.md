@@ -491,6 +491,12 @@ The official 2D kind `plugin.denovo.sparkline` is pre-registered. Its
 `values` is 2–64 finite numbers, `width` / `height` are ranges, and
 `stroke` / `fill` are lowercase `#rrggbb` (`fill` may be `"none"`).
 `setSparklineStyle` compiles to `node.update`. The official 2D drawer
+reads only those properties.
+
+The official 2D kind `plugin.denovo.shade` is pre-registered. Its
+`props` are `DenovoShadeProps`: `pattern` is `"gradient" | "wave"`,
+`hue` is 0–360, `speed` is 0–40, and `width` / `height` are ranges.
+`setShadePattern` compiles to `node.update`. The official 2D drawer
 reads only those properties. Other 2D plugin kinds still draw as the
 48×48 marker.
 

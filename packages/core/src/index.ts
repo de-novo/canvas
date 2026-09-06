@@ -39,6 +39,20 @@ import {
   isDenovoSparklineType,
   parseDenovoSparklineProps
 } from "./sparkline.js";
+import {
+  DENOVO_SHADE_NODE_TYPE,
+  DenovoShadePatternSchema,
+  DenovoShadePropsSchema,
+  denovoShadeHex,
+  denovoShadeGradientStops,
+  denovoShadeKind,
+  denovoShadeSize,
+  denovoShadeStripColor,
+  denovoShadeStripCount,
+  isDenovoShadeNode,
+  isDenovoShadeType,
+  parseDenovoShadeProps
+} from "./shade.js";
 
 export const CANVAS_DOCUMENT_SCHEMA_VERSION = "0.2.0";
 export const CANVAS_LEGACY_DOCUMENT_SCHEMA_VERSION = "0.1.0";
@@ -2975,26 +2989,38 @@ export function isCanvas3DNode(node: CanvasNode): node is Canvas3DNode {
 
 export {
   DENOVO_FIELD_NODE_TYPE,
+  DENOVO_SHADE_NODE_TYPE,
   DENOVO_SPARKLINE_NODE_TYPE,
   DenovoFieldPatternSchema,
   DenovoFieldPropsSchema,
+  DenovoShadePatternSchema,
+  DenovoShadePropsSchema,
   DenovoSparklinePropsSchema,
   DenovoSparklineStyleSchema,
   PluginNodeTypeSchema,
   definePluginNodeKind,
   denovoFieldInstanceCount,
   denovoFieldKind,
+  denovoShadeHex,
+  denovoShadeGradientStops,
+  denovoShadeKind,
+  denovoShadeSize,
+  denovoShadeStripColor,
+  denovoShadeStripCount,
   denovoSparklineKind,
   denovoSparklinePoints,
   denovoSparklineSize,
   getPluginNodeKind,
   isDenovoFieldNode,
   isDenovoFieldType,
+  isDenovoShadeNode,
+  isDenovoShadeType,
   isDenovoSparklineNode,
   isDenovoSparklineType,
   isCanvas2DPluginNode,
   isPluginNodeType,
   parseDenovoFieldProps,
+  parseDenovoShadeProps,
   parseDenovoSparklineProps,
   parsePluginNodeProps,
   pluginNodeKindSupportsMode,
@@ -3007,6 +3033,10 @@ export type {
   PluginSceneMode
 } from "./plugin-nodes.js";
 export type { DenovoFieldPattern, DenovoFieldProps } from "./field.js";
+export type {
+  DenovoShadePattern,
+  DenovoShadeProps
+} from "./shade.js";
 export type {
   DenovoSparklinePoint,
   DenovoSparklineProps,

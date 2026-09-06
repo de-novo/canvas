@@ -66,6 +66,12 @@ component trees, and product catalogs must not become our identity.
 
 - a React-only or Next.js-only library;
 - a pretty-Three catalog that wraps other teams' rooms;
+- a landing-page GPU chrome library that paints live HTML through
+  shaders. [Canvas UI](https://canvasui.dev/) is that layer: a
+  shadcn-style html-in-canvas effect registry (Liquid, Glass, Shatter,
+  and the rest). Wrapping those rooms fails the absorption test the
+  same way wrapping ThreeUI rooms does. See
+  [2026-09-02 Canvas UI reference](./history/2026-09-02-canvas-ui-reference.md);
 - a second product called "diagrams" or "BIM";
 - a decorative-universe renderer in the Obsidian-plugin sense.
 

@@ -462,8 +462,13 @@ function isFiniteThreeVector(vector: Vector3): boolean {
 
 export {
   DENOVO_FIELD_USER_DATA_KEY,
+  attachDenovoFieldGpuCompute,
   createDenovoFieldObject,
+  detachDenovoFieldGpuCompute,
   isDenovoFieldObject,
+  readDenovoFieldComputeDispatches,
+  readDenovoFieldComputeResidentCopies,
   readDenovoFieldObjectState,
   tickDenovoFieldObject
 } from "./field.js";
+export type { DenovoFieldComputeHost } from "./field.js";

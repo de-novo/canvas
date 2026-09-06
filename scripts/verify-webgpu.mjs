@@ -173,6 +173,24 @@ try {
     );
   });
 
+  await check("webgpu-field-streaks-use-compute", async () => {
+    const outcome = await verifyWebgpuSurfaceBench({
+      expected: {
+        backend: "webgpu",
+        computeDispatches: true,
+        computeResidentCopies: true
+      },
+      errorKey: "__fieldComputeError",
+      path: "field-compute-bench.html",
+      resultKey: "__fieldComputeResult"
+    });
+    assert.equal(
+      outcome,
+      "drawn",
+      `desktop Chromium must tick field streaks on a compute shader, got ${outcome}`
+    );
+  });
+
   await check("webgpu-2d-draws-official-nodes", async () => {
     const outcome = await verifyWebgpuSurfaceBench({
       expected: {

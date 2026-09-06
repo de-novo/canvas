@@ -269,7 +269,8 @@ product-level extension seam, `CanvasPlugin` is a host bundle, and
   [Extension Surface Decision](./extension-surface-decision.md) and
   [2026-09-04 extension surface decision](./history/2026-09-04-extension-surface-decision.md).
 - Framework surface (2026-08-25): 3D and 2D plugin nodes, official
-  `plugin.denovo.field`, official `plugin.denovo.sparkline`, the Warp
+  `plugin.denovo.field`, official `plugin.denovo.sparkline`, official
+  `plugin.denovo.shade`, the Warp
   Field catalog, and the service-map graph catalog have landed. A
   plugin kind declares `2d`, `3d`, or `both`. Single-mode kinds fail
   closed in the other scene. `apps/playground-threeui` stays a visual
@@ -287,9 +288,13 @@ product-level extension seam, `CanvasPlugin` is a host bundle, and
   edit. An upstream room is absorbed only if the document still redraws
   after that host is removed. `apps/playground-threeui` stays a visual
   reference; Warp Field (`nodes: []` + original engine) fails the
-  absorption test and is not product proof. See
-  [Product Identity](./product-identity.md) and
-  [2026-08-25 product identity](./history/2026-08-25-product-identity.md).
+  absorption test and is not product proof. Canvas UI (canvasui.dev)
+  is the same class of host: html-in-canvas effect rooms, not a
+  document SDK. See
+  [Product Identity](./product-identity.md),
+  [2026-08-25 product identity](./history/2026-08-25-product-identity.md),
+  and
+  [2026-09-02 Canvas UI reference](./history/2026-09-02-canvas-ui-reference.md).
 - Isolated ThreeUI Community playground still vendors public MIT rooms
   (`apps/playground-threeui`). No facade export and no new node types.
   See
@@ -353,10 +358,12 @@ product-level extension seam, `CanvasPlugin` is a host bundle, and
 ## Next
 
 1. **Framework surface:** 3D and 2D plugin-node unions, official
-   `plugin.denovo.field`, official `plugin.denovo.sparkline`, and the
+   `plugin.denovo.field`, official `plugin.denovo.sparkline`, official
+   `plugin.denovo.shade`, and the
    Warp Field catalog landed. A kind declares `2d`, `3d`, or `both`.
    Markers draw until a kind has a drawer. Do not wrap more ThreeUI
-   rooms. `keycaps` / `hyperspace` stay unabsorbed. See
+   rooms. Do not wrap Canvas UI rooms. `keycaps` / `hyperspace` stay
+   unabsorbed. See
    [Framework Surface](./framework-surface.md) and
    [2026-08-25 official denovo sparkline](./history/2026-08-25-denovo-sparkline.md).
 2. **Absorbed showcases:** diagram (`apps/playground-flow`,
@@ -365,12 +372,13 @@ product-level extension seam, `CanvasPlugin` is a host bundle, and
    (`apps/playground-network`, `pnpm verify:network-showcase`) landed.
    `apps/playground-graph` stays the throughput bench. See
    [Product Identity](./product-identity.md).
-3. **Named authoring operations (slices 1–18 landed):**
+3. **Named authoring operations (slices 1–19 landed):**
    humans and agents share one function that compiles to existing
    commands. `setLayerVisible`, `setLayerLocked`, `setLayerName`,
    document-only `stackBox`, read-only `listNodes`, `listLayers`, and
    `listLabels`,
-   `setFieldPattern`, `setSparklineStyle`, `setNodeVisible`, `setNodeLocked`,
+   `setFieldPattern`, `setSparklineStyle`, `setShadePattern`,
+   `setNodeVisible`, `setNodeLocked`,
    `setNodeLayer`, `setText`, `setAnnotationText`,
    `removeNode`, `removeEdge`, `removeLayer`, `addLayer`, and
    `reorderLayer` are shipped.
@@ -442,6 +450,34 @@ product-level extension seam, `CanvasPlugin` is a host bundle, and
   `pnpm typecheck` 36/36. Build, public API, browser, and editor-core
   gates not run (no behavior changed). See
   [2026-09-04 extension surface decision](./history/2026-09-04-extension-surface-decision.md).
+- Canvas UI reference (2026-09-02). canvasui.dev is a shadcn-style
+  html-in-canvas effect registry, not an editor SDK. Do not wrap it.
+  Do not add `vgpu`. Documentation only. `pnpm verify:docs` 162
+  Markdown files, 520/520 local targets. See
+  [2026-09-02 Canvas UI reference](./history/2026-09-02-canvas-ui-reference.md).
+- vgpu catalog as documents (2026-08-28). Official
+  `plugin.denovo.shade` (`gradient` | `wave`) plus existing
+  `instances` and section-plane clip restate vgpu example graphics
+  as documents. No WGSL on the document. No playground.
+  `pnpm typecheck` 36/36. `pnpm build` 25/25.
+  `pnpm verify:public-api` ok. `pnpm verify:document-schema` 45
+  checks. `pnpm verify:editor-core` ok.
+  `pnpm verify:vgpu-catalog` 4/4. `pnpm verify:docs` 161 Markdown
+  files, 509/509 local targets. See
+  [2026-08-28 vgpu catalog as documents](./history/2026-08-28-vgpu-catalog.md).
+- WebGPU field compute stays resident (2026-08-28). Streak travel
+  copies into Three's vertex buffer. The hot path does not
+  `MAP_READ`. `pnpm typecheck` 36/36. `pnpm build` 25/25.
+  `pnpm verify:public-api` ok. `pnpm verify:webgpu` 9/9.
+  `pnpm verify:docs` 161 Markdown files, 509/509 local targets. See
+  [2026-08-28 WebGPU field compute stays resident](./history/2026-08-28-webgpu-compute-resident.md).
+- WebGPU field compute (2026-08-28). On WebGPU, `plugin.denovo.field`
+  streak travel runs in a compute shader. The document is unchanged.
+  Letter patterns and WebGL2 stay on the CPU tick.
+  `pnpm typecheck` 36/36. `pnpm build` 25/25.
+  `pnpm verify:public-api` ok. `pnpm verify:webgpu` 9/9.
+  `pnpm verify:docs` 159 Markdown files, 505/505 local targets. See
+  [2026-08-28 WebGPU field compute](./history/2026-08-28-webgpu-compute-field.md).
 - Explicit 2D WebGPU (2026-08-27). `backend: "webgpu"` on a 2D
   document draws official 2D nodes through a GPU canvas context.
   2D `auto` stays Canvas2D. Missing GPU is `capability-unavailable`.

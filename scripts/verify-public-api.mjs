@@ -388,6 +388,7 @@ for (const exportName of [
   "listLayers",
   "listLabels",
   "setFieldPattern",
+  "setShadePattern",
   "setSparklineStyle",
   "setLayerLocked",
   "setLayerName",
@@ -410,6 +411,10 @@ for (const exportName of [
   "isDenovoSparklineNode",
   "isDenovoSparklineType",
   "parseDenovoSparklineProps",
+  "denovoShadeSize",
+  "isDenovoShadeNode",
+  "isDenovoShadeType",
+  "parseDenovoShadeProps",
   "createMemoryGeometryStore",
   "createMeshGeometryAssetRef",
   "decodeMeshGeometry",
@@ -2031,6 +2036,7 @@ writeFileSync(
   listNodes,
   reorderLayer,
   setFieldPattern,
+  setShadePattern,
   setSparklineStyle,
   setLayerLocked,
   setLayerName,
@@ -2053,6 +2059,11 @@ writeFileSync(
   isDenovoSparklineNode,
   isDenovoSparklineType,
   parseDenovoSparklineProps,
+  denovoShadeSize,
+  isDenovoShadeNode,
+  isDenovoShadeType,
+  parseDenovoShadeProps,
+  DENOVO_SHADE_NODE_TYPE,
   DENOVO_SPARKLINE_NODE_TYPE,
   createGroupNodesCommand,
   createNodeUpdateCommand,
@@ -2103,6 +2114,7 @@ writeFileSync(
   type Canvas2DOptions,
   type Canvas2DViewState,
   type CanvasCameraControlsOptions,
+  type CanvasFrame,
   type CanvasCommand,
   type CanvasCreateId,
   type CanvasFacadeRendererAdapter,
@@ -2124,7 +2136,10 @@ writeFileSync(
   type DenovoFieldProps,
   type DenovoSparklineProps,
   type DenovoSparklineStyle,
+  type DenovoShadePattern,
+  type DenovoShadeProps,
   type SetFieldPatternInput,
+  type SetShadePatternInput,
   type SetSparklineStyleInput,
   type SetLayerLockedInput,
   type SetLayerNameInput,
@@ -2187,6 +2202,21 @@ const detectedWebgpu: boolean = detectedBackends.webgpu;
 void detectedWebgpu;
 // @ts-expect-error capabilities are a closed object
 detectedBackends.metal;
+const frameWithCompute: CanvasFrame = {
+  delta: 16,
+  elapsed: 16,
+  render: { computeDispatches: 4, computeResidentCopies: 2, drawCalls: 1 },
+  scene: defineScene({
+    id: "compute-stats-scene",
+    layers: [{ id: "main", name: "Main" }],
+    mode: "3d",
+    nodes: []
+  })
+};
+void frameWithCompute;
+// @ts-expect-error compute stats are a closed object
+const invalidComputeStats: CanvasFrame["render"] = { metal: true };
+void invalidComputeStats;
 const controls: CanvasCameraControlsOptions = {
   enablePan: true,
   enableRotate: true,
@@ -2585,6 +2615,35 @@ void changeSparkline;
 setSparklineStyle({ extra: true, nodeId: "spark", style: "step" });
 // @ts-expect-error style is a closed union
 setSparklineStyle({ nodeId: "spark", style: "spline" });
+const shadeProps: DenovoShadeProps = {
+  height: 360,
+  hue: 210,
+  pattern: "gradient",
+  speed: 12,
+  width: 520
+};
+const shadePattern: DenovoShadePattern = shadeProps.pattern;
+void shadePattern;
+void denovoShadeSize(shadeProps);
+void isDenovoShadeType(DENOVO_SHADE_NODE_TYPE);
+void isDenovoShadeNode({
+  props: shadeProps,
+  type: "plugin.denovo.shade"
+});
+void parseDenovoShadeProps(shadeProps);
+// @ts-expect-error shade pattern is a closed union
+const invalidShadePattern: DenovoShadeProps = { ...shadeProps, pattern: "fluid" };
+void invalidShadePattern;
+const shadePatternInput: SetShadePatternInput = {
+  nodeId: "shade",
+  pattern: "wave"
+};
+const changeShade: NamedOperation = setShadePattern(shadePatternInput);
+void changeShade;
+// @ts-expect-error extra fields are rejected
+setShadePattern({ extra: true, nodeId: "shade", pattern: "wave" });
+// @ts-expect-error pattern is a closed union
+setShadePattern({ nodeId: "shade", pattern: "fluid" });
 const pluginKindBoth: PluginNodeKindMode = "both";
 const pluginScene3d: PluginSceneMode = "3d";
 void pluginNodeKindSupportsMode(pluginKindBoth, pluginScene3d);
@@ -3148,6 +3207,7 @@ writeFileSync(
   listLayers,
   listNodes,
   setFieldPattern,
+  setShadePattern,
   setSparklineStyle,
   setLayerLocked,
   setLayerName,
@@ -3172,6 +3232,7 @@ writeFileSync(
   type NamedOperation,
   type NamedOperationResult,
   type SetFieldPatternInput,
+  type SetShadePatternInput,
   type SetSparklineStyleInput,
   type RemoveEdgeInput,
   type RemoveLayerInput,
@@ -3380,6 +3441,20 @@ void sparklineStyleInput;
 setSparklineStyle({ extra: true, nodeId: "spark", style: "step" });
 // @ts-expect-error style is a closed union
 setSparklineStyle({ nodeId: "spark", style: "spline" });
+const shadeOp: NamedOperation = setShadePattern({
+  nodeId: "shade",
+  pattern: "wave"
+});
+void shadeOp;
+const shadePatternInput: SetShadePatternInput = {
+  nodeId: "shade",
+  pattern: "wave"
+};
+void shadePatternInput;
+// @ts-expect-error extra fields are rejected
+setShadePattern({ extra: true, nodeId: "shade", pattern: "wave" });
+// @ts-expect-error pattern is a closed union
+setShadePattern({ nodeId: "shade", pattern: "fluid" });
 // @ts-expect-error extra fields are rejected
 setLayerVisible({ layerId: "main", visible: false, extra: true });
 // @ts-expect-error visible must be boolean

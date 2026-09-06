@@ -5,8 +5,11 @@
  */
 import {
   CANVAS_NODE_PORT_SIDES,
+  denovoShadeStripColor,
+  denovoShadeStripCount,
   denovoSparklinePoints,
   isCanvas2DPluginNode,
+  isDenovoShadeNode,
   isDenovoSparklineNode,
   type Canvas2DGrid,
   type Canvas2DNode,
@@ -858,6 +861,10 @@ function recordDrawable(
         recordSparkline(batch, node, frame.transformPreview);
         return;
       }
+      if (isDenovoShadeNode(node)) {
+        recordShade(batch, node, frame.transformPreview);
+        return;
+      }
       if (isCanvas2DPluginNode(node)) {
         recordPluginMarker(batch, node, frame.transformPreview);
         return;
@@ -1043,6 +1050,31 @@ function recordArrowhead(
     ],
     color
   );
+}
+
+function recordShade(
+  batch: VertexBatch,
+  node: Canvas2DPluginNode,
+  preview: CanvasNodeTransformPreview | null
+) {
+  if (!isDenovoShadeNode(node)) {
+    return;
+  }
+  const matrix = createCanvas2DTransformMatrix(resolveNodeRenderTransform(node, preview));
+  const [width, height] = [node.props.width, node.props.height];
+  const elapsedMs = performance.now();
+  const strips = node.props.pattern === "gradient" ? 24 : denovoShadeStripCount(node.props);
+  const stripWidth = width / strips;
+  for (let index = 0; index < strips; index += 1) {
+    batch.rect(
+      matrix,
+      index * stripWidth,
+      0,
+      stripWidth + 0.5,
+      height,
+      batch.fillColor(denovoShadeStripColor(node.props, index, strips, elapsedMs))
+    );
+  }
 }
 
 function recordSparkline(

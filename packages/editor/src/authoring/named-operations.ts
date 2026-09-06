@@ -5,13 +5,17 @@ import {
   CanvasLayerIdSchema,
   CanvasLayerSchema,
   DENOVO_FIELD_NODE_TYPE,
+  DENOVO_SHADE_NODE_TYPE,
   DENOVO_SPARKLINE_NODE_TYPE,
   DenovoFieldPatternSchema,
   DenovoFieldPropsSchema,
+  DenovoShadePatternSchema,
+  DenovoShadePropsSchema,
   DenovoSparklinePropsSchema,
   DenovoSparklineStyleSchema,
   NodeIdSchema,
   isDenovoFieldNode,
+  isDenovoShadeNode,
   isDenovoSparklineNode,
   type CanvasCommand,
   type CanvasCreateId,
@@ -20,6 +24,7 @@ import {
   type CanvasNode,
   type CanvasNodeByType,
   type DenovoFieldPattern,
+  type DenovoShadePattern,
   type DenovoSparklineStyle,
   type NodeId,
   type Vector3
@@ -83,6 +88,11 @@ export type SetFieldPatternInput = {
 export type SetSparklineStyleInput = {
   readonly nodeId: NodeId;
   readonly style: DenovoSparklineStyle;
+};
+
+export type SetShadePatternInput = {
+  readonly nodeId: NodeId;
+  readonly pattern: DenovoShadePattern;
 };
 
 export type SetNodeVisibleInput = {
@@ -170,6 +180,7 @@ const SET_LAYER_VISIBLE_KEYS = new Set(["layerId", "visible"]);
 const SET_LAYER_LOCKED_KEYS = new Set(["layerId", "locked"]);
 const SET_LAYER_NAME_KEYS = new Set(["layerId", "name"]);
 const SET_FIELD_PATTERN_KEYS = new Set(["nodeId", "pattern"]);
+const SET_SHADE_PATTERN_KEYS = new Set(["nodeId", "pattern"]);
 const SET_SPARKLINE_STYLE_KEYS = new Set(["nodeId", "style"]);
 const SET_NODE_VISIBLE_KEYS = new Set(["nodeId", "visible"]);
 const SET_NODE_LOCKED_KEYS = new Set(["nodeId", "locked"]);
@@ -616,6 +627,88 @@ export function setSparklineStyle(input: SetSparklineStyleInput): NamedOperation
       style: parsed.style
     });
     const command = parseSparklineStyleUpdateCommand(node.id, nextProps);
+    const nextNodes = document.scene.nodes.map((candidate) =>
+      candidate.id === node.id ? { ...candidate, props: nextProps } : candidate
+    );
+
+    return {
+      changed: true,
+      commands: [command],
+      document: parseNamedOperationDocument({
+        ...document,
+        scene: {
+          ...document.scene,
+          nodes: nextNodes
+        }
+      })
+    };
+  };
+}
+
+export function setShadePattern(input: SetShadePatternInput): NamedOperation {
+  const parsed = parseSetShadePatternInput(input);
+
+  return (document) => {
+    if (document.scene.mode !== "2d") {
+      throw new CanvasEditorError(
+        "mode-mismatch",
+        "setShadePattern requires a 2D document."
+      );
+    }
+
+    const node = document.scene.nodes.find(
+      (candidate) => candidate.id === parsed.nodeId
+    );
+
+    if (!node) {
+      throw new CanvasEditorError(
+        "node-not-found",
+        `Node was not found: ${parsed.nodeId}`
+      );
+    }
+
+    if (!isDenovoShadeNode(node)) {
+      throw new CanvasEditorError(
+        "invalid-command",
+        `setShadePattern requires ${DENOVO_SHADE_NODE_TYPE}: ${node.id}`
+      );
+    }
+
+    const layer = document.scene.layers.find(
+      (candidate) => candidate.id === node.layerId
+    );
+
+    if (!layer) {
+      throw new CanvasEditorError(
+        "layer-not-found",
+        `Layer was not found: ${node.layerId}`
+      );
+    }
+
+    if (node.locked || layer.locked) {
+      throw new CanvasEditorError(
+        "locked-target",
+        node.locked
+          ? `Shade is locked: ${node.id}`
+          : `Layer is locked: ${layer.id}`
+      );
+    }
+
+    const props = DenovoShadePropsSchema.parse(node.props);
+
+    if (props.pattern === parsed.pattern) {
+      return {
+        changed: false,
+        commands: [],
+        document
+      };
+    }
+
+    const nextProps = DenovoShadePropsSchema.parse({
+      ...props,
+      pattern: parsed.pattern
+    });
+    const command = parseShadePatternUpdateCommand(node.id, nextProps);
     const nextNodes = document.scene.nodes.map((candidate) =>
       candidate.id === node.id ? { ...candidate, props: nextProps } : candidate
     );
@@ -1765,6 +1858,80 @@ function parseSetSparklineStyleInput(
   }
 
   return { nodeId, style };
+}
+
+function parseSetShadePatternInput(
+  input: SetShadePatternInput
+): SetShadePatternInput {
+  if (!isPlainObject(input)) {
+    throw new CanvasEditorError(
+      "invalid-command",
+      "setShadePattern input must be an object."
+    );
+  }
+
+  for (const key of Object.keys(input)) {
+    if (!SET_SHADE_PATTERN_KEYS.has(key)) {
+      throw new CanvasEditorError(
+        "invalid-command",
+        `setShadePattern does not accept field: ${key}`
+      );
+    }
+  }
+
+  if (!("nodeId" in input) || !("pattern" in input)) {
+    throw new CanvasEditorError(
+      "invalid-command",
+      "setShadePattern requires nodeId and pattern."
+    );
+  }
+
+  let pattern: DenovoShadePattern;
+
+  try {
+    pattern = DenovoShadePatternSchema.parse(input.pattern);
+  } catch (cause) {
+    throw new CanvasEditorError(
+      "invalid-command",
+      "setShadePattern pattern must be gradient or wave.",
+      { cause }
+    );
+  }
+
+  let nodeId: NodeId;
+
+  try {
+    nodeId = NodeIdSchema.parse(input.nodeId);
+  } catch (cause) {
+    throw new CanvasEditorError("invalid-id", "Node ID must be non-empty.", {
+      cause
+    });
+  }
+
+  return { nodeId, pattern };
+}
+
+function parseShadePatternUpdateCommand(
+  nodeId: NodeId,
+  props: ReturnType<typeof DenovoShadePropsSchema.parse>
+): CanvasCommand {
+  try {
+    return freezeValue(
+      CanvasCommandSchema.parse({
+        nodeId,
+        nodeMode: "2d",
+        nodeType: DENOVO_SHADE_NODE_TYPE,
+        patch: { props },
+        type: "node.update"
+      })
+    );
+  } catch (cause) {
+    throw new CanvasEditorError(
+      "invalid-command",
+      "setShadePattern could not compile to node.update.",
+      { cause, commandType: "node.update" }
+    );
+  }
 }
 
 function parseSparklineStyleUpdateCommand(

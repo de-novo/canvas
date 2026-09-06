@@ -42,10 +42,13 @@ import {
   definePluginNodeKind,
   denovoFieldInstanceCount,
   denovoSparklinePoints,
+  denovoShadeSize,
   getPluginNodeKind,
   pluginNodeKindSupportsMode,
   isDenovoFieldNode,
   isDenovoFieldType,
+  isDenovoShadeNode,
+  isDenovoShadeType,
   isDenovoSparklineNode,
   isDenovoSparklineType,
   defineHitResult,
@@ -3476,6 +3479,94 @@ check("official-denovo-sparkline-parses-without-host-register", () => {
     }
   });
   assert.equal(invalidStyle.success, false);
+});
+
+check("official-denovo-shade-parses-without-host-register", () => {
+  assert.equal(isDenovoShadeType("plugin.denovo.shade"), true);
+  assert.ok(getPluginNodeKind("plugin.denovo.shade"));
+  assert.deepEqual(
+    denovoShadeSize({
+      height: 360,
+      hue: 210,
+      pattern: "gradient",
+      speed: 12,
+      width: 520
+    }),
+    [520, 360]
+  );
+
+  const document = defineDocument({
+    id: "official-shade",
+    scene: {
+      id: "official-shade-scene",
+      layers: [{ id: "main", name: "Main" }],
+      mode: "2d",
+      nodes: [
+        {
+          id: "shade",
+          layerId: "main",
+          props: {
+            height: 360,
+            hue: 210,
+            pattern: "gradient",
+            speed: 12,
+            width: 520
+          },
+          type: "plugin.denovo.shade"
+        }
+      ]
+    }
+  });
+  const node = document.scene.nodes[0];
+  assert.ok(node && isDenovoShadeNode(node));
+  assert.equal(node.props.pattern, "gradient");
+
+  const in3d = safeDefineDocument({
+    id: "official-shade-3d",
+    scene: {
+      id: "official-shade-3d-scene",
+      layers: [{ id: "main", name: "Main" }],
+      nodes: [
+        {
+          id: "shade",
+          layerId: "main",
+          props: {
+            height: 360,
+            hue: 210,
+            pattern: "gradient",
+            speed: 12,
+            width: 520
+          },
+          type: "plugin.denovo.shade"
+        }
+      ]
+    }
+  });
+  assert.equal(in3d.success, false);
+
+  const invalidPattern = safeDefineDocument({
+    id: "official-shade-bad-pattern",
+    scene: {
+      id: "official-shade-bad-pattern-scene",
+      layers: [{ id: "main", name: "Main" }],
+      mode: "2d",
+      nodes: [
+        {
+          id: "shade",
+          layerId: "main",
+          props: {
+            height: 360,
+            hue: 210,
+            pattern: "fluid",
+            speed: 12,
+            width: 520
+          },
+          type: "plugin.denovo.shade"
+        }
+      ]
+    }
+  });
+  assert.equal(invalidPattern.success, false);
 });
 
 report();

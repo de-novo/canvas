@@ -47,6 +47,17 @@ export type CanvasRenderStats = {
   readonly textures?: number;
   /** Number of GPU programs currently compiled. */
   readonly programs?: number;
+  /**
+   * Compute dispatches issued by official WebGPU simulation, currently
+   * `plugin.denovo.field` streak travel. Absent when no compute ran.
+   */
+  readonly computeDispatches?: number;
+  /**
+   * GPU-to-GPU copies from field compute into Three vertex buffers.
+   * Present when Reference-mode compute ran. Absent when travel still
+   * read back to the CPU.
+   */
+  readonly computeResidentCopies?: number;
 };
 
 export type CanvasFrame<TMode extends CanvasMode = CanvasMode> = {

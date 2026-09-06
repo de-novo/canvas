@@ -19,6 +19,7 @@
     "verify:docs": "node scripts/verify-docs.mjs",
     "verify:denovo-field": "node scripts/verify-denovo-field.mjs",
     "verify:denovo-sparkline": "node scripts/verify-denovo-sparkline.mjs",
+    "verify:vgpu-catalog": "node scripts/verify-vgpu-catalog.mjs",
     "verify:document-schema": "node scripts/verify-document-schema.mjs",
     "verify:editor-core": "node scripts/verify-editor-core.mjs",
     "verify:field-showcase": "node scripts/verify-field-showcase.mjs",

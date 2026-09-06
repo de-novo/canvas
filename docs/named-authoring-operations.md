@@ -300,6 +300,20 @@ one `node.update` that replaces `props` with the same knobs and the
 new style. Already-in-state does not grow history. Requires a 2D
 document.
 
+## Slice 19 — `setShadePattern`
+
+```ts
+setShadePattern({
+  nodeId: NodeId,
+  pattern: "gradient" | "wave"
+}): NamedOperation
+```
+
+Document-only. Source MUST be `plugin.denovo.shade`. Compiles to one
+`node.update` that replaces `props` with the same knobs and the new
+pattern. Already-in-state does not grow history. Requires a 2D
+document.
+
 ## Slice 14 — `setLayerName`
 
 ```ts
@@ -407,6 +421,7 @@ fields fail. `setText` still writes only 2D `text` nodes.
 16. `setText`.
 17. `listLabels`.
 18. `setAnnotationText`.
+19. `setShadePattern`.
 
 Do not start a later slice until the previous slice has types and
 editor-core evidence.

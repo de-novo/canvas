@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html>
+  <head><meta charset="utf-8" /><title>vgpu-catalog-bench</title></head>
+  <body>
+    <div id="stage" style="position:fixed;inset:0;"></div>
+    <script type="module">
+      import {
+        connectEditorToCanvas,
+        createCanvas,
+        createEditor,
+        defineDocument,
+        listNodes,
+        setShadePattern
+      } from "@denovo/canvas";
+
+      const params = new URLSearchParams(window.location.search);
+      const example = params.get("example") ?? "gradient";
+      const preview = params.get("preview") === "1";
+      const MARKER = [100, 116, 139];
+
+      function instanceGrid() {
+        const instances = [];
+        for (let x = 0; x < 4; x += 1) {
+          for (let y = 0; y < 4; y += 1) {
+            for (let z = 0; z < 4; z += 1) {
+              instances.push({
+                position: [x * 1.4 - 2.1, y * 1.4 - 2.1, z * 1.4 - 2.1],
+                rotation: [0, 0, 0],
+                scale: [0.7, 0.7, 0.7]
+              });
+            }
+          }
+        }
+        return instances;
+      }
+
+      function shadeDocument(pattern) {
+        return defineDocument({
+          id: `vgpu-catalog-${pattern}`,
+          scene: {
+            background: "#020617",
+            id: `vgpu-catalog-${pattern}-scene`,
+            layers: [{ id: "main", name: "Main" }],
+            mode: "2d",
+            nodes: [
+              {
+                id: "shade",
+                layerId: "main",
+                position: [80, 80],
+                props: {
+                  height: 360,
+                  hue: 210,
+                  pattern,
+                  speed: 12,
+                  width: 520
+                },
+                type: "plugin.denovo.shade"
+              }
+            ],
+            render: { loop: "always" }
+          }
+        });
+      }
+
+      const documents = {
+        gradient: () => shadeDocument("gradient"),
+        wave: () => shadeDocument("wave"),
+        instances: () =>
+          defineDocument({
+            id: "vgpu-catalog-instances",
+            scene: {
+              background: "#0b1020",
+              camera: {
+                fov: 42,
+                position: [7, 6, 9],
+                target: [0, 0, 0]
+              },
+              id: "vgpu-catalog-instances-scene",
+              layers: [{ id: "main", name: "Main" }],
+              mode: "3d",
+              nodes: [
+                {
+                  color: "#60a5fa",
+                  geometry: "box",
+                  id: "lattice",
+                  instances: instanceGrid(),
+                  layerId: "main",
+                  position: [0, 0, 0],
+                  rotation: [0, 0, 0],
+                  scale: [1, 1, 1],
+                  type: "instances"
+                }
+              ]
+            }
+          }),
+        clip: () =>
+          defineDocument({
+            id: "vgpu-catalog-clip",
+            scene: {
+              background: "#111827",
+              camera: { fov: 50, position: [0, 0, 8], target: [0, 0, 0] },
+              id: "vgpu-catalog-clip-scene",
+              layers: [{ id: "main", name: "Main" }],
+              mode: "3d",
+              nodes: [
+                {
+                  color: "#38bdf8",
+                  id: "orb",
+                  layerId: "main",
+                  position: [0, 0, 0],
+                  rotation: [0, 0, 0],
+                  scale: [2.4, 2.4, 2.4],
+                  type: "sphere"
+                }
+              ]
+            }
+          })
+      };
+
+      const createDocument = documents[example];
+      if (!createDocument) {
+        window.__vgpuCatalogError = `unknown example: ${example}`;
+        throw new Error(window.__vgpuCatalogError);
+      }
+
+      function countColor(image, target) {
+        let count = 0;
+        for (let index = 0; index < image.data.length; index += 4) {
+          if (
+            Math.abs(image.data[index] - target[0]) < 18 &&
+            Math.abs(image.data[index + 1] - target[1]) < 18 &&
+            Math.abs(image.data[index + 2] - target[2]) < 18
+          ) {
+            count += 1;
+          }
+        }
+        return count;
+      }
+
+      function sample(runtime) {
+        runtime.render();
+        const canvas = runtime.canvas;
+        const scratch = document.createElement("canvas");
+        scratch.width = canvas.width;
+        scratch.height = canvas.height;
+        const context = scratch.getContext("2d");
+        context.drawImage(canvas, 0, 0);
+        const image = context.getImageData(0, 0, scratch.width, scratch.height);
+        return { marker: countColor(image, MARKER) };
+      }
+
+      try {
+        const documentModel = createDocument();
+        const host = document.getElementById("stage");
+        const runtime = createCanvas(host, { document: documentModel });
+        const editor = createEditor({ document: documentModel });
+        connectEditorToCanvas(editor, runtime);
+        await runtime.ready;
+        runtime.render();
+
+        const listed = listNodes(editor.getState().document);
+        const result = {
+          example,
+          iframeCount: document.querySelectorAll("iframe").length,
+          listedType: listed[0]?.type ?? null,
+          mode: editor.getState().document.scene.mode
+        };
+
+        if (example === "gradient" || example === "wave") {
+          const before = sample(runtime);
+          result.markerBefore = before.marker;
+          result.pattern = editor.getState().document.scene.nodes[0]?.props?.pattern ?? null;
+          if (!preview) {
+            await editor.apply([
+              setShadePattern({
+                nodeId: "shade",
+                pattern: example === "gradient" ? "wave" : "gradient"
+              })
+            ]);
+            const after = sample(runtime);
+            result.markerAfter = after.marker;
+            result.pattern = editor.getState().document.scene.nodes[0]?.props?.pattern ?? null;
+            result.undoDepth = editor.getState().history.undoDepth;
+          }
+        }
+
+        if (example === "clip") {
+          runtime.setSectionPlane({ constant: 0, normal: [0, -1, 0] });
+          runtime.render();
+          const current = runtime.current;
+          let clipOn = current?.renderer?.clippingPlanes?.length ?? 0;
+          current?.scene?.traverse((object) => {
+            if (object.isClippingGroup) {
+              clipOn = object.clippingPlanes.length;
+            }
+          });
+          result.clipOn = clipOn;
+        }
+
+        window.__vgpuCatalogResult = result;
+      } catch (error) {
+        window.__vgpuCatalogError = String(error);
+      }
+    </script>
+  </body>
+</html>

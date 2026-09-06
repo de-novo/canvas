@@ -10,8 +10,10 @@
  */
 import {
   CANVAS_NODE_PORT_SIDES,
+  denovoShadeSize,
   denovoSparklineSize,
   isCanvas2DPluginNode,
+  isDenovoShadeNode,
   isDenovoSparklineNode,
   type Canvas2DNode,
   type Canvas2DPluginNode,
@@ -353,6 +355,9 @@ export function resolveCanvas2DPluginNodeLocalSize(
 ): readonly [number, number] {
   if (isDenovoSparklineNode(node)) {
     return denovoSparklineSize(node.props);
+  }
+  if (isDenovoShadeNode(node)) {
+    return denovoShadeSize(node.props);
   }
 
   return [CANVAS_2D_PLUGIN_MARKER_SIZE, CANVAS_2D_PLUGIN_MARKER_SIZE];

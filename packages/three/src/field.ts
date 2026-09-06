@@ -27,7 +27,14 @@ import {
   Vector3
 } from "three";
 
+import {
+  createDenovoFieldStreakCompute,
+  type DenovoFieldStreakCompute
+} from "./field-compute.js";
+
 export const DENOVO_FIELD_USER_DATA_KEY = "denovoField";
+const DENOVO_FIELD_COMPUTE_KEY = "denovoFieldCompute";
+const DENOVO_FIELD_COMPUTE_HOST_KEY = "denovoFieldComputeHost";
 
 type DenovoFieldSeed = {
   readonly glyph: number;
@@ -339,6 +346,63 @@ export function readDenovoFieldObjectState(object: Object3D): {
   };
 }
 
+export type DenovoFieldComputeHost = {
+  readonly device: GPUDevice;
+  readVertexBuffer(attribute: BufferAttribute): GPUBuffer | null;
+};
+
+export function attachDenovoFieldGpuCompute(
+  object: Object3D,
+  host: DenovoFieldComputeHost
+): void {
+  const field = object.userData[DENOVO_FIELD_USER_DATA_KEY] as
+    | DenovoFieldUserData
+    | undefined;
+
+  if (!field || field.pattern !== "streaks" || !field.positions) {
+    return;
+  }
+
+  const existing = object.userData[DENOVO_FIELD_COMPUTE_KEY] as
+    | DenovoFieldStreakCompute
+    | undefined;
+
+  if (existing?.device === host.device) {
+    object.userData[DENOVO_FIELD_COMPUTE_HOST_KEY] = host;
+    return;
+  }
+
+  existing?.destroy();
+  object.userData[DENOVO_FIELD_COMPUTE_KEY] = createDenovoFieldStreakCompute(
+    host.device,
+    field.seeds
+  );
+  object.userData[DENOVO_FIELD_COMPUTE_HOST_KEY] = host;
+}
+
+export function detachDenovoFieldGpuCompute(object: Object3D): void {
+  const compute = object.userData[DENOVO_FIELD_COMPUTE_KEY] as
+    | DenovoFieldStreakCompute
+    | undefined;
+  compute?.destroy();
+  delete object.userData[DENOVO_FIELD_COMPUTE_KEY];
+  delete object.userData[DENOVO_FIELD_COMPUTE_HOST_KEY];
+}
+
+export function readDenovoFieldComputeDispatches(object: Object3D): number {
+  const compute = object.userData[DENOVO_FIELD_COMPUTE_KEY] as
+    | DenovoFieldStreakCompute
+    | undefined;
+  return compute?.dispatches ?? 0;
+}
+
+export function readDenovoFieldComputeResidentCopies(object: Object3D): number {
+  const compute = object.userData[DENOVO_FIELD_COMPUTE_KEY] as
+    | DenovoFieldStreakCompute
+    | undefined;
+  return compute?.residentCopies ?? 0;
+}
+
 export function tickDenovoFieldObject(
   object: Object3D,
   elapsedMs: number
@@ -356,8 +420,31 @@ export function tickDenovoFieldObject(
     if (!(visual instanceof LineSegments)) {
       return;
     }
-    writeStreakPositions(field.positions, field.seeds, elapsedMs, field.props.speed);
     const positionAttribute = visual.geometry.getAttribute("position");
+    const compute = object.userData[DENOVO_FIELD_COMPUTE_KEY] as
+      | DenovoFieldStreakCompute
+      | undefined;
+    const host = object.userData[DENOVO_FIELD_COMPUTE_HOST_KEY] as
+      | DenovoFieldComputeHost
+      | undefined;
+    const destination =
+      compute && host && positionAttribute instanceof BufferAttribute
+        ? host.readVertexBuffer(positionAttribute)
+        : null;
+    const applied =
+      compute && destination
+        ? compute.tick(
+            elapsedMs,
+            field.props.speed,
+            CORRIDOR_FAR,
+            CORRIDOR_SPAN,
+            destination
+          )
+        : false;
+    if (applied) {
+      return;
+    }
+    writeStreakPositions(field.positions, field.seeds, elapsedMs, field.props.speed);
     if (positionAttribute) {
       positionAttribute.needsUpdate = true;
     }

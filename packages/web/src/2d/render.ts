@@ -8,8 +8,12 @@
  */
 import {
   CANVAS_NODE_PORT_SIDES,
+  denovoShadeGradientStops,
+  denovoShadeStripColor,
+  denovoShadeStripCount,
   denovoSparklinePoints,
   isCanvas2DPluginNode,
+  isDenovoShadeNode,
   isDenovoSparklineNode,
   type Canvas2DGrid,
   type Canvas2DNode,
@@ -568,6 +572,10 @@ export function renderCanvas2DDrawableNode(
         renderCanvas2DSparkline(context, node, preview);
         return;
       }
+      if (isDenovoShadeNode(node)) {
+        renderCanvas2DShade(context, node, preview);
+        return;
+      }
       if (isCanvas2DPluginNode(node)) {
         renderCanvas2DPluginMarker(context, node, preview);
         return;
@@ -588,6 +596,41 @@ function renderCanvas2DPluginMarker(
   applyCanvas2DMatrix(context, createCanvas2DTransformMatrix(transform));
   context.fillStyle = "#64748b";
   context.fillRect(0, 0, width, height);
+  context.restore();
+}
+
+function renderCanvas2DShade(
+  context: CanvasRenderingContext2D,
+  node: Canvas2DPluginNode,
+  preview: CanvasNodeTransformPreview | null
+) {
+  if (!isDenovoShadeNode(node)) {
+    return;
+  }
+
+  const transform = resolveNodeRenderTransform(node, preview);
+  const [width, height] = resolveCanvas2DPluginNodeLocalSize(node);
+  const elapsedMs = performance.now();
+  context.save();
+  applyCanvas2DMatrix(context, createCanvas2DTransformMatrix(transform));
+
+  if (node.props.pattern === "gradient") {
+    const [start, end] = denovoShadeGradientStops(node.props);
+    const fill = context.createLinearGradient(0, 0, width, height);
+    fill.addColorStop(0, start);
+    fill.addColorStop(1, end);
+    context.fillStyle = fill;
+    context.fillRect(0, 0, width, height);
+    context.restore();
+    return;
+  }
+
+  const strips = denovoShadeStripCount(node.props);
+  const stripWidth = width / strips;
+  for (let index = 0; index < strips; index += 1) {
+    context.fillStyle = denovoShadeStripColor(node.props, index, strips, elapsedMs);
+    context.fillRect(index * stripWidth, 0, stripWidth + 1, height);
+  }
   context.restore();
 }
 

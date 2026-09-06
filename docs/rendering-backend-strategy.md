@@ -1,6 +1,6 @@
 # Rendering Backend Strategy
 
-Last reviewed: 2026-08-27.
+Last reviewed: 2026-09-02.
 
 Implemented `auto` backends are Canvas2D (2D) and WebGPU or WebGL2 (3D).
 3D `auto` prefers WebGPU when `capabilities.webgpu` is true. Explicit
@@ -236,6 +236,9 @@ Backend choice alone is not enough. Denovo performance should be built from:
 - BVH or spatial indexes for picking;
 - worker pipelines for parsing and indexing;
 - optional GPU compute for high-scale culling/picking when WebGPU is available.
+  The first landed compute is `plugin.denovo.field` streak travel.
+  On WebGPU that travel stays GPU-resident and copies into the
+  renderer vertex buffer.
 
 WebGPU makes some of these stronger, but the architecture should keep useful
 performance features available on WebGL2 where possible.
@@ -263,7 +266,7 @@ is `detectCanvasBackendCapabilities()`.
 Long term:
 
 - evaluate WebGPU-native 2D rendering;
-- use GPU compute for optional large-scene acceleration;
+- expand GPU compute past field streaks (letters, culling, picking);
 - support worker/offscreen rendering where browsers make it practical.
 
 ## Source References
@@ -278,3 +281,8 @@ Long term:
   <https://developer.chrome.com/docs/web-platform/webgpu/overview>
 - GPUWeb implementation status: current browser/platform support matrix.
   <https://github.com/gpuweb/gpuweb/wiki/Implementation-Status>
+- Canvas UI rendering docs: neighbor product. WebGL (GLSL) and WebGPU
+  (vgpu + WGSL) as two builds with the same public props. Not a
+  facade dependency. See
+  [2026-09-02 Canvas UI reference](./history/2026-09-02-canvas-ui-reference.md).
+  <https://canvasui.dev/docs/rendering>

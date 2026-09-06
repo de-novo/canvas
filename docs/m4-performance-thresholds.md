@@ -20,7 +20,11 @@ Baselines are produced by:
   builds 100 / 1k / 10k box scenes through the vanilla facade, and captures
   frame timing plus render stats.
 - The `onFrame(frame, runtime)` callback now carries `frame.render`
-  (`CanvasRenderStats`): `{ drawCalls, triangles, geometries, textures, programs }`.
+  (`CanvasRenderStats`): `{ drawCalls, triangles, geometries, textures,
+  programs, computeDispatches, computeResidentCopies }`.
+  `computeDispatches` is present when official WebGPU field-streak
+  compute ran. `computeResidentCopies` is present when that compute
+  copied into a Three vertex buffer without CPU readback.
 - `runtime.getRenderStats()` exposes the same stats on demand for tooling.
 - Report output: `artifacts/verification/performance-report.json`.
 

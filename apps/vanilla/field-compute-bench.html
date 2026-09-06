@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+  <head><meta charset="utf-8" /><title>field-compute-bench</title></head>
+  <body>
+    <div id="stage" style="position:fixed;inset:0;"></div>
+    <script type="module">
+      import { createCanvas, defineDocument } from "@denovo/canvas";
+
+      const documentModel = defineDocument({
+        id: "field-compute-bench",
+        scene: {
+          background: "#02040a",
+          camera: {
+            fov: 60,
+            position: [0, 1.1, 14],
+            target: [0, 0, -6]
+          },
+          id: "field-compute-scene",
+          layers: [{ id: "hero", name: "Hero" }],
+          mode: "3d",
+          nodes: [
+            {
+              id: "field",
+              layerId: "hero",
+              props: {
+                brightness: 1,
+                density: 0.35,
+                hue: 210,
+                pattern: "streaks",
+                speed: 15
+              },
+              type: "plugin.denovo.field"
+            }
+          ],
+          render: {
+            dpr: 1,
+            frustumCulling: false,
+            loop: "always"
+          }
+        }
+      });
+
+      try {
+        const requestedBackend = new URLSearchParams(window.location.search).get(
+          "backend"
+        );
+        const runtime = createCanvas(document.getElementById("stage"), {
+          document: documentModel,
+          ...(requestedBackend === "webgpu"
+            ? { renderer: { backend: "webgpu" } }
+            : {})
+        });
+        await runtime.ready;
+
+        const deadline = performance.now() + 8_000;
+        while (performance.now() < deadline) {
+          runtime.render();
+          const stats = runtime.getRenderStats();
+          if (
+            (stats?.computeDispatches ?? 0) > 0 &&
+            (stats?.computeResidentCopies ?? 0) > 0
+          ) {
+            window.__fieldComputeResult = {
+              backend: document
+                .getElementById("stage")
+                ?.getAttribute("data-denovo-backend"),
+              computeDispatches: true,
+              computeResidentCopies: true
+            };
+            break;
+          }
+          await new Promise((resolve) => requestAnimationFrame(resolve));
+        }
+
+        if (!window.__fieldComputeResult) {
+          window.__fieldComputeError = "compute dispatches never appeared";
+        }
+      } catch (error) {
+        window.__fieldComputeError = String(error);
+      }
+    </script>
+  </body>
+</html>

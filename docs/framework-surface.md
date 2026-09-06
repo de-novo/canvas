@@ -17,7 +17,7 @@ document without knowing which engine will draw it.
 The default path is:
 
 1. name a kind (`box`, `edge`, `html`, `plugin.denovo.field`,
-   `plugin.denovo.sparkline`);
+   `plugin.denovo.sparkline`, `plugin.denovo.shade`);
 2. set closed properties;
 3. change it with named operations or commands;
 4. see, pick, hide, undo, and save the same JSON.
@@ -201,7 +201,7 @@ Humans and agents share one language.
 
 New named operations are added only when the change is sayable
 (`setLayerVisible`, `setLayerLocked`, `setLayerName`, `setFieldPattern`,
-`setSparklineStyle`, `setNodeVisible`, `setNodeLocked`, `setNodeLayer`,
+`setSparklineStyle`, `setShadePattern`, `setNodeVisible`, `setNodeLocked`, `setNodeLayer`,
 `setText`, `setAnnotationText`, `listLabels`,
 `removeNode`,
 `removeEdge`, `removeLayer`, `addLayer`, `reorderLayer`). They compile to existing
@@ -222,8 +222,10 @@ version. Plugin nodes are the reserved extension union in `0.2.0`:
 
 `plugin.denovo.field` has an official 3D drawer that reads only those
 properties. `plugin.denovo.sparkline` has an official 2D drawer that
-reads only its props. Other registered plugin kinds still draw as a
-marker until they have a drawer. That marker is not a hero catalog.
+reads only its props. `plugin.denovo.shade` has an official 2D drawer
+for closed `gradient` | `wave` panels. Other registered plugin kinds
+still draw as a marker until they have a drawer. That marker is not a
+hero catalog.
 
 ## Package Boundary
 
@@ -257,6 +259,9 @@ marker until they have a drawer. That marker is not a hero catalog.
 8. Official 2D kind: `plugin.denovo.sparkline` schema, drawer, and
    `setSparklineStyle`. No new playground. Proof is
    `pnpm verify:denovo-sparkline`.
+9. Official 2D kind: `plugin.denovo.shade` schema (`gradient` |
+   `wave`), drawer, and `setShadePattern`. vgpu get-started graphics
+   restated as a document. Proof is `pnpm verify:vgpu-catalog`.
 
 A catalog without the official drawer is another host. This catalog
 deletes the ThreeUI renderer and still redraws.
@@ -266,6 +271,10 @@ deletes the ThreeUI renderer and still redraws.
 - Accepting Three.js, R3F, or GLSL as kind properties.
 - Pinning WebGPU or a Three revision in saved documents.
 - Copying ThreeUI rooms or their HTML hosts.
+- Copying [Canvas UI](https://canvasui.dev/) effect rooms, taking
+  html-in-canvas as a kind property, or adding `vgpu` so a host can
+  drop Liquid onto `html`. Those are engine/component catalogs. See
+  [2026-09-02 Canvas UI reference](./history/2026-09-02-canvas-ui-reference.md).
 - Making diagrams or BIM a second product identity.
 - Shipping Obsidian-style decorative universes as core kinds.
 - A public Effect or agent package.

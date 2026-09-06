@@ -38,12 +38,16 @@ import {
 } from "@denovo/canvas-core";
 import {
   INSTANCE_NODE_IDS_USER_DATA_KEY,
+  attachDenovoFieldGpuCompute,
   createDenovoFieldObject,
   createInstancedMeshBatch,
   createThreeHitTester,
+  detachDenovoFieldGpuCompute,
   intersectThreeUnitBoxSurface,
   installMeshBvhRaycast,
   isDenovoFieldObject,
+  readDenovoFieldComputeDispatches,
+  readDenovoFieldComputeResidentCopies,
   tickDenovoFieldObject
 } from "@denovo/canvas-three";
 import {
@@ -374,6 +378,7 @@ export function createCanvas3D(
     }
 
     syncCameraControls(controls, currentScene);
+    attachFieldComputeToObjects();
     runtime.resize();
     runtime.render();
     return currentScene;
@@ -401,12 +406,20 @@ export function createCanvas3D(
 
     const info = renderer.info;
     const programs = info.programs?.length;
+    let computeDispatches = 0;
+    let computeResidentCopies = 0;
+    for (const object of objects.values()) {
+      computeDispatches += readDenovoFieldComputeDispatches(object);
+      computeResidentCopies += readDenovoFieldComputeResidentCopies(object);
+    }
     return {
       drawCalls: info.render.calls,
       triangles: info.render.triangles,
       geometries: info.memory.geometries,
       textures: info.memory.textures,
-      ...(programs === undefined ? {} : { programs })
+      ...(programs === undefined ? {} : { programs }),
+      ...(computeDispatches > 0 ? { computeDispatches } : {}),
+      ...(computeResidentCopies > 0 ? { computeResidentCopies } : {})
     };
   }
 
@@ -1677,6 +1690,34 @@ export function createCanvas3D(
     }
   }
 
+  function attachFieldComputeToObjects() {
+    if (activeGpuBackend !== "webgpu" || !renderer) {
+      return;
+    }
+
+    const device = readThreeWebGpuDevice(renderer);
+    if (!device) {
+      return;
+    }
+
+    for (const object of objects.values()) {
+      if (!isDenovoFieldObject(object)) {
+        continue;
+      }
+
+      try {
+        attachDenovoFieldGpuCompute(object, {
+          device,
+          readVertexBuffer(attribute) {
+            return readThreeWebGpuAttributeBuffer(renderer, attribute);
+          }
+        });
+      } catch {
+        detachDenovoFieldGpuCompute(object);
+      }
+    }
+  }
+
   function attachWebGpuRenderer(created: {
     createClipRoot: () => Canvas3DSectionClipRoot;
     renderer: Canvas3DGpuRenderer;
@@ -1700,6 +1741,7 @@ export function createCanvas3D(
       applySectionPlane(parseSectionPlane(pendingSection));
       pendingSection = undefined;
     }
+    attachFieldComputeToObjects();
     runtime.resize();
     runtime.render();
   }
@@ -1822,6 +1864,7 @@ export function createCanvas3D(
   syncCameraControls(controls, currentScene);
 
   if (renderer) {
+    attachFieldComputeToObjects();
     runtime.resize();
     runtime.render();
   }
@@ -1839,9 +1882,36 @@ type Canvas3DSectionClipRoot = Group & {
 };
 
 type WebGpuRendererHandle = Canvas3DGpuRenderer & {
-  backend?: { isWebGPUBackend?: boolean };
+  backend?: {
+    device?: GPUDevice;
+    get?(resource: object): { buffer?: GPUBuffer } | undefined;
+    isWebGPUBackend?: boolean;
+  };
   init(): Promise<unknown>;
 };
+
+function readThreeWebGpuDevice(
+  renderer: Canvas3DGpuRenderer
+): GPUDevice | null {
+  const backend = (renderer as WebGpuRendererHandle).backend;
+  return backend?.isWebGPUBackend === true && backend.device
+    ? backend.device
+    : null;
+}
+
+function readThreeWebGpuAttributeBuffer(
+  renderer: Canvas3DGpuRenderer | null,
+  attribute: BufferAttribute
+): GPUBuffer | null {
+  if (!renderer) {
+    return null;
+  }
+  const backend = (renderer as WebGpuRendererHandle).backend;
+  if (backend?.isWebGPUBackend !== true || typeof backend.get !== "function") {
+    return null;
+  }
+  return backend.get(attribute)?.buffer ?? null;
+}
 
 function parseSectionPlane(
   section: Canvas3DSectionPlaneInput | null
@@ -3430,6 +3500,10 @@ function disposeGroup(group: Group) {
  * rebuild path) and by the diff-based `applyScene` (per-removed-node path).
  */
 function disposeObject3D(object: Object3D) {
+  if (isDenovoFieldObject(object)) {
+    detachDenovoFieldGpuCompute(object);
+  }
+
   const geometries = new Set<BufferGeometry>();
   const materials = new Set<Material>();
 

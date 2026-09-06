@@ -14,6 +14,13 @@ from-scratch replacement for them. Absorbing an upstream look means restating
 it as our document. Shipping their component, HTML, or iframe is hosting.
 See [Product Identity](./product-identity.md).
 
+Do not add `vgpu` or Canvas UI (`@canvas-ui/*`) as dependencies. vgpu is
+a shader/GPU library. Canvas UI is a component registry that uses vgpu
+for its WebGPU build. Neither is a document facade. Same-props
+WebGL/WebGPU builds and a no-throw GPU-missing fallback are patterns to
+copy, not packages to import. See
+[2026-09-02 Canvas UI reference](./history/2026-09-02-canvas-ui-reference.md).
+
 The closest product reference is Better Auth: one cohesive high-level API with
 adapters, plugins, generated schema/migrations, and framework-specific helpers.
 Denovo should apply that pattern to rendering, editing, persistence, assets, and

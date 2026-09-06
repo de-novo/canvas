@@ -54,6 +54,8 @@ assert.equal(typeof editorCore.setFieldPattern, "function");
 assert.equal(typeof facade.setFieldPattern, "function");
 assert.equal(typeof editorCore.setSparklineStyle, "function");
 assert.equal(typeof facade.setSparklineStyle, "function");
+assert.equal(typeof editorCore.setShadePattern, "function");
+assert.equal(typeof facade.setShadePattern, "function");
 assert.equal(typeof editorCore.setNodeVisible, "function");
 assert.equal(typeof facade.setNodeVisible, "function");
 assert.equal(typeof editorCore.setNodeLocked, "function");
@@ -4540,6 +4542,72 @@ try {
     () =>
       sparkEditor.apply([
         facade.setSparklineStyle({ nodeId: "missing-spark", style: "step" })
+      ]),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "node-not-found"
+  );
+}
+
+{
+  const document = facade.defineDocument({
+    id: "shade-pattern",
+    scene: {
+      id: "shade-pattern-scene",
+      layers: [{ id: "main", name: "Main" }],
+      mode: "2d",
+      nodes: [
+        {
+          id: "shade",
+          layerId: "main",
+          props: {
+            height: 360,
+            hue: 210,
+            pattern: "gradient",
+            speed: 12,
+            width: 520
+          },
+          type: "plugin.denovo.shade"
+        }
+      ]
+    }
+  });
+  const toWave = facade.setShadePattern({
+    nodeId: "shade",
+    pattern: "wave"
+  });
+  const preview = facade.applyNamedOperations(document, [toWave]);
+  assert.equal(preview.changed, true);
+  assert.equal(preview.commands[0]?.type, "node.update");
+  const shade = preview.document.scene.nodes[0];
+  assert.equal(shade?.type, "plugin.denovo.shade");
+  assert.equal(shade && "props" in shade && shade.props.pattern, "wave");
+
+  const alreadyWave = facade.applyNamedOperations(preview.document, [toWave]);
+  assert.equal(alreadyWave.changed, false);
+  assert.deepEqual(alreadyWave.commands, []);
+
+  const shadeEditor = facade.createEditor({ document });
+  const applied = await shadeEditor.apply([toWave]);
+  assert.equal(applied.changed, true);
+  assert.equal(shadeEditor.getState().history.undoDepth, 1);
+  const again = await shadeEditor.apply([toWave]);
+  assert.equal(again.changed, false);
+  assert.equal(shadeEditor.getState().history.undoDepth, 1);
+
+  assert.throws(
+    () =>
+      facade.applyNamedOperations(document, [
+        facade.setShadePattern({ extra: true, nodeId: "shade", pattern: "wave" })
+      ]),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "invalid-command"
+  );
+  await assert.rejects(
+    () =>
+      shadeEditor.apply([
+        facade.setShadePattern({ nodeId: "missing-shade", pattern: "wave" })
       ]),
     (error) =>
       error instanceof facade.CanvasEditorError &&
