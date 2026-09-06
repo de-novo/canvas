@@ -23,8 +23,8 @@ canvas. `pnpm verify:performance` labels the GL environment and gates
 - `pnpm verify:webgpu` requires host-drawer `#e11d48` from
   `readPixels` on WebGPU, not from a Playwright screenshot.
 - `scripts/lib/frame-budget.mjs` classifies unmasked GL renderers.
-  Software GL is recorded and not gated. GPU 1k-boxes p50 over 16 ms
-  fails.
+  The follow-up [GPU 16 ms frame budget](./2026-09-06-gpu-frame-budget-gate.md)
+  launches Metal GPU Chromium and fails software GL.
 
 ## Verification
 
@@ -33,8 +33,8 @@ date.
 
 ## Residual risk
 
-- A named CI machine is still not pinned. Software-GL hosts skip the
-  16 ms ceiling on purpose.
+- A named CI machine is still not pinned. The GPU gate follow-up
+  closes the software-GL skip on this verifier.
 - Polygon `plugin.<org>.region` is still not a kind. The host reports
   unsupported kinds; this slice does not show rect/circle is
   insufficient.

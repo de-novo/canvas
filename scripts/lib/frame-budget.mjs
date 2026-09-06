@@ -23,6 +23,7 @@ export function classifyGlRenderer(renderer) {
  * @param {{
  *   kind: "gpu" | "software" | "unknown",
  *   p50: number,
+ *   requireGpu?: boolean,
  *   targetMs?: number,
  *   workload: string
  * }} input
@@ -38,6 +39,13 @@ export function evaluateFrameBudget(input) {
     return { gated: false, passed: true, reason: "not-target-workload" };
   }
   if (input.kind !== "gpu") {
+    if (input.requireGpu) {
+      return {
+        gated: true,
+        passed: false,
+        reason: `gpu-required-${input.kind}`
+      };
+    }
     return { gated: false, passed: true, reason: `environment-${input.kind}` };
   }
   if (!(input.p50 <= targetMs)) {

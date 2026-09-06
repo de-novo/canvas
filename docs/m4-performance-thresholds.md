@@ -265,22 +265,22 @@ starts clean. Semantics are covered by `pnpm verify:m4-performance`
 
 ### Batching gate (done)
 
-`pnpm verify:performance` hard-fails unless every workload renders
-through exactly one draw call (`drawCalls=1` with `batch: true`). The
-16 ms 1k-boxes budget is gated only when the unmasked GL renderer is a
-GPU. Software GL (SwiftShader, llvmpipe, and the other labels in
-`scripts/lib/frame-budget.mjs`) is recorded with `gated: false` and
-does not fail the run. The report writes `environment` and
-`frameBudget` next to the workload table so a 9–11 ms GPU canvas and a
-44 ms software-GL sample cannot be quoted as the same number. The 2026-08-22
-deferral still applies to claiming a pinned CI machine; this gate is the
-honest substitute until that pin exists.
+`pnpm verify:performance` launches Chromium with a hardware GPU (ANGLE
+Metal on macOS) and explicit `backend: "webgl2"`. It hard-fails unless
+every workload renders through exactly one draw call (`drawCalls=1`
+with `batch: true`) and unless the 1k-boxes p50 is ≤ 16 ms on that GPU.
+Software GL fails the run (`requireGpu`). A 0 ms ceiling is asserted
+against the live 1k-boxes p50 so the budget function is shown to fail
+before the 16 ms check. The report writes `environment` and
+`frameBudget` next to the workload table.
 
 Measured 2026-09-06 via `pnpm verify:performance` (Playwright headless
-Chromium 149, macOS, unmasked renderer `ANGLE (Google, Vulkan 1.3.0
-(SwiftShader Device ...))`): 1k-boxes p50 108.10 ms, `kind=software`,
-budget not gated. 100-boxes p50 16.70 ms and 10k-boxes p50 166.60 ms
-are the same software-GL session.
+Chromium 149, macOS, unmasked renderer `ANGLE (Apple, ANGLE Metal
+Renderer: Apple M5 Pro, Unspecified Version)`): 100-boxes p50 8.40 ms,
+1k-boxes p50 8.30 ms, 10k-boxes p50 8.30 ms, `drawCalls=1`,
+`kind=gpu`, `gated=true`, `passed=true`. The same day a SwiftShader
+session on this machine was 1k-boxes p50 108.10 ms and is not the
+gated environment.
 
 ### Memory
 
