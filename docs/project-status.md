@@ -261,6 +261,10 @@ product-level extension seam, `CanvasPlugin` is a host bundle, and
 
 ## Active
 
+- Next playground region/mask host (2026-09-07): the shadcn Next
+  consumer rasterizes `rect` / `circle` mask JSON in its own pipeline
+  and hides with `setNodeVisible`. See
+  [2026-09-07 Next playground region/mask host](./history/2026-09-07-playground-region-mask-host.md).
 - Host region/mask rasterization, 2D WebGPU `readPixels`, and a labeled
   16 ms frame-budget gate (2026-09-06): the vanilla host rasterizes
   `rect` / `circle` mask JSON, 2D WebGPU copies swapchain pixels for
@@ -470,8 +474,8 @@ product-level extension seam, `CanvasPlugin` is a host bundle, and
    Do not add `CanvasPluginContext` methods, `pluginState` consumers,
    ThreeUI rooms, a photo-editor vocabulary, BIM UI, a capability
    graph, or an agent protocol package. The region/mask need is served
-   by `rect` / `circle` plus host `metadata`; vanilla proof is
-   `pnpm verify:region-mask` including host rasterization from JSON.
+   by `rect` / `circle` plus host `metadata`; vanilla and the Next
+   playground rasterize that JSON. Proof: `pnpm verify:region-mask`.
    See
    [Kind Drawer Seam](./kind-drawer-seam.md) and
    [Extension Surface Decision](./extension-surface-decision.md).
@@ -482,6 +486,10 @@ product-level extension seam, `CanvasPlugin` is a host bundle, and
 
 ## Evidence
 
+- Next playground region/mask host (2026-09-07). `pnpm verify:region-mask`
+  6/6 including Next `/mask` desktop and iPhone 14. `pnpm verify:public-api`
+  ok. `pnpm verify:docs` 172 Markdown files, 606/606 local targets. See
+  [2026-09-07 Next playground region/mask host](./history/2026-09-07-playground-region-mask-host.md).
 - Status hygiene and 3D WebGPU 16 ms (2026-09-07). Current Phase no
   longer claims the 16 ms gate is unpinned. Kind drawer seam accepts
   2D WebGPU `readPixels` color. `pnpm verify:performance` WebGL2

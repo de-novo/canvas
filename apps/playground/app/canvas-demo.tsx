@@ -6,7 +6,7 @@ import type {
 } from "@denovo/canvas-core";
 import { CanvasStage3D, CanvasView } from "@denovo/react-canvas";
 import { useQuery } from "@tanstack/react-query";
-import { Box, RefreshCw, Square } from "lucide-react";
+import { Box, RefreshCw, Square, SquareDashed } from "lucide-react";
 import { useMemo } from "react";
 import { create } from "zustand";
 import { Button } from "@/components/ui/button";
@@ -14,8 +14,9 @@ import {
   ToggleGroup,
   ToggleGroupItem
 } from "@/components/ui/toggle-group";
+import { MaskHost } from "./mask-host";
 
-type DemoMode = "2d" | "3d";
+type DemoMode = "2d" | "3d" | "mask";
 
 type DemoState = {
   mode: DemoMode;
@@ -45,7 +46,9 @@ export function CanvasDemo() {
   return (
     <main className="grid min-h-svh grid-cols-1 bg-background lg:grid-cols-[minmax(0,1fr)_24rem]">
       <section className="min-h-0 p-3 sm:p-5 lg:min-h-svh">
-        {scene.mode === "3d" ? (
+        {mode === "mask" ? (
+          <MaskHost className="h-[58svh] min-h-[22.5rem] w-full overflow-hidden rounded-[var(--dc-radius,var(--radius))] border border-border bg-card lg:h-[calc(100svh-2.5rem)] lg:min-h-[27.5rem]" />
+        ) : scene.mode === "3d" ? (
           <CanvasStage3D
             className="h-[58svh] min-h-[22.5rem] w-full overflow-hidden rounded-[var(--dc-radius,var(--radius))] border border-border bg-card lg:h-[calc(100svh-2.5rem)] lg:min-h-[27.5rem]"
             scene={scene}
@@ -85,7 +88,11 @@ export function CanvasDemo() {
               onValueChange={(values) => {
                 const nextMode = values[0];
 
-                if (nextMode === "2d" || nextMode === "3d") {
+                if (
+                  nextMode === "2d" ||
+                  nextMode === "3d" ||
+                  nextMode === "mask"
+                ) {
                   setMode(nextMode);
                 }
               }}
@@ -105,6 +112,15 @@ export function CanvasDemo() {
               >
                 <Square data-icon="inline-start" />
                 2D
+              </ToggleGroupItem>
+              <ToggleGroupItem
+                id="demo-mode-mask"
+                aria-label="Show region mask host"
+                className="flex-1"
+                value="mask"
+              >
+                <SquareDashed data-icon="inline-start" />
+                Mask
               </ToggleGroupItem>
             </ToggleGroup>
           </div>

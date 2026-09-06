@@ -334,8 +334,8 @@ decision:
    parse.
 5. For the region/mask need, prototype in the consuming product with
    `rect` and `circle` plus `metadata`, and report whether polygons are
-   required before any canvas change is scheduled. Vanilla now
-   rasterizes that JSON in `apps/vanilla/src/rasterize-region-mask.mjs`.
+   required before any canvas change is scheduled. Vanilla and the Next
+   playground now rasterize that JSON. Polygons were not required.
 
 ## Consequences
 

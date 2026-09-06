@@ -10,6 +10,8 @@ import path from "node:path";
 import { spawn } from "node:child_process";
 import { pathToFileURL } from "node:url";
 
+import { devices } from "playwright";
+
 import { launchPixelChromium } from "./lib/chromium.mjs";
 
 import { createCheckRunner } from "./lib/checks.mjs";
@@ -267,6 +269,27 @@ try {
   server.process.kill("SIGTERM");
 }
 
+const playgroundShot = path.resolve(
+  root,
+  "artifacts/verification/playground-region-mask.png"
+);
+const playground = await startNext(5196);
+try {
+  await check("playground-host-rasterizes-region-mask", async () => {
+    await verifyPlaygroundMask({
+      screenshotPath: playgroundShot,
+      viewport: { height: 800, width: 1280 }
+    });
+  });
+  await check("playground-host-region-mask-mobile", async () => {
+    await verifyPlaygroundMask({
+      viewport: devices["iPhone 14"].viewport
+    });
+  });
+} finally {
+  playground.process.kill("SIGTERM");
+}
+
 report();
 
 function countDiskPixels(centerX, centerY, radius, width, height) {
@@ -286,6 +309,142 @@ function countDiskPixels(centerX, centerY, radius, width, height) {
     }
   }
   return count;
+}
+
+/**
+ * @param {{
+ *   screenshotPath?: string,
+ *   viewport: { height: number, width: number }
+ * }} options
+ */
+async function verifyPlaygroundMask(options) {
+  const browser = await launchPixelChromium();
+  try {
+    const page = await browser.newPage({ viewport: options.viewport });
+    const consoleErrors = [];
+    page.on("pageerror", (error) => consoleErrors.push(String(error)));
+    page.on("console", (message) => {
+      if (message.type() === "error") {
+        consoleErrors.push(message.text());
+      }
+    });
+    await page.goto(`${playground.url}/mask`, { waitUntil: "domcontentloaded" });
+    try {
+      await page.waitForSelector('[data-denovo-mask-ready="true"]', {
+        timeout: 60_000
+      });
+    } catch (error) {
+      const body = await page.locator("body").innerText();
+      throw new Error(
+        `${error}\npageerrors=${consoleErrors.join(" | ")}\nbody=${body.slice(0, 2000)}`
+      );
+    }
+    const before = await page.evaluate(() => window.__playgroundMask);
+    assert.equal(before.iframeCount, 0);
+    assert.equal(before.listedHasMetadata, false);
+    assert.deepEqual(before.unsupportedKinds, []);
+    assert.equal(before.rectSample, 255);
+    assert.equal(before.circleSample, 255);
+    assert.equal(before.outsideSample, 0);
+    assert.equal(before.rectHidden, false);
+    assert.ok(
+      before.maskPixels > 20_000,
+      `playground host mask must cover rect+circle, got ${before.maskPixels}`
+    );
+    await page.evaluate(async () => {
+      const hide = window.__playgroundMaskHideRect;
+      if (typeof hide !== "function") {
+        throw new Error("playground hide helper was not installed");
+      }
+      await hide();
+    });
+    try {
+      await page.waitForSelector('[data-denovo-rect-sample="0"]', {
+        timeout: 15_000
+      });
+    } catch (error) {
+      const afterClick = await page.evaluate(() => ({
+        error: window.__playgroundMaskError,
+        mask: window.__playgroundMask
+      }));
+      throw new Error(
+        `${error}\napply=${afterClick.error ?? "none"}\nmask=${JSON.stringify(afterClick.mask)}`
+      );
+    }
+    const after = await page.evaluate(() => window.__playgroundMask);
+    assert.equal(after.rectSample, 0);
+    assert.equal(after.circleSample, 255);
+    assert.equal(after.rectHidden, true);
+    assert.ok(
+      after.maskPixels < before.maskPixels / 2,
+      `hiding the rect must drop host mask pixels (${before.maskPixels} → ${after.maskPixels})`
+    );
+    if (options.screenshotPath) {
+      mkdirSync(path.dirname(options.screenshotPath), { recursive: true });
+      await page.screenshot({ path: options.screenshotPath, fullPage: true });
+    }
+    assert.deepEqual(
+      consoleErrors.filter((message) => !/Download the React DevTools/i.test(message)),
+      []
+    );
+  } finally {
+    await browser.close();
+  }
+}
+
+function startNext(port) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(
+      "pnpm",
+      [
+        "--filter",
+        "@denovo/canvas-next-playground",
+        "exec",
+        "next",
+        "dev",
+        "-H",
+        "127.0.0.1",
+        "-p",
+        String(port)
+      ],
+      { cwd: process.cwd(), stdio: ["ignore", "pipe", "pipe"] }
+    );
+    let stdout = "";
+    const url = `http://127.0.0.1:${port}`;
+    const timer = setTimeout(() => {
+      child.kill("SIGTERM");
+      reject(new Error(`next playground did not start:\n${stdout}`));
+    }, 90_000);
+    const ready = async () => {
+      try {
+        const response = await fetch(url);
+        if (response.ok) {
+          clearTimeout(timer);
+          resolve({ process: child, url });
+        }
+      } catch {
+        // keep polling until the timeout
+      }
+    };
+    child.stdout.on("data", (chunk) => {
+      stdout += chunk.toString();
+      void ready();
+    });
+    child.stderr.on("data", (chunk) => {
+      stdout += chunk.toString();
+      void ready();
+    });
+    void ready();
+    const poll = setInterval(() => {
+      void ready();
+    }, 250);
+    child.on("exit", (code) => {
+      clearInterval(poll);
+      clearTimeout(timer);
+      reject(new Error(`next playground exited ${code}:\n${stdout}`));
+    });
+    child.on("error", reject);
+  });
 }
 
 function startApp(filter, port) {

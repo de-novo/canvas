@@ -162,3 +162,4 @@ Each entry should include:
 - [2026-09-06 Host mask rasterization, 2D WebGPU readback, frame budget](./2026-09-06-host-mask-webgpu-readback-frame-budget.md)
 - [2026-09-06 GPU 16 ms frame budget](./2026-09-06-gpu-frame-budget-gate.md)
 - [2026-09-07 Status hygiene and 3D WebGPU 16 ms](./2026-09-07-status-hygiene-webgpu-frame-budget.md)
+- [2026-09-07 Next playground region/mask host](./2026-09-07-playground-region-mask-host.md)
