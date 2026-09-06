@@ -30,6 +30,7 @@
     "verify:m4-performance": "node scripts/verify-m4-performance.mjs",
     "verify:mesh-surface": "node scripts/verify-mesh-surface.mjs",
     "verify:public-api": "node scripts/verify-public-api.mjs",
+    "verify:region-mask": "node scripts/verify-region-mask.mjs",
     "verify:webgpu": "node scripts/verify-webgpu.mjs",
     "verify:performance": "node scripts/verify-performance.mjs",
     "verify:point-field": "node scripts/verify-point-field.mjs",

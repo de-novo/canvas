@@ -139,7 +139,10 @@ The default package must expose:
 The package must also expose:
 
 - `./styles.css` for the styling contract;
-- `./react` for optional React adapter exports.
+- `./react` for optional React adapter exports;
+- `./web` for host kind drawer registration (`registerPluginNodeDrawer`).
+  The default import must not export that function or Canvas2D/Three
+  types for it.
 
 React, Next.js, React Three Fiber, and Drei must not be required by the default
 facade import.

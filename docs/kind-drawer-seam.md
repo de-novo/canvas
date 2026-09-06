@@ -20,7 +20,8 @@ uses the same structural bounds as the drawer’s local size.
 
 The default facade (`@denovo/canvas`) MUST NOT export this registration
 and MUST NOT expose `CanvasRenderingContext2D` or Three.js types for it.
-Hosts that need a custom kind visual import `@denovo/canvas-web`.
+Hosts that need a custom kind visual import `@denovo/canvas/web` or
+`@denovo/canvas-web`.
 
 Official kinds (`plugin.denovo.field`, `plugin.denovo.sparkline`,
 `plugin.denovo.shade`) keep their hard-coded drawers. A host
@@ -31,7 +32,7 @@ MUST NOT throw.
 ## Registration
 
 ```ts
-import { registerPluginNodeDrawer } from "@denovo/canvas-web";
+import { registerPluginNodeDrawer } from "@denovo/canvas/web";
 
 const unregister = registerPluginNodeDrawer({
   type: "plugin.test.card",

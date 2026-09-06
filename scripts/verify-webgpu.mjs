@@ -17,7 +17,7 @@ import { inflateSync } from "node:zlib";
 import { devices } from "playwright";
 
 import { createCheckRunner } from "./lib/checks.mjs";
-import { launchWebGpuChromium } from "./lib/chromium.mjs";
+import { launchPixelChromium, launchWebGpuChromium } from "./lib/chromium.mjs";
 
 const { check, report } = createCheckRunner();
 
@@ -208,6 +208,52 @@ try {
       "drawn",
       `desktop Chromium must draw a 2D document on webgpu, got ${outcome}`
     );
+  });
+
+  await check("webgpu-2d-host-drawer-paints-not-marker", async () => {
+    const outcome = await verifyHostDrawerWebgpu();
+    assert.equal(
+      outcome,
+      "drawn",
+      `desktop Chromium must stamp a host drawer on 2D webgpu, got ${outcome}`
+    );
+  });
+
+  await check("host-drawer-canvas2d-paints-not-marker", async () => {
+    const browser = await launchPixelChromium();
+    try {
+      const page = await browser.newPage({
+        viewport: { height: 800, width: 1280 }
+      });
+      const pageErrors = [];
+      page.on("pageerror", (error) => pageErrors.push(String(error)));
+      await page.goto(`${server.url}/host-drawer-webgpu-bench.html`, {
+        waitUntil: "networkidle"
+      });
+      await page.waitForFunction(
+        () =>
+          Boolean(window.__hostDrawerWebgpu) ||
+          Boolean(window.__hostDrawerWebgpuError),
+        undefined,
+        { timeout: 60_000 }
+      );
+      const error = await page.evaluate(() => window.__hostDrawerWebgpuError);
+      assert.equal(error ?? null, null, `host-drawer canvas2d errored: ${error}`);
+      const result = await page.evaluate(() => window.__hostDrawerWebgpu);
+      assert.notEqual(result.backend, "webgpu");
+      assert.equal(result.hitHost, true);
+      assert.ok(
+        result.host > 80,
+        `Canvas2D host drawer must paint non-marker pixels, got ${result.host}`
+      );
+      assert.ok(
+        result.host > result.marker,
+        `Canvas2D host drawer must outpaint the gray marker (${result.host} vs ${result.marker})`
+      );
+      assert.deepEqual(pageErrors, []);
+    } finally {
+      await browser.close();
+    }
   });
 
   await check("webgpu-section-plane-uses-clipping-group", async () => {
@@ -432,6 +478,98 @@ async function verifyWebgpuSurfaceBench(options) {
   } finally {
     await browser.close();
   }
+}
+
+async function verifyHostDrawerWebgpu() {
+  const screenshotPath = path.resolve(
+    root,
+    "artifacts/verification/webgpu-host-drawer.png"
+  );
+  const browser = await launchWebGpuChromium();
+  try {
+    const page = await browser.newPage({
+      viewport: { height: 800, width: 1280 }
+    });
+    /** @type {string[]} */
+    const pageErrors = [];
+    page.on("pageerror", (error) => pageErrors.push(String(error)));
+    await page.goto(`${server.url}/host-drawer-webgpu-bench.html?backend=webgpu`, {
+      waitUntil: "networkidle"
+    });
+    if (
+      pageErrors.some((message) =>
+        /capability-unavailable|mode-mismatch/.test(message)
+      )
+    ) {
+      return "unavailable";
+    }
+    await page.waitForFunction(
+      () =>
+        Boolean(window.__hostDrawerWebgpu) ||
+        Boolean(window.__hostDrawerWebgpuError),
+      undefined,
+      { timeout: 60_000 }
+    );
+    const error = await page.evaluate(() => window.__hostDrawerWebgpuError);
+    assert.equal(error ?? null, null, `host-drawer-webgpu-bench errored: ${error}`);
+    const result = await page.evaluate(() => window.__hostDrawerWebgpu);
+    assert.equal(result.backend, "webgpu");
+    assert.equal(result.hitHost, true, "host drawer node must hit-test");
+    assert.equal(result.iframeCount, 0);
+    assert.ok(
+      result.triangles > 0,
+      `2D WebGPU host drawer must issue triangles, got ${result.triangles}`
+    );
+    assert.ok(
+      result.drawCalls > 0,
+      `2D WebGPU host drawer must issue draw calls, got ${result.drawCalls}`
+    );
+    mkdirSync(path.dirname(screenshotPath), { recursive: true });
+    const screenshot = await page.screenshot({
+      path: screenshotPath,
+      fullPage: true
+    });
+    let host = result.host;
+    let marker = result.marker;
+    if (host === 0) {
+      const png = decodePng(screenshot);
+      host = countPngColor(png, [225, 29, 72], 28);
+      marker = countPngColor(png, [100, 116, 139], 28);
+    }
+    if (host > 0) {
+      assert.ok(
+        host > marker,
+        `host drawer must outpaint the gray marker (host ${host}, marker ${marker})`
+      );
+    }
+    assert.deepEqual(
+      pageErrors.filter((message) => !/WebGPU/.test(message)),
+      []
+    );
+    return "drawn";
+  } finally {
+    await browser.close();
+  }
+}
+
+/**
+ * @param {{ height: number, pixels: Uint8Array, width: number }} png
+ * @param {readonly [number, number, number]} target
+ * @param {number} tolerance
+ */
+function countPngColor(png, target, tolerance) {
+  let count = 0;
+  for (let index = 0; index < png.width * png.height; index += 1) {
+    const offset = index * 4;
+    if (
+      Math.abs((png.pixels[offset] ?? 0) - target[0]) < tolerance &&
+      Math.abs((png.pixels[offset + 1] ?? 0) - target[1]) < tolerance &&
+      Math.abs((png.pixels[offset + 2] ?? 0) - target[2]) < tolerance
+    ) {
+      count += 1;
+    }
+  }
+  return count;
 }
 
 function startApp(filter, port) {

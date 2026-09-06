@@ -77,6 +77,10 @@ assert.ok(
   facadePackage.exports?.["./react"],
   "facade must export ./react as an optional adapter path"
 );
+assert.ok(
+  facadePackage.exports?.["./web"],
+  "facade must export ./web for host kind drawers"
+);
 assert.equal(
   facadePackage.dependencies?.["@denovo/react-canvas"],
   undefined,
@@ -495,6 +499,14 @@ assert.equal(
   Object.hasOwn(facadeModule, "registerPluginNodeDrawer"),
   false,
   "facade must not export registerPluginNodeDrawer"
+);
+const facadeWebPath = path.join(facadeDir, "dist", "web.js");
+assert.equal(existsSync(facadeWebPath), true, "facade must emit ./web");
+const facadeWebModule = await import(pathToFileURL(facadeWebPath).href);
+assert.equal(
+  typeof facadeWebModule.registerPluginNodeDrawer,
+  "function",
+  "facade ./web must export registerPluginNodeDrawer"
 );
 const listedPluginKinds = facadeModule.listPluginNodeKinds();
 assert.ok(
@@ -3754,6 +3766,25 @@ void numericModel;
 );
 
 writeFileSync(
+  path.join(tmpDir, "web-smoke.ts"),
+  `import {
+  PLUGIN_NODE_MARKER_FILL,
+  registerPluginNodeDrawer
+} from "${facadeName}/web";
+
+const unregister = registerPluginNodeDrawer({
+  mode: "2d",
+  type: "plugin.test.web",
+  draw2d(context) {
+    context.fillStyle = PLUGIN_NODE_MARKER_FILL;
+    context.fillRect(0, 0, 8, 8);
+  }
+});
+unregister();
+`
+);
+
+writeFileSync(
   path.join(tmpDir, "tsconfig.json"),
   JSON.stringify(
     {
@@ -3763,7 +3794,8 @@ writeFileSync(
           "@denovo/canvas-core/effect": ["../../packages/core/dist/effect.d.ts"],
           "@denovo/canvas-editor": ["../../packages/editor/dist/index.d.ts"],
           [facadeName]: ["../../packages/canvas/dist/index.d.ts"],
-          [`${facadeName}/react`]: ["../../packages/canvas/dist/react.d.ts"]
+          [`${facadeName}/react`]: ["../../packages/canvas/dist/react.d.ts"],
+          [`${facadeName}/web`]: ["../../packages/canvas/dist/web.d.ts"]
         },
         noEmit: true
       },
@@ -3814,6 +3846,26 @@ writeFileSync(
 );
 
 writeFileSync(
+  path.join(tmpDir, "web-tsconfig.json"),
+  JSON.stringify(
+    {
+      extends: "../../tsconfig.base.json",
+      compilerOptions: {
+        lib: ["ES2022", "DOM"],
+        noEmit: true,
+        paths: {
+          [facadeName]: ["../../packages/canvas/dist/index.d.ts"],
+          [`${facadeName}/web`]: ["../../packages/canvas/dist/web.d.ts"]
+        }
+      },
+      include: ["web-smoke.ts"]
+    },
+    null,
+    2
+  )
+);
+
+writeFileSync(
   path.join(tmpDir, "bim-tsconfig.json"),
   JSON.stringify(
     {
@@ -3857,6 +3909,14 @@ try {
   execFileSync(
     "pnpm",
     ["exec", "tsc", "-p", path.join(tmpDir, "bim-tsconfig.json")],
+    {
+      cwd: root,
+      stdio: "pipe"
+    }
+  );
+  execFileSync(
+    "pnpm",
+    ["exec", "tsc", "-p", path.join(tmpDir, "web-tsconfig.json")],
     {
       cwd: root,
       stdio: "pipe"

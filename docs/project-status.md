@@ -257,6 +257,10 @@ product-level extension seam, `CanvasPlugin` is a host bundle, and
 
 ## Active
 
+- Region/mask document and host-drawer pixels (2026-09-06): mask
+  regions are `rect` / `circle` plus `metadata.role`. Host drawers
+  register through `@denovo/canvas/web`. See
+  [2026-09-06 region-mask and host-drawer pixels](./history/2026-09-06-region-mask-and-host-drawer-pixels.md).
 - Kind colocation, named-operation catalog, and 2D WebGPU host
   drawers (2026-09-06): official kinds live under `kinds/`;
   `listNamedOperations()` enumerates the twenty operations; 2D WebGPU
@@ -447,8 +451,9 @@ product-level extension seam, `CanvasPlugin` is a host bundle, and
    `kinds/`. 2D WebGPU stamps host `draw2d` when the atlas has room.
    Do not add `CanvasPluginContext` methods, `pluginState` consumers,
    ThreeUI rooms, a photo-editor vocabulary, BIM UI, a capability
-   graph, or an agent protocol package. The region/mask need elsewhere
-   is served by `rect` / `circle` plus host `metadata` today. See
+   graph, or an agent protocol package. The region/mask need is served
+   by `rect` / `circle` plus host `metadata`; vanilla proof is
+   `pnpm verify:region-mask`. See
    [Kind Drawer Seam](./kind-drawer-seam.md) and
    [Extension Surface Decision](./extension-surface-decision.md).
 
@@ -458,6 +463,15 @@ product-level extension seam, `CanvasPlugin` is a host bundle, and
 
 ## Evidence
 
+- Region/mask document and host-drawer pixels (2026-09-06).
+  `pnpm verify:region-mask` 2/2. `pnpm verify:webgpu` 11/11 including
+  host-drawer WebGPU hit/triangles and Canvas2D non-marker pixels.
+  `pnpm typecheck` 36/36. `pnpm build` 25/25.
+  `pnpm verify:public-api` ok (`./web` subpath).
+  `pnpm verify:docs` 168 Markdown files, 585/585 local targets.
+  Screenshots `artifacts/verification/region-mask.png` and
+  `webgpu-host-drawer.png`. See
+  [2026-09-06 region-mask and host-drawer pixels](./history/2026-09-06-region-mask-and-host-drawer-pixels.md).
 - Kind colocation, named-operation catalog, and 2D WebGPU host
   drawers (2026-09-06). `listNamedOperations()` returns 20 names
   including `setShadePattern` and `listNodes`. 2D WebGPU bundle

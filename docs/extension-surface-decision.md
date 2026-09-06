@@ -283,7 +283,8 @@ decision:
   `metadata` (for example a role) and rasterizes the mask from the JSON in
   its own pipeline. `listNodes`, `setNodeVisible`, `setNodeLocked`,
   `setNodeLayer`, and `removeNode` already cover the operations an agent
-  would call.
+  would call. Vanilla proof: `apps/vanilla/region-mask-bench.html` and
+  `pnpm verify:region-mask`.
 - **Polygon or freeform regions** are a kind, not a built-in. `line`,
   `polyline`, and `path` are explicitly not implicit `0.2.0` fallbacks
   ([M8 Diagram Contract](./m8-diagram-contract.md)), and `0.2.0` built-ins

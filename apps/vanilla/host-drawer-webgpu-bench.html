@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+  <head><meta charset="utf-8" /><title>host-drawer-webgpu-bench</title></head>
+  <body style="margin:0;background:#111827;color:#e2e8f0;font:14px sans-serif;">
+    <div id="status" style="position:fixed;z-index:2;left:12px;top:12px;padding:6px 10px;border-radius:6px;background:#0f172acc;">starting</div>
+    <div id="stage" style="position:fixed;inset:0;"></div>
+    <script type="module">
+      import {
+        createCanvas,
+        defineDocument,
+        definePluginNodeKind,
+        registerPluginNodeKind
+      } from "@denovo/canvas";
+      import { registerPluginNodeDrawer } from "@denovo/canvas/web";
+
+      const HOST = [225, 29, 72];
+      const MARKER = [100, 116, 139];
+      const propsSchema = {
+        parse(value) {
+          if (!value || typeof value !== "object" || typeof value.label !== "string") {
+            throw new TypeError("plugin.test.host props require label.");
+          }
+          return { label: value.label };
+        }
+      };
+
+      const kind = definePluginNodeKind({
+        mode: "2d",
+        props: propsSchema,
+        type: "plugin.test.host"
+      });
+      registerPluginNodeKind(kind);
+      registerPluginNodeDrawer({
+        type: "plugin.test.host",
+        mode: "2d",
+        draw2d(context) {
+          context.fillStyle = "#e11d48";
+          context.fillRect(0, 0, 240, 160);
+        },
+        localSize2d() {
+          return [240, 160];
+        }
+      });
+
+      const documentModel = defineDocument({
+        id: "host-drawer-webgpu",
+        scene: {
+          background: "#111827",
+          id: "host-drawer-webgpu-scene",
+          layers: [{ id: "main", name: "Main" }],
+          mode: "2d",
+          nodes: [
+            {
+              id: "host-card",
+              layerId: "main",
+              position: [40, 40],
+              props: { label: "hero" },
+              type: "plugin.test.host"
+            }
+          ]
+        }
+      });
+
+      function countColor(image, target) {
+        let count = 0;
+        for (let index = 0; index < image.data.length; index += 4) {
+          if (
+            Math.abs(image.data[index] - target[0]) < 24 &&
+            Math.abs(image.data[index + 1] - target[1]) < 24 &&
+            Math.abs(image.data[index + 2] - target[2]) < 24
+          ) {
+            count += 1;
+          }
+        }
+        return count;
+      }
+
+      const host = document.getElementById("stage");
+      try {
+        const requestedBackend = new URLSearchParams(window.location.search).get(
+          "backend"
+        );
+        const runtime = createCanvas(host, {
+          document: documentModel,
+          ...(requestedBackend === "webgpu"
+            ? { renderer: { backend: "webgpu" } }
+            : {})
+        });
+        await runtime.ready;
+        runtime.render();
+        const hit = runtime.hitTest({ point: [80, 80] });
+        let sampledHost = 0;
+        let sampledMarker = 0;
+        try {
+          const canvas = runtime.canvas;
+          const scratch = document.createElement("canvas");
+          scratch.width = canvas.width;
+          scratch.height = canvas.height;
+          const context = scratch.getContext("2d");
+          context.drawImage(canvas, 0, 0);
+          const image = context.getImageData(0, 0, scratch.width, scratch.height);
+          sampledHost = countColor(image, HOST);
+          sampledMarker = countColor(image, MARKER);
+        } catch {
+          sampledHost = 0;
+          sampledMarker = 0;
+        }
+        const stats = runtime.getRenderStats();
+        window.__hostDrawerWebgpu = {
+          backend: host.getAttribute("data-denovo-backend"),
+          drawCalls: stats?.drawCalls ?? 0,
+          hitHost: hit.kind === "node" && hit.nodeId === "host-card",
+          host: sampledHost,
+          iframeCount: document.querySelectorAll("iframe").length,
+          marker: sampledMarker,
+          triangles: stats?.triangles ?? 0
+        };
+        host.setAttribute("data-denovo-ready", "true");
+        document.getElementById("status").textContent =
+          `${window.__hostDrawerWebgpu.backend} host ${sampledHost} marker ${sampledMarker}`;
+      } catch (error) {
+        window.__hostDrawerWebgpuError = String(error);
+        host.setAttribute("data-denovo-ready", "true");
+        document.getElementById("status").textContent = String(error);
+      }
+    </script>
+  </body>
+</html>

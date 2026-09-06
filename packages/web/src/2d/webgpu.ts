@@ -154,7 +154,7 @@ fn fs(input: VSOut) -> @location(0) vec4f {
   let texel = textureSample(textAtlas, textSampler, input.uv);
   var color = input.color;
   if (input.extra.y > 0.5) {
-    color = vec4f(input.color.rgb, input.color.a * texel.a);
+    color = vec4f(texel.rgb * input.color.rgb, input.color.a * texel.a);
     if (color.a < 0.04) {
       discard;
     }

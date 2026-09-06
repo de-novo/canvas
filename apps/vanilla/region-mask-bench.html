@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+  <head><meta charset="utf-8" /><title>region-mask-bench</title></head>
+  <body>
+    <div id="stage" style="position:fixed;inset:0;"></div>
+    <script type="module">
+      import {
+        connectEditorToCanvas,
+        createCanvas,
+        createEditor,
+        defineDocument,
+        listNodes,
+        setNodeVisible
+      } from "@denovo/canvas";
+
+      const MASK_RECT = [225, 29, 72];
+      const MASK_CIRCLE = [34, 197, 94];
+
+      const documentModel = defineDocument({
+        id: "region-mask-bench",
+        scene: {
+          background: "#0f172a",
+          id: "region-mask-bench-scene",
+          layers: [
+            { id: "image", name: "Image" },
+            { id: "mask", name: "Mask" }
+          ],
+          mode: "2d",
+          nodes: [
+            {
+              fill: "#1e293b",
+              id: "stand-in",
+              layerId: "image",
+              metadata: { role: "image" },
+              position: [40, 40],
+              size: [640, 400],
+              type: "rect"
+            },
+            {
+              fill: "#e11d48",
+              id: "mask-rect",
+              layerId: "mask",
+              metadata: { role: "mask" },
+              position: [80, 80],
+              size: [160, 120],
+              type: "rect"
+            },
+            {
+              fill: "#22c55e",
+              id: "mask-circle",
+              layerId: "mask",
+              metadata: { role: "mask" },
+              position: [400, 220],
+              radius: 56,
+              type: "circle"
+            }
+          ]
+        }
+      });
+
+      function countColor(image, target) {
+        let count = 0;
+        for (let index = 0; index < image.data.length; index += 4) {
+          if (
+            Math.abs(image.data[index] - target[0]) < 18 &&
+            Math.abs(image.data[index + 1] - target[1]) < 18 &&
+            Math.abs(image.data[index + 2] - target[2]) < 18
+          ) {
+            count += 1;
+          }
+        }
+        return count;
+      }
+
+      function sample(runtime) {
+        runtime.render();
+        const canvas = runtime.canvas;
+        const scratch = document.createElement("canvas");
+        scratch.width = canvas.width;
+        scratch.height = canvas.height;
+        const context = scratch.getContext("2d");
+        context.drawImage(canvas, 0, 0);
+        return context.getImageData(0, 0, scratch.width, scratch.height);
+      }
+
+      const host = document.getElementById("stage");
+      try {
+        const runtime = createCanvas(host, { document: documentModel });
+        const editor = createEditor({ document: documentModel });
+        connectEditorToCanvas(editor, runtime);
+        await runtime.ready;
+        const listed = listNodes(editor.getState().document);
+        const maskIds = editor
+          .getState()
+          .document.scene.nodes.filter((node) => node.metadata?.role === "mask")
+          .map((node) => node.id);
+        const before = sample(runtime);
+        const rectHit = runtime.hitTest({ point: [120, 120] });
+        await editor.apply([
+          setNodeVisible({ nodeId: "mask-rect", visible: false })
+        ]);
+        const after = sample(runtime);
+        window.__regionMaskBench = {
+          iframeCount: document.querySelectorAll("iframe").length,
+          listedIds: listed.map((node) => node.id),
+          listedHasMetadata: listed.some((node) => "metadata" in node),
+          maskIds,
+          rectHit: rectHit.kind === "node" && rectHit.nodeId === "mask-rect",
+          redAfter: countColor(after, MASK_RECT),
+          redBefore: countColor(before, MASK_RECT),
+          greenAfter: countColor(after, MASK_CIRCLE),
+          undoDepth: editor.getState().history.undoDepth,
+          visibleAfter: listNodes(editor.getState().document).map((node) => ({
+            id: node.id,
+            visible: node.visible
+          }))
+        };
+        host.setAttribute("data-denovo-ready", "true");
+      } catch (error) {
+        window.__regionMaskBenchError = String(error);
+        host.setAttribute("data-denovo-ready", "true");
+      }
+    </script>
+  </body>
+</html>
