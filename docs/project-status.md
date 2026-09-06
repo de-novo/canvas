@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: 2026-09-06.
+Last updated: 2026-09-07.
 
 This is the canonical project status index. Keep milestone definitions in
 [Vision and Milestones](./vision-and-milestones.md); keep chronological evidence
@@ -18,11 +18,15 @@ entries:
 - [2026-08-22 M4 worker task queue + LOD controls, chunk loading, and batching gate](./history/2026-08-22-m4-lod-chunk-loading.md)
 - [2026-08-22 M7 worker parsing and section plane](./history/2026-08-22-m7-worker-parsing-section-plane.md)
 
-Recorded descopes inside those verdicts: the 16 ms frame-budget gate needs
-a pinned measurement environment; an OffscreenCanvas rendering path is not
-an M4 deliverable; the XKT/xeokit viewer adapter stays out of M7 (AGPL);
-mesh-surface-picked measurement endpoints are a future M3.1-contract
-extension.
+Recorded descopes inside those 2026-08-22 verdicts, with later landings
+called out: the 16 ms frame-budget gate needed a pinned measurement
+environment — 2026-09-06 gates 1k-boxes p50 on this machine's Apple M5
+Pro via ANGLE Metal WebGL2; 2026-09-07 also gates explicit 3D WebGPU
+1k-boxes p50 on that GPU. Linux and Windows remain unmeasured. An
+OffscreenCanvas rendering path is not an M4 deliverable. The XKT/xeokit
+viewer adapter stays out of M7 (AGPL). Mesh-surface-picked measurement
+endpoints were listed as a future M3.1 extension and landed the same
+day as the M4/M7 verdicts.
 
 v1 focus remains the framework-agnostic 2D/3D editor engine. Diagram and
 BIM stay optional packages, not a second product identity. See
@@ -261,11 +265,12 @@ product-level extension seam, `CanvasPlugin` is a host bundle, and
   16 ms frame-budget gate (2026-09-06): the vanilla host rasterizes
   `rect` / `circle` mask JSON, 2D WebGPU copies swapchain pixels for
   the host-drawer color gate, and `pnpm verify:performance` launches
-  Metal GPU Chromium, requires WebGL2, and fails 1k-boxes p50 over
-  16 ms or a software-GL renderer. See
-  [2026-09-06 host mask, WebGPU readback, frame budget](./history/2026-09-06-host-mask-webgpu-readback-frame-budget.md)
+  Metal GPU Chromium, requires WebGL2, gates 1k-boxes p50 on WebGL2 and
+  explicit 3D WebGPU, and fails software GL. See
+  [2026-09-06 host mask, WebGPU readback, frame budget](./history/2026-09-06-host-mask-webgpu-readback-frame-budget.md),
+  [2026-09-06 GPU 16 ms frame budget](./history/2026-09-06-gpu-frame-budget-gate.md),
   and
-  [2026-09-06 GPU 16 ms frame budget](./history/2026-09-06-gpu-frame-budget-gate.md).
+  [2026-09-07 status hygiene and WebGPU 16 ms](./history/2026-09-07-status-hygiene-webgpu-frame-budget.md).
 - Region/mask document and host-drawer pixels (2026-09-06): mask
   regions are `rect` / `circle` plus `metadata.role`. Host drawers
   register through `@denovo/canvas/web`. See
@@ -437,11 +442,12 @@ product-level extension seam, `CanvasPlugin` is a host bundle, and
    instance surface points landed 2026-08-26; 3D `auto` prefers WebGPU
    when the capability probe is true (2026-08-26). A labeled 16 ms
    1k-boxes gate now runs in `pnpm verify:performance` on Metal GPU
-   WebGL2: 1k-boxes p50 8.30 ms, `gated=true`. Software GL fails the
-   run. A named CI machine is still not pinned (rationale in
+   WebGL2 and explicit 3D WebGPU: 1k-boxes p50 8.30 ms, `gated=true`.
+   Software GL fails the run. WebGPU draw-call count is recorded, not
+   batched to 1. A named CI machine is still not pinned (rationale in
    [2026-08-22 next contract decision](./history/2026-08-22-next-contract-decision.md)).
    See
-   [2026-09-06 GPU 16 ms frame budget](./history/2026-09-06-gpu-frame-budget-gate.md)
+   [2026-09-07 status hygiene and WebGPU 16 ms](./history/2026-09-07-status-hygiene-webgpu-frame-budget.md)
    and
    [2026-08-25 explicit WebGPU 3D](./history/2026-08-25-webgpu-explicit-3d.md).
 6. **B-item residual risks (complete):** storey layers (2026-08-22),
@@ -476,6 +482,13 @@ product-level extension seam, `CanvasPlugin` is a host bundle, and
 
 ## Evidence
 
+- Status hygiene and 3D WebGPU 16 ms (2026-09-07). Current Phase no
+  longer claims the 16 ms gate is unpinned. Kind drawer seam accepts
+  2D WebGPU `readPixels` color. `pnpm verify:performance` WebGL2
+  1k-boxes p50 8.30 ms `drawCalls=1`; WebGPU 1k-boxes p50 8.30 ms
+  `drawCalls=24` time-gated, not batch-gated. `pnpm verify:docs` 171
+  Markdown files, 602/602 local targets. See
+  [2026-09-07 status hygiene and WebGPU 16 ms](./history/2026-09-07-status-hygiene-webgpu-frame-budget.md).
 - GPU 16 ms frame budget (2026-09-06). `pnpm verify:performance`
   launches ANGLE Metal, forces WebGL2, `drawCalls=1` on 100/1k/10k,
   1k-boxes p50 8.30 ms, `kind=gpu`, `gated=true`, `passed=true`.

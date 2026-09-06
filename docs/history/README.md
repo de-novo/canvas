@@ -161,3 +161,4 @@ Each entry should include:
 - [2026-09-06 Region/mask document and host-drawer pixels](./2026-09-06-region-mask-and-host-drawer-pixels.md)
 - [2026-09-06 Host mask rasterization, 2D WebGPU readback, frame budget](./2026-09-06-host-mask-webgpu-readback-frame-budget.md)
 - [2026-09-06 GPU 16 ms frame budget](./2026-09-06-gpu-frame-budget-gate.md)
+- [2026-09-07 Status hygiene and 3D WebGPU 16 ms](./2026-09-07-status-hygiene-webgpu-frame-budget.md)

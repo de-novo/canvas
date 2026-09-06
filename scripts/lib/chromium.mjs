@@ -52,3 +52,13 @@ export function launchGpuChromium(options = {}) {
     args: [...gpuChromiumArgs(), ...PIXEL_CHROMIUM_ARGS, ...args]
   });
 }
+
+/** Hardware GPU plus WebGPU. Does not disable `navigator.gpu`. */
+export function launchGpuWebGpuChromium(options = {}) {
+  const { args = [], ...rest } = options;
+  return chromium.launch({
+    headless: true,
+    ...rest,
+    args: [...gpuChromiumArgs(), ...WEBGPU_CHROMIUM_ARGS, ...args]
+  });
+}

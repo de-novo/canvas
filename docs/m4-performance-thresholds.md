@@ -1,6 +1,6 @@
 # M4 Performance Thresholds
 
-Last reviewed: 2026-09-06.
+Last reviewed: 2026-09-07.
 
 This document defines the measurable workloads and acceptance thresholds M4
 optimizations must hold against. It exists because
@@ -274,13 +274,20 @@ against the live 1k-boxes p50 so the budget function is shown to fail
 before the 16 ms check. The report writes `environment` and
 `frameBudget` next to the workload table.
 
-Measured 2026-09-06 via `pnpm verify:performance` (Playwright headless
+Measured 2026-09-07 via `pnpm verify:performance` (Playwright headless
 Chromium 149, macOS, unmasked renderer `ANGLE (Apple, ANGLE Metal
-Renderer: Apple M5 Pro, Unspecified Version)`): 100-boxes p50 8.40 ms,
-1k-boxes p50 8.30 ms, 10k-boxes p50 8.30 ms, `drawCalls=1`,
-`kind=gpu`, `gated=true`, `passed=true`. The same day a SwiftShader
-session on this machine was 1k-boxes p50 108.10 ms and is not the
-gated environment.
+Renderer: Apple M5 Pro, Unspecified Version)`):
+
+| Backend | Workload | p50 (ms) | drawCalls | 16 ms gate |
+| --- | --- | --- | --- | --- |
+| webgl2 | 100-boxes | 8.20 | 1 | n/a (batching only) |
+| webgl2 | 1k-boxes | 8.30 | 1 | pass |
+| webgl2 | 10k-boxes | 8.30 | 1 | n/a (batching only) |
+| webgpu | 1k-boxes | 8.30 | 24 | pass (time only) |
+
+WebGPU `drawCalls` is recorded, not gated: `WebGPURenderer.info.render.calls`
+is not the WebGL2 InstancedMesh=1 proof. A SwiftShader session on
+2026-09-06 was 1k-boxes p50 108.10 ms and is not the gated environment.
 
 ### Memory
 

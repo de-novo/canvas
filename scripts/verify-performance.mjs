@@ -5,8 +5,9 @@
  * Writes a temporary Vite-served HTML page into the vanilla example, builds
  * large instanced 3D scenes (100 / 1k / 10k boxes), and captures frame timing
  * plus WebGL render stats. Draw-call batching is always gated. The 16 ms
- * 1k-boxes budget is measured on a hardware GPU (ANGLE Metal/D3D/Vulkan).
- * Software GL fails the run: the budget must bite.
+ * 1k-boxes budget is measured on a hardware GPU (ANGLE Metal/D3D/Vulkan)
+ * for WebGL2 and again for explicit 3D WebGPU. Software GL fails the
+ * run: the budget must bite.
  *
  * Output: a JSON report at artifacts/verification/performance-report.json.
  */
@@ -15,7 +16,7 @@ import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 
-import { launchGpuChromium } from "./lib/chromium.mjs";
+import { launchGpuChromium, launchGpuWebGpuChromium } from "./lib/chromium.mjs";
 import {
   FRAME_BUDGET_MS,
   FRAME_BUDGET_WORKLOAD,
@@ -79,12 +80,18 @@ const REPORT_PATH = "artifacts/verification/performance-report.json";
 const PERF_HTML = "apps/vanilla/perf-bench.html";
 
 const server = await startViteServer();
-/** @type {{ environment: any, frameBudget: any, workloads: any[] }} */
-const report = { environment: null, frameBudget: null, workloads: [] };
+/** @type {{ environment: any, frameBudget: any, webgpuFrameBudget: any, workloads: any[], webgpuWorkloads: any[] }} */
+const report = {
+  environment: null,
+  frameBudget: null,
+  webgpuFrameBudget: null,
+  workloads: [],
+  webgpuWorkloads: []
+};
 
 try {
   for (const workload of WORKLOADS) {
-    const result = await measureWorkload(server.url, workload);
+    const result = await measureWorkload(server.url, workload, "webgl2");
     report.environment ??= result.environment ?? null;
     report.workloads.push(result);
     console.log(
@@ -99,6 +106,20 @@ try {
           : "")
     );
   }
+  const webgpuOneK = await measureWorkload(
+    server.url,
+    { label: "1k-boxes", nodeCount: 1_000 },
+    "webgpu"
+  );
+  report.webgpuWorkloads.push(webgpuOneK);
+  console.log(
+    `[perf] webgpu ${webgpuOneK.label}: ` +
+      `backend=${webgpuOneK.backend ?? "unknown"} ` +
+      `frame p50=${webgpuOneK.frameTimeMs.p50.toFixed(2)}ms ` +
+      `p95=${webgpuOneK.frameTimeMs.p95.toFixed(2)}ms, ` +
+      `drawCalls=${webgpuOneK.renderStats.drawCalls}, ` +
+      `geometries=${webgpuOneK.renderStats.geometries}`
+  );
 } finally {
   await stopServer(server.process);
   await rm(PERF_HTML, { force: true });
@@ -162,6 +183,63 @@ if (frameBudget.gated && !frameBudget.passed) {
   );
 }
 
+const webgpuOneK = report.webgpuWorkloads.find(
+  (workload) => workload.label === FRAME_BUDGET_WORKLOAD
+);
+if (!webgpuOneK) {
+  throw new Error(`[perf] missing webgpu ${FRAME_BUDGET_WORKLOAD} workload`);
+}
+if (webgpuOneK.backend !== "webgpu") {
+  throw new Error(
+    `[perf] 1k-boxes webgpu must stay on webgpu, got ${webgpuOneK.backend}`
+  );
+}
+const webgpuRenderer = webgpuOneK.environment?.renderer ?? "";
+const webgpuKind = classifyGlRenderer(webgpuRenderer);
+const webgpuBite = evaluateFrameBudget({
+  kind: "gpu",
+  p50: webgpuOneK.frameTimeMs.p50,
+  targetMs: 0,
+  workload: FRAME_BUDGET_WORKLOAD
+});
+assert.equal(
+  webgpuBite.passed,
+  false,
+  "a 0 ms ceiling must fail the live webgpu 1k-boxes p50"
+);
+const webgpuFrameBudget = evaluateFrameBudget({
+  kind: webgpuKind,
+  p50: webgpuOneK.frameTimeMs.p50,
+  requireGpu: true,
+  targetMs: FRAME_BUDGET_MS,
+  workload: FRAME_BUDGET_WORKLOAD
+});
+report.webgpuFrameBudget = {
+  ...webgpuFrameBudget,
+  backend: webgpuOneK.backend,
+  drawCalls: webgpuOneK.renderStats.drawCalls,
+  kind: webgpuKind,
+  p50: webgpuOneK.frameTimeMs.p50,
+  renderer: rendererName,
+  requireGpu: true,
+  targetMs: FRAME_BUDGET_MS,
+  workload: FRAME_BUDGET_WORKLOAD
+};
+console.log(
+  `[perf] webgpu frame budget: gated=${webgpuFrameBudget.gated} ` +
+    `passed=${webgpuFrameBudget.passed} kind=${kind} ` +
+    `p50=${webgpuOneK.frameTimeMs.p50.toFixed(2)}ms target=${FRAME_BUDGET_MS}ms ` +
+    `drawCalls=${webgpuOneK.renderStats.drawCalls} ` +
+    `renderer=${webgpuRenderer || "unknown"}`
+);
+if (webgpuFrameBudget.gated && !webgpuFrameBudget.passed) {
+  throw new Error(
+    `[perf] 16ms webgpu frame budget failed for ${FRAME_BUDGET_WORKLOAD}: ` +
+      `p50=${webgpuOneK.frameTimeMs.p50.toFixed(2)}ms kind=${webgpuKind} ` +
+      `reason=${webgpuFrameBudget.reason} renderer=${webgpuRenderer || "unknown"}`
+  );
+}
+
 await mkdir("artifacts/verification", { recursive: true });
 await writeFile(REPORT_PATH, JSON.stringify(report, null, 2) + "\n");
 console.log(`[perf] report written to ${REPORT_PATH}`);
@@ -169,12 +247,16 @@ console.log(`[perf] report written to ${REPORT_PATH}`);
 /**
  * @param {string} baseUrl
  * @param {{ label: string; nodeCount: number }} workload
+ * @param {"webgl2" | "webgpu"} backend
  */
-async function measureWorkload(baseUrl, workload) {
-  const url = `${baseUrl}perf-bench.html?count=${workload.nodeCount}&frames=${CAPTURE_FRAMES}`;
+async function measureWorkload(baseUrl, workload, backend) {
+  const url = `${baseUrl}perf-bench.html?count=${workload.nodeCount}&frames=${CAPTURE_FRAMES}&backend=${backend}`;
   await writeFile(PERF_HTML, perfBenchHtml());
 
-  const browser = await launchGpuChromium();
+  const browser =
+    backend === "webgpu"
+      ? await launchGpuWebGpuChromium()
+      : await launchGpuChromium();
   try {
     const page = await browser.newPage({
       viewport: { height: 800, width: 1280 }
@@ -255,8 +337,9 @@ function perfBenchHtml() {
     "      });",
     "    }",
     "    const collected = [];",
+    "    const requestedBackend = params.get(\"backend\") || \"webgl2\";",
     "    const runtime = createCanvas(host, {",
-    "      renderer: { backend: \"webgl2\" },",
+    "      renderer: { backend: requestedBackend },",
     "      scene: {",
     "        id: \"perf\",",
     "        mode: \"3d\",",

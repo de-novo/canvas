@@ -86,23 +86,26 @@ on WebGPU. 3D runtimes reject with `CanvasReadPixelsUnsupportedError`.
    `CanvasRenderingContext2D`, or `Object3D` as part of this seam.
    Consumer fixtures import the facade for kind enumeration, not for
    drawers.
+6. **Non-marker with a host drawer (2D WebGPU).** The same `draw2d`
+   stamp is sampled through `readPixels()`. Host fill `#e11d48`
+   outpaints the gray marker. Playwright screenshots still cannot see
+   the GPU canvas; the gate uses the copy, not the PNG.
 
 ## Non-Goals
 
 - Wrapping ThreeUI or Canvas UI rooms.
 - Growing `CanvasPluginContext` with drawer, node, renderer, storage,
   importer, or worker registration.
-- A photo-editor or region/mask kind. Polygons wait on this seam and a
-  later closed points schema.
-- Sampling WebGPU host-drawer pixels in headless Playwright. The
-  presenter rasterizes `draw2d` into the atlas; pixel sampling of that
-  path stays a browser GPU observation.
+- A photo-editor or region/mask kind. Polygons wait on a consuming
+  product showing `rect` / `circle` is not enough.
 - Moving official kinds into the host registry.
 
 ## Verification
 
 `pnpm verify:hit-testing` drives the Canvas2D paint/hit path and the
 WebGL2 object/hit path through the shipped web/three factories.
+`pnpm verify:webgpu` gates 2D WebGPU host-drawer color through
+`readPixels()`.
 `pnpm verify:public-api` proves the facade does not export the drawer
 registration and that `listPluginNodeKinds` is a readonly snapshot of
 `type` and `mode`.

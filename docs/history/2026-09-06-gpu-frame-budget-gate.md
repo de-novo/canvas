@@ -30,7 +30,8 @@ date.
 - The pin is this developer machine's Apple M5 Pro via Playwright
   Chromium 149, not a named CI fleet. Linux/Windows ANGLE backends
   are selected but unmeasured here.
-- 3D WebGPU frame time is not this gate.
+- 3D WebGPU 1k-boxes frame time landed the next day; see
+  [2026-09-07 status hygiene and WebGPU 16 ms](./2026-09-07-status-hygiene-webgpu-frame-budget.md).
 
 ## Next action
 
