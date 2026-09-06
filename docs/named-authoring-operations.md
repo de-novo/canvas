@@ -41,6 +41,10 @@ bare document.
 There is no parallel agent API. A playground button and a model prompt
 call the same `setLayerVisible` / `applyNamedOperations` functions.
 
+Discovery is `listNamedOperations()`: a read-only snapshot of operation
+names, `read` / `write` role, and closed input field kinds. It does not
+run operations. It is not a prompt protocol.
+
 ## Non-Goals
 
 - A new document schema or `0.3.0` bump.
@@ -107,6 +111,7 @@ function to `applyNamedOperations` / `editor.apply` is the list path.
 | `setAnnotationText` | `@denovo/canvas-editor` | `@denovo/canvas` |
 | `applyNamedOperations` | `@denovo/canvas-editor` | `@denovo/canvas` |
 | `CanvasEditor.apply` | `@denovo/canvas-editor` | through the editor instance |
+| `listNamedOperations` | `@denovo/canvas-editor` | `@denovo/canvas` |
 
 BIM `listBimElements({ modelId })` stays in `@denovo/canvas-bim`.
 Core/editor MUST NOT import `__bim`.

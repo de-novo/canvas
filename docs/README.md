@@ -48,7 +48,7 @@ Repository governance files live at the repo root:
   `removeEdge`, `removeLayer`, `addLayer`, `reorderLayer`,
   `setFieldPattern`, `setSparklineStyle`, `setShadePattern`, `setLayerName`,
   `setNodeLayer`, `setText`,
-  `setAnnotationText`) that compile to
+  `setAnnotationText`, `listNamedOperations`) that compile to
   existing commands so host UI and agents share one function.
 - [M8 Diagram Contract](./m8-diagram-contract.md): 2D `edge` / `text` / `html`
   vocabulary frozen in `0.2.0`, port and path-style rules, graph paste/delete,

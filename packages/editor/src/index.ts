@@ -270,6 +270,10 @@ export {
   setText,
   stackBox
 } from "./authoring/named-operations.js";
+export {
+  listNamedOperations,
+  NAMED_OPERATION_NAMES
+} from "./authoring/named-operations-catalog.js";
 export type {
   AddLayerInput,
   ListedLabel,
@@ -298,6 +302,14 @@ export type {
   StackBoxFace,
   StackBoxInput
 } from "./authoring/named-operations.js";
+export type {
+  NamedOperationField,
+  NamedOperationFieldKind,
+  NamedOperationFieldName,
+  NamedOperationManifestEntry,
+  NamedOperationName,
+  NamedOperationRole
+} from "./authoring/named-operations-catalog.js";
 export {
   applyCommandsToDocument,
   applyCommandsToStoredDocument

@@ -3,7 +3,7 @@ import {
   definePluginNodeKind,
   registerPluginNodeKind,
   type PluginNodeType
-} from "./plugin-nodes.js";
+} from "../plugin-nodes.js";
 
 export const DENOVO_SPARKLINE_NODE_TYPE =
   "plugin.denovo.sparkline" satisfies PluginNodeType;

@@ -3,7 +3,7 @@ import {
   definePluginNodeKind,
   registerPluginNodeKind,
   type PluginNodeType
-} from "./plugin-nodes.js";
+} from "../plugin-nodes.js";
 
 export const DENOVO_SHADE_NODE_TYPE = "plugin.denovo.shade" satisfies PluginNodeType;
 

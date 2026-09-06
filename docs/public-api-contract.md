@@ -62,6 +62,8 @@ The default package must expose:
 - `listNodes`
 - `listLayers`
 - `listLabels`
+- `listNamedOperations`
+- `NAMED_OPERATION_NAMES`
 - `setFieldPattern`
 - `setNodeVisible`
 - `setNodeLocked`

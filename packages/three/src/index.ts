@@ -470,5 +470,5 @@ export {
   readDenovoFieldComputeResidentCopies,
   readDenovoFieldObjectState,
   tickDenovoFieldObject
-} from "./field.js";
-export type { DenovoFieldComputeHost } from "./field.js";
+} from "./kinds/field.js";
+export type { DenovoFieldComputeHost } from "./kinds/field.js";

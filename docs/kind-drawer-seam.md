@@ -58,8 +58,9 @@ const unregister = registerPluginNodeDrawer({
   host’s; the built-in marker path itself MUST NOT throw when no
   drawer is registered.
 
-2D WebGPU keeps the marker for host kinds. GPU drawer parity is
-unmeasured in this slice.
+2D WebGPU rasterizes `draw2d` into the existing text atlas when the
+local size fits. If the stamp does not fit, the gray marker is used
+and the presenter does not throw.
 
 ## Acceptance
 
@@ -89,7 +90,9 @@ unmeasured in this slice.
   importer, or worker registration.
 - A photo-editor or region/mask kind. Polygons wait on this seam and a
   later closed points schema.
-- 2D WebGPU host-drawer pixels.
+- Sampling WebGPU host-drawer pixels in headless Playwright. The
+  presenter rasterizes `draw2d` into the atlas; pixel sampling of that
+  path stays a browser GPU observation.
 - Moving official kinds into the host registry.
 
 ## Verification

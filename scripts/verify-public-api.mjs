@@ -392,6 +392,7 @@ for (const exportName of [
   "listNodes",
   "listLayers",
   "listLabels",
+  "listNamedOperations",
   "setFieldPattern",
   "setShadePattern",
   "setSparklineStyle",
@@ -523,6 +524,40 @@ assert.ok(
   ),
   "listed kinds must be type plus mode snapshots"
 );
+assert.equal(Array.isArray(facadeModule.NAMED_OPERATION_NAMES), true);
+const listedNamedOperations = facadeModule.listNamedOperations();
+assert.equal(
+  listedNamedOperations.length,
+  facadeModule.NAMED_OPERATION_NAMES.length
+);
+assert.deepEqual(
+  listedNamedOperations.map((entry) => entry.name),
+  [...facadeModule.NAMED_OPERATION_NAMES]
+);
+assert.ok(
+  listedNamedOperations.some(
+    (entry) => entry.name === "setLayerVisible" && entry.role === "write"
+  )
+);
+assert.ok(
+  listedNamedOperations.some(
+    (entry) => entry.name === "listNodes" && entry.role === "read"
+  )
+);
+assert.ok(
+  listedNamedOperations.some(
+    (entry) => entry.name === "setShadePattern" && entry.role === "write"
+  )
+);
+for (const entry of listedNamedOperations) {
+  if (entry.role === "write") {
+    assert.equal(
+      typeof facadeModule[entry.name],
+      "function",
+      `write operation must be a facade function: ${entry.name}`
+    );
+  }
+}
 const require = createRequire(import.meta.url);
 const facadeCommonJs = require(path.join(facadeDir, "dist", "index.cjs"));
 const editorCommonJs = require(editorCommonJsPath);
@@ -2072,7 +2107,9 @@ writeFileSync(
   applyNamedOperations,
   listLabels,
   listLayers,
+  listNamedOperations,
   listNodes,
+  NAMED_OPERATION_NAMES,
   reorderLayer,
   setFieldPattern,
   setShadePattern,
@@ -2169,6 +2206,9 @@ writeFileSync(
   type AddLayerInput,
   type ReorderLayerInput,
   type NamedOperation,
+  type NamedOperationFieldKind,
+  type NamedOperationManifestEntry,
+  type NamedOperationName,
   type NamedOperationResult,
   type RelationGraphLayoutOptions,
   type TimeGraphLayoutOptions,
@@ -2694,6 +2734,8 @@ void invalidPluginKindMode;
 void definePluginNodeKind;
 void getPluginNodeKind;
 void listPluginNodeKinds;
+void listNamedOperations;
+void NAMED_OPERATION_NAMES;
 void isCanvas2DPluginNode;
 void parsePluginNodeProps;
 void registerPluginNodeKind;
@@ -2707,6 +2749,19 @@ void writableListedKinds;
 // @ts-expect-error listed type is plugin.<owner>.<kind>, not an open string
 const invalidListedKind: ListedPluginNodeKind = { mode: "2d", type: "shade" };
 void invalidListedKind;
+const listedOps: readonly NamedOperationManifestEntry[] = listNamedOperations();
+const listedOpName: NamedOperationName = "setLayerVisible";
+const listedHide = listedOps.find((entry) => entry.name === listedOpName);
+const listedOpKind: NamedOperationFieldKind = "layer-id";
+void listedHide;
+void listedOpKind;
+void NAMED_OPERATION_NAMES;
+// @ts-expect-error listed operations are a readonly snapshot
+const writableListedOps: NamedOperationManifestEntry[] = listNamedOperations();
+void writableListedOps;
+// @ts-expect-error setColor is not a named operation
+const invalidOperationName: NamedOperationName = "setColor";
+void invalidOperationName;
 const typedRect: CanvasNodeByType<"2d", "rect"> = {
   fill: "#22c55e",
   id: "typed-rect",
@@ -3282,6 +3337,9 @@ writeFileSync(
   type ListedNode,
   type ListLabelsOptions,
   type NamedOperation,
+  type NamedOperationFieldKind,
+  type NamedOperationManifestEntry,
+  type NamedOperationName,
   type NamedOperationResult,
   type SetFieldPatternInput,
   type SetShadePatternInput,

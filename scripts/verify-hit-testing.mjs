@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readdirSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { pathToFileURL } from "node:url";
 import path from "node:path";
@@ -814,6 +815,21 @@ const web = await import(
   assert.equal(blocked.consumed, false);
   assert.deepEqual(blocked.view, view);
 }
+
+check("webgpu-2d-host-drawer-is-wired", () => {
+  const webDist = path.join(root, "packages/web/dist");
+  const bundled = readdirSync(webDist).some((name) => {
+    if (!name.endsWith(".js")) {
+      return false;
+    }
+    const source = readFileSync(path.join(webDist, name), "utf8");
+    return source.includes("resolveHostPluginNodeDraw2d");
+  });
+  assert.ok(
+    bundled,
+    "2D WebGPU bundle must rasterize host draw2d instead of only the marker"
+  );
+});
 
 check("hit-testing-suite", () => {});
 

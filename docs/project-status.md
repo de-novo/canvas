@@ -257,6 +257,11 @@ product-level extension seam, `CanvasPlugin` is a host bundle, and
 
 ## Active
 
+- Kind colocation, named-operation catalog, and 2D WebGPU host
+  drawers (2026-09-06): official kinds live under `kinds/`;
+  `listNamedOperations()` enumerates the twenty operations; 2D WebGPU
+  rasterizes host `draw2d` into the atlas when it fits. See
+  [2026-09-06 kind catalog and WebGPU drawers](./history/2026-09-06-kind-catalog-webgpu-drawer.md).
 - Kind drawer seam and kind enumeration (2026-09-06): a host
   `plugin.<org>.<kind>` registers paint and pick on
   `@denovo/canvas-web`. Missing drawers stay the gray marker.
@@ -435,13 +440,15 @@ product-level extension seam, `CanvasPlugin` is a host bundle, and
    [2026-08-23 BIM multi-model federation](./history/2026-08-23-bim-multi-model-federation.md),
    and
    [2026-08-23 BIM federated origin](./history/2026-08-23-bim-federated-origin.md).
-7. **Extension surface (drawer seam and kind enumeration complete):**
-   `registerPluginNodeDrawer` lives on `@denovo/canvas-web`.
-   `listPluginNodeKinds()` is a facade read. Do not add
-   `CanvasPluginContext` methods, `pluginState` consumers, ThreeUI
-   rooms, a photo-editor vocabulary, BIM UI, a capability graph, or an
-   agent protocol package. The region/mask need elsewhere is served by
-   `rect` / `circle` plus host `metadata` today. See
+7. **Extension surface (drawer seam, kind enumeration, catalog, and
+   colocation complete):** `registerPluginNodeDrawer` lives on
+   `@denovo/canvas-web`. `listPluginNodeKinds()` and
+   `listNamedOperations()` are facade reads. Official kinds live under
+   `kinds/`. 2D WebGPU stamps host `draw2d` when the atlas has room.
+   Do not add `CanvasPluginContext` methods, `pluginState` consumers,
+   ThreeUI rooms, a photo-editor vocabulary, BIM UI, a capability
+   graph, or an agent protocol package. The region/mask need elsewhere
+   is served by `rect` / `circle` plus host `metadata` today. See
    [Kind Drawer Seam](./kind-drawer-seam.md) and
    [Extension Surface Decision](./extension-surface-decision.md).
 
@@ -451,6 +458,16 @@ product-level extension seam, `CanvasPlugin` is a host bundle, and
 
 ## Evidence
 
+- Kind colocation, named-operation catalog, and 2D WebGPU host
+  drawers (2026-09-06). `listNamedOperations()` returns 20 names
+  including `setShadePattern` and `listNodes`. 2D WebGPU bundle
+  contains `resolveHostPluginNodeDraw2d`. Official kind files live
+  under `kinds/`. `pnpm typecheck` 36/36. `pnpm build` 25/25.
+  `pnpm verify:public-api` ok. `pnpm verify:hit-testing` 7/7.
+  `pnpm verify:editor-core` ok. `pnpm verify:document-schema` 45
+  checks. `pnpm verify:docs` 167 Markdown files, 581/581 local
+  targets. See
+  [2026-09-06 kind catalog and WebGPU drawers](./history/2026-09-06-kind-catalog-webgpu-drawer.md).
 - Kind drawer seam and kind enumeration (2026-09-06). Host
   `plugin.test.host` paints non-marker Canvas2D fills and a non-gray
   WebGL2 object, hits by id, falls back to `#64748b` without a drawer,

@@ -1,4 +1,4 @@
-import fieldDrawerSource from "../../../packages/three/src/field.ts?raw";
+import fieldDrawerSource from "../../../packages/three/src/kinds/field.ts?raw";
 import threeuiHostSource from "../../playground-threeui/src/vendor/threeui/warp-field/WarpFieldBackground.tsx?raw";
 import threeuiEngineSource from "../../playground-threeui/src/vendor/threeui/warp-field/warpFieldRenderer.ts?raw";
 
@@ -58,7 +58,7 @@ export const DENOVO_FILES: readonly CompareFile[] = [
     applyPatternSource,
     "host"
   ),
-  file("packages/three/src/field.ts", fieldDrawerSource, "engine")
+  file("packages/three/src/kinds/field.ts", fieldDrawerSource, "engine")
 ];
 
 function el<K extends keyof HTMLElementTagNameMap>(

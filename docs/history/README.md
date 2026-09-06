@@ -157,3 +157,4 @@ Each entry should include:
 - [2026-09-02 Canvas UI reference](./2026-09-02-canvas-ui-reference.md)
 - [2026-09-04 Extension surface decision](./2026-09-04-extension-surface-decision.md)
 - [2026-09-06 Kind drawer seam and kind enumeration](./2026-09-06-kind-drawer-seam.md)
+- [2026-09-06 Kind colocation, named-operation catalog, and 2D WebGPU host drawers](./2026-09-06-kind-catalog-webgpu-drawer.md)

@@ -41,8 +41,8 @@ Every claim below was checked against the tree on 2026-09-04.
 | Name | Where | What it does today | Consumers in repo |
 | --- | --- | --- | --- |
 | `CanvasPlugin` | `packages/core/src/index.ts` (`CanvasPluginContext`, `CanvasPlugin`) | `{ name, setup?(ctx), tools? }`; `ctx` exposes only `coreVersion`, `registerCommand`, `registerTool`. Staged, committed atomically, private registry, installed into editors by the facade connectors, rolled back on conflict. | One: `apps/vanilla` `sceneCommandPlugin` (built-in tools plus `plugin.example.load-scene` / `load-document`). No workspace package ships one. |
-| `plugin.<owner>.<kind>` node kinds | `packages/core/src/plugin-nodes.ts` | Module-global `Map` registry. `registerPluginNodeKind` validates props at parse; unregistered kinds fail closed; `mode` is `2d`, `3d`, or `both`. | Official `plugin.denovo.field` (`core/src/field.ts`) and `plugin.denovo.sparkline` (`core/src/sparkline.ts`), both pre-registered when core loads. `apps/playground-field` uses field. |
-| Kind drawers | `packages/web/src/3d.ts` default branch; `packages/web/src/2d/render.ts` default branch; `packages/three/src/field.ts` | Hard-coded: `isDenovoFieldNode` → `createDenovoFieldObject`; `isDenovoSparklineNode` → sparkline path; any other registered kind → a `#64748b` marker (unit box in 3D, 48×48 rect in 2D). | Hosts have no way to draw their own kind short of replacing the whole renderer through a custom adapter. |
+| `plugin.<owner>.<kind>` node kinds | `packages/core/src/plugin-nodes.ts` | Module-global `Map` registry. `registerPluginNodeKind` validates props at parse; unregistered kinds fail closed; `mode` is `2d`, `3d`, or `both`. | Official `plugin.denovo.field`, `plugin.denovo.sparkline`, and `plugin.denovo.shade` under `core/src/kinds/`, pre-registered when core loads. `apps/playground-field` uses field. |
+| Kind drawers | `packages/web/src/3d.ts` default branch; `packages/web/src/2d/render.ts` default branch; `packages/three/src/kinds/field.ts` | Hard-coded official drawers plus `@denovo/canvas-web` `registerPluginNodeDrawer`. Unregistered host kinds still draw the `#64748b` marker. | Hosts register a kind-level drawer instead of replacing the renderer. |
 | `pluginState` | `packages/core/src/index.ts` document schema | `z.record(z.string(), JsonValueSchema)`. No per-key schema. Preserved across scene updates. | One: `apps/playground-threeui/src/denovo/warp-field-document.ts` — `nodes: []` plus `pluginState["threeui.warp-field"]` plus the vendor renderer. That is the shape [Product Identity](./product-identity.md) names as failing the absorption test. |
 | `plugin.*` commands | `definePluginCommand`, `CanvasPluginCommandDescriptor` | Editor-instance-bound handlers with `parsePayload(unknown)`. `applyCommandsToDocument` (`packages/editor/src/commands/apply-document.ts`) replays with an empty handler map, so a stored `plugin.*` command fails with `unsupported-command` (`commands/handlers.ts`). | `apps/vanilla` only. |
 | Prose taxonomy | [Extensibility](./extensibility.md), [Better Auth Style Architecture](./better-auth-style-architecture.md) | Ten plugin categories (node, renderer, tool, command, asset loader, importer/exporter, persistence, worker, framework adapter, BIM/domain), `@denovo/canvas/plugins/*` subpaths, a `storage:` config field, a CLI. | Only command and tool are registrations a `CanvasPlugin` can make. Framework adapters, the BIM importer, storage adapters, and worker tasks exist as packages or adapter inputs, not as plugins. [M0](./m0-product-contract.md) and [Public API Contract](./public-api-contract.md) already say node and renderer discovery are future contracts and `storage` is not an accepted config field. |
@@ -215,9 +215,9 @@ commands, `applyNamedOperations`, `editor.apply`, `listNodes`, `listLayers`,
 ### Tier 2 — Kinds
 
 Each kind is one module that owns its schema, its drawer entry points, and
-its operations. Today `plugin.denovo.field` is spread across
-`core/src/field.ts`, `three/src/field.ts`, a `web/src/3d.ts` branch, and
-`editor/src/authoring/named-operations.ts`. Target shape, in order of value:
+its operations. Official kinds live under `kinds/` in core and three.
+`setFieldPattern` remains in `editor/src/authoring/named-operations.ts`.
+Target shape, in order of value:
 
 1. **Kind drawer seam (next contract candidate).** A registration in
    `@denovo/canvas-web` (and the Three/WebGPU paths it dispatches to) of the
@@ -233,9 +233,10 @@ its operations. Today `plugin.denovo.field` is spread across
    `getPluginNodeKind` so a host or agent can enumerate registered kinds
    and their modes. Tiny public addition; needs positive and negative
    fixtures and a public-API run.
-3. **Kind colocation.** Move `field.ts` and `sparkline.ts` under a
-   `kinds/` directory in core and give each new official kind one directory
-   per package. Internal only; no export change; not urgent.
+3. **Kind colocation.** Official kind modules live under `kinds/` in
+   core (`field`, `sparkline`, `shade`) and three (`field` + compute).
+   Internal only; no export change. New official kinds keep one
+   directory per package.
 
 ### Tier 3 — Bundles And Adapters
 
@@ -244,14 +245,12 @@ adapters, importers such as `@denovo/canvas-bim`. Plumbing. None defines
 vocabulary. `renderNode` stays an `html` overlay hook. `renderer` stays the
 whole-runtime escape hatch.
 
-### Operations catalog (thesis enabler, not this week)
+### Operations catalog
 
-Named operations are the agent language, but discovery is TypeScript-only.
-A generated, read-only manifest of operation names and input schemas (no
-new package, no protocol, no chat panel) would let an agent host enumerate
-the language the same way a human reads
-[Named Authoring Operations](./named-authoring-operations.md). This is a
-verification and generation task on existing exports, not a new runtime.
+Named operations are the agent language. `listNamedOperations()` is the
+read-only manifest of names, `read` / `write` role, and closed input
+field kinds. No new package, no protocol, no chat panel. Discovery
+matches [Named Authoring Operations](./named-authoring-operations.md).
 
 ## How This Serves The AI-Agent Document Runtime
 

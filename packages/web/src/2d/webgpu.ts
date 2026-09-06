@@ -22,7 +22,10 @@ import {
 
 import type { Canvas2DViewState } from "../view2d";
 import type { CanvasRenderStats } from "../types";
-import { PLUGIN_NODE_MARKER_FILL } from "../plugin-drawers";
+import {
+  PLUGIN_NODE_MARKER_FILL,
+  resolveHostPluginNodeDraw2d
+} from "../plugin-drawers";
 import {
   CANVAS_2D_ANCHOR_RADIUS,
   CANVAS_2D_ANNOTATION_FONT,
@@ -558,6 +561,32 @@ class VertexBatch {
     this.vertex(c, [0, 1], color, SHAPE_RECT, false, screenSpace);
   }
 
+  raster(
+    matrix: Canvas2DMatrix,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    paint: (context: CanvasRenderingContext2D) => void
+  ): boolean {
+    const entry = this.atlas.stamp(width, height, paint);
+    if (!entry) {
+      return false;
+    }
+    this.quad(
+      transformCanvas2DPoint(matrix, [x, y]),
+      transformCanvas2DPoint(matrix, [x + width, y]),
+      transformCanvas2DPoint(matrix, [x, y + height]),
+      transformCanvas2DPoint(matrix, [x + width, y + height]),
+      [1, 1, 1, 1],
+      SHAPE_RECT,
+      true,
+      false,
+      entry.uv
+    );
+    return true;
+  }
+
   text(
     matrix: Canvas2DMatrix,
     x: number,
@@ -686,6 +715,43 @@ class TextAtlas {
   private cursorY = 1;
   private rowHeight = 0;
   private used = false;
+
+  stamp(
+    width: number,
+    height: number,
+    paint: (context: CanvasRenderingContext2D) => void
+  ): { height: number; uv: { u0: number; v0: number; u1: number; v1: number }; width: number } | null {
+    const stampWidth = Math.max(1, Math.ceil(width));
+    const stampHeight = Math.max(1, Math.ceil(height));
+    if (stampWidth + 2 > ATLAS_SIZE || stampHeight + 2 > ATLAS_SIZE) {
+      return null;
+    }
+    if (this.cursorX + stampWidth + 1 > ATLAS_SIZE) {
+      this.cursorX = 1;
+      this.cursorY += this.rowHeight + 1;
+      this.rowHeight = 0;
+    }
+    if (this.cursorY + stampHeight + 1 > ATLAS_SIZE) {
+      return null;
+    }
+    this.canvas.context.save();
+    this.canvas.context.beginPath();
+    this.canvas.context.rect(this.cursorX, this.cursorY, stampWidth, stampHeight);
+    this.canvas.context.clip();
+    this.canvas.context.translate(this.cursorX, this.cursorY);
+    paint(this.canvas.context);
+    this.canvas.context.restore();
+    const uv = {
+      u0: this.cursorX / ATLAS_SIZE,
+      v0: this.cursorY / ATLAS_SIZE,
+      u1: (this.cursorX + stampWidth) / ATLAS_SIZE,
+      v1: (this.cursorY + stampHeight) / ATLAS_SIZE
+    };
+    this.cursorX += stampWidth + 1;
+    this.rowHeight = Math.max(this.rowHeight, stampHeight);
+    this.used = true;
+    return { height: stampHeight, uv, width: stampWidth };
+  }
 
   add(
     measure: CanvasRenderingContext2D,
@@ -867,6 +933,11 @@ function recordDrawable(
         return;
       }
       if (isCanvas2DPluginNode(node)) {
+        if (
+          recordHostPluginDrawer(batch, node, frame.transformPreview)
+        ) {
+          return;
+        }
         recordPluginMarker(batch, node, frame.transformPreview);
         return;
       }
@@ -1119,6 +1190,24 @@ function recordSparkline(
     void bottomLast;
   }
   batch.polyline(worldPoints, 2, batch.fillColor(node.props.stroke));
+}
+
+function recordHostPluginDrawer(
+  batch: VertexBatch,
+  node: Canvas2DPluginNode,
+  preview: CanvasNodeTransformPreview | null
+): boolean {
+  const draw2d = resolveHostPluginNodeDraw2d(node);
+  if (!draw2d) {
+    return false;
+  }
+  const [width, height] = resolveCanvas2DPluginNodeLocalSize(node);
+  const matrix = createCanvas2DTransformMatrix(
+    resolveNodeRenderTransform(node, preview)
+  );
+  return batch.raster(matrix, 0, 0, width, height, (context) => {
+    draw2d(context, node, preview);
+  });
 }
 
 function recordPluginMarker(

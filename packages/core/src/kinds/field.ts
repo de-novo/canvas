@@ -3,7 +3,7 @@ import {
   definePluginNodeKind,
   registerPluginNodeKind,
   type PluginNodeType
-} from "./plugin-nodes.js";
+} from "../plugin-nodes.js";
 
 export const DENOVO_FIELD_NODE_TYPE = "plugin.denovo.field" satisfies PluginNodeType;
 

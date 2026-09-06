@@ -28,7 +28,7 @@ import {
   isDenovoFieldType,
   parseDenovoFieldProps,
   type DenovoFieldProps
-} from "./field.js";
+} from "./kinds/field.js";
 import {
   DENOVO_SPARKLINE_NODE_TYPE,
   DenovoSparklinePropsSchema,
@@ -39,7 +39,7 @@ import {
   isDenovoSparklineNode,
   isDenovoSparklineType,
   parseDenovoSparklineProps
-} from "./sparkline.js";
+} from "./kinds/sparkline.js";
 import {
   DENOVO_SHADE_NODE_TYPE,
   DenovoShadePatternSchema,
@@ -53,7 +53,7 @@ import {
   isDenovoShadeNode,
   isDenovoShadeType,
   parseDenovoShadeProps
-} from "./shade.js";
+} from "./kinds/shade.js";
 
 export const CANVAS_DOCUMENT_SCHEMA_VERSION = "0.2.0";
 export const CANVAS_LEGACY_DOCUMENT_SCHEMA_VERSION = "0.1.0";
@@ -3035,16 +3035,16 @@ export type {
   PluginNodeType,
   PluginSceneMode
 } from "./plugin-nodes.js";
-export type { DenovoFieldPattern, DenovoFieldProps } from "./field.js";
+export type { DenovoFieldPattern, DenovoFieldProps } from "./kinds/field.js";
 export type {
   DenovoShadePattern,
   DenovoShadeProps
-} from "./shade.js";
+} from "./kinds/shade.js";
 export type {
   DenovoSparklinePoint,
   DenovoSparklineProps,
   DenovoSparklineStyle
-} from "./sparkline.js";
+} from "./kinds/sparkline.js";
 
 export {
   CANVAS_MESH_GEOMETRY_SCHEMA,

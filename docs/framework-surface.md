@@ -198,7 +198,7 @@ document.pluginState["threeui.warp-field"] = { speed: 15 };
 Humans and agents share one language.
 
 - Read: `listNodes(document)`, `listLabels(document)`,
-  `listPluginNodeKinds()`, and the document JSON.
+  `listPluginNodeKinds()`, `listNamedOperations()`, and the document JSON.
 - Write: `apply([namedOp, ...])` or a validated command.
 - No fluent `editor.field().speed(15)`.
 - No parallel agent protocol. The document is the protocol.
