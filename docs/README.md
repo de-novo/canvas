@@ -30,6 +30,9 @@ Repository governance files live at the repo root:
 - [Extension Surface Decision](./extension-surface-decision.md): the kind is
   the only product-level extension seam; `CanvasPlugin` is a host bundle;
   `pluginState` is bookkeeping; the plugin taxonomy is superseded.
+- [Kind Drawer Seam](./kind-drawer-seam.md): host `plugin.<org>.<kind>`
+  drawers and hit-testing register on `@denovo/canvas-web`; the facade
+  does not expose Canvas2D or Three.js types for that seam.
 - [M0 Product Contract](./m0-product-contract.md): the first stable public
   contract for packages, documents, commands, storage, extension, styling, and
   the default facade.
@@ -43,7 +46,8 @@ Repository governance files live at the repo root:
   helpers (`setLayerVisible`, `setLayerLocked`, `stackBox`, `listNodes`,
   `listLayers`, `listLabels`, `setNodeVisible`, `setNodeLocked`, `removeNode`,
   `removeEdge`, `removeLayer`, `addLayer`, `reorderLayer`,
-  `setSparklineStyle`, `setLayerName`, `setNodeLayer`, `setText`,
+  `setFieldPattern`, `setSparklineStyle`, `setShadePattern`, `setLayerName`,
+  `setNodeLayer`, `setText`,
   `setAnnotationText`) that compile to
   existing commands so host UI and agents share one function.
 - [M8 Diagram Contract](./m8-diagram-contract.md): 2D `edge` / `text` / `html`

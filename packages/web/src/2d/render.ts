@@ -46,6 +46,10 @@ import {
   type Canvas2DEdgeNode
 } from "./geometry";
 import {
+  PLUGIN_NODE_MARKER_FILL,
+  resolveHostPluginNodeDraw2d
+} from "../plugin-drawers";
+import {
   CANVAS_2D_IDENTITY_MATRIX,
   applyCanvas2DMatrix,
   createCanvas2DTransformMatrix,
@@ -577,6 +581,15 @@ export function renderCanvas2DDrawableNode(
         return;
       }
       if (isCanvas2DPluginNode(node)) {
+        const draw2d = resolveHostPluginNodeDraw2d(node);
+        if (draw2d) {
+          const transform = resolveNodeRenderTransform(node, preview);
+          context.save();
+          applyCanvas2DMatrix(context, createCanvas2DTransformMatrix(transform));
+          draw2d(context, node, preview);
+          context.restore();
+          return;
+        }
         renderCanvas2DPluginMarker(context, node, preview);
         return;
       }
@@ -594,7 +607,7 @@ function renderCanvas2DPluginMarker(
   const [width, height] = resolveCanvas2DPluginNodeLocalSize(node);
   context.save();
   applyCanvas2DMatrix(context, createCanvas2DTransformMatrix(transform));
-  context.fillStyle = "#64748b";
+  context.fillStyle = PLUGIN_NODE_MARKER_FILL;
   context.fillRect(0, 0, width, height);
   context.restore();
 }

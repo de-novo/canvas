@@ -324,7 +324,14 @@ function createRuntime(
 }
 
 export { createCanvas2D } from "./2d";
-export { createCanvas3D } from "./3d";
+export { createCanvas3D, createCanvas3DPluginNodeObject } from "./3d";
+export { hitTestSceneGraph } from "./2d/hit-test";
+export { renderCanvas2DScene } from "./2d/render";
+export {
+  PLUGIN_NODE_MARKER_FILL,
+  registerPluginNodeDrawer,
+  type CanvasPluginNodeDrawer
+} from "./plugin-drawers";
 export {
   CanvasSceneChunkCancelledError,
   createSceneChunkLoader,

@@ -127,7 +127,10 @@ document node  →  kind schema  →  official drawer  →  engine
 ```
 
 The drawer may use Three.js or Canvas2D. The catalog and the public
-types must not import those engines.
+types must not import those engines. Host kinds register a drawer on
+`@denovo/canvas-web`; see [Kind Drawer Seam](./kind-drawer-seam.md).
+Official kinds keep their hard-coded drawers. A registered kind without
+a drawer still paints the gray marker.
 
 Absorption for a new kind:
 
@@ -194,7 +197,8 @@ document.pluginState["threeui.warp-field"] = { speed: 15 };
 
 Humans and agents share one language.
 
-- Read: `listNodes(document)`, `listLabels(document)`, and the document JSON.
+- Read: `listNodes(document)`, `listLabels(document)`,
+  `listPluginNodeKinds()`, and the document JSON.
 - Write: `apply([namedOp, ...])` or a validated command.
 - No fluent `editor.field().speed(15)`.
 - No parallel agent protocol. The document is the protocol.

@@ -86,6 +86,18 @@ export function getPluginNodeKind(
   return pluginNodeKinds.get(type);
 }
 
+export type ListedPluginNodeKind = {
+  readonly mode: PluginNodeKindMode;
+  readonly type: PluginNodeType;
+};
+
+export function listPluginNodeKinds(): readonly ListedPluginNodeKind[] {
+  return Array.from(pluginNodeKinds.values(), (kind) => ({
+    mode: kind.mode,
+    type: kind.type
+  }));
+}
+
 export function parsePluginNodeProps(
   type: PluginNodeType,
   props: unknown,

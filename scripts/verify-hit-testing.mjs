@@ -23,6 +23,7 @@ const {
   Matrix4,
   Mesh,
   MeshBasicMaterial,
+  MeshStandardMaterial,
   PerspectiveCamera,
   Quaternion,
   Ray,
@@ -398,6 +399,172 @@ const web = await import(
 }
 
 {
+  const HOST_FILL = "#e11d48";
+  const kind = core.definePluginNodeKind({
+    mode: "both",
+    props: z.object({ label: z.string() }).strict(),
+    type: "plugin.test.host"
+  });
+  const unregisterKind = core.registerPluginNodeKind(kind);
+  try {
+  const node2d = {
+    id: "host-card",
+    layerId: "main",
+    position: [10, 20],
+    props: { label: "hero" },
+    type: "plugin.test.host"
+  };
+  const scene2d = core.defineScene({
+    id: "plugin-host-drawer-2d",
+    layers: [{ id: "main", name: "Main" }],
+    mode: "2d",
+    nodes: [node2d]
+  });
+  const graph2d = web.createCanvas2DSceneGraph(scene2d);
+  const node3d = {
+    id: "host-badge",
+    layerId: "main",
+    position: [0, 0, 0],
+    props: { label: "hero" },
+    rotation: [0, 0, 0],
+    scale: [1, 1, 1],
+    type: "plugin.test.host"
+  };
+
+  check("host-kind-without-drawer-paints-marker", () => {
+    const context = createRecordingContext();
+    web.renderCanvas2DScene(context, scene2d, graph2d, null, {
+      accent: "#000000",
+      foreground: "#000000"
+    });
+    assert.ok(
+      context.fills.some((fill) => fill.fillStyle === web.PLUGIN_NODE_MARKER_FILL),
+      "registered kind without a drawer must paint the gray marker"
+    );
+    assert.equal(
+      context.fills.some((fill) => fill.fillStyle === HOST_FILL),
+      false
+    );
+    const hit = web.hitTestSceneGraph(
+      context,
+      scene2d,
+      graph2d,
+      [34, 44],
+      null
+    );
+    assert.equal(hit?.node.id, "host-card");
+    const object = web.createCanvas3DPluginNodeObject(node3d);
+    assert.equal(object.material.color.getHexString(), "64748b");
+    object.geometry.dispose();
+    object.material.dispose();
+  });
+
+  const unregisterDrawer = web.registerPluginNodeDrawer({
+    type: "plugin.test.host",
+    mode: "both",
+    draw2d(context) {
+      context.fillStyle = HOST_FILL;
+      context.fillRect(0, 0, 48, 48);
+    },
+    create3d() {
+      return new Mesh(
+        new BoxGeometry(1, 1, 1),
+        new MeshStandardMaterial({ color: HOST_FILL })
+      );
+    }
+  });
+
+  check("host-drawer-2d-paints-not-marker", () => {
+    const context = createRecordingContext();
+    web.renderCanvas2DScene(context, scene2d, graph2d, null, {
+      accent: "#000000",
+      foreground: "#000000"
+    });
+    assert.ok(
+      context.fills.some((fill) => fill.fillStyle === HOST_FILL),
+      "host draw2d must paint non-marker pixels"
+    );
+    assert.equal(
+      context.fills.some((fill) => fill.fillStyle === web.PLUGIN_NODE_MARKER_FILL),
+      false
+    );
+    const hit = web.hitTestSceneGraph(
+      context,
+      scene2d,
+      graph2d,
+      [34, 44],
+      null
+    );
+    assert.equal(hit?.node.id, "host-card");
+  });
+
+  check("host-drawer-3d-is-not-marker-and-hits", () => {
+    const object = web.createCanvas3DPluginNodeObject(node3d);
+    assert.notEqual(object.material.color.getHexString(), "64748b");
+    assert.equal(object.material.color.getHexString(), "e11d48");
+    object.userData.nodeId = node3d.id;
+    const hostScene = new Scene();
+    hostScene.add(object);
+    lookAt(camera, [0, 0, 5], [0, 0, 0]);
+    hostScene.updateMatrixWorld(true);
+    const tester = canvasThree.createThreeHitTester({
+      camera,
+      getObjects: () => hostScene.children,
+      resolveNodeId: (item) => item.userData.nodeId
+    });
+    const hit = tester.hitTest({ point: [100, 100] }, viewport);
+    assert.equal(hit.kind, "node");
+    assert.equal(hit.nodeId, "host-badge");
+    object.geometry.dispose();
+    object.material.dispose();
+  });
+
+  unregisterDrawer();
+
+  check("host-drawer-unregister-restores-marker", () => {
+    const context = createRecordingContext();
+    web.renderCanvas2DScene(context, scene2d, graph2d, null, {
+      accent: "#000000",
+      foreground: "#000000"
+    });
+    assert.ok(
+      context.fills.some((fill) => fill.fillStyle === web.PLUGIN_NODE_MARKER_FILL),
+      "removing the host drawer must restore the marker"
+    );
+    assert.equal(
+      context.fills.some((fill) => fill.fillStyle === HOST_FILL),
+      false
+    );
+    const object = web.createCanvas3DPluginNodeObject(node3d);
+    assert.equal(object.material.color.getHexString(), "64748b");
+    object.geometry.dispose();
+    object.material.dispose();
+  });
+
+  check("host-drawer-double-register-throws", () => {
+    const first = web.registerPluginNodeDrawer({
+      type: "plugin.test.host",
+      mode: "2d",
+      draw2d() {}
+    });
+    assert.throws(
+      () =>
+        web.registerPluginNodeDrawer({
+          type: "plugin.test.host",
+          mode: "2d",
+          draw2d() {}
+        }),
+      /already registered/
+    );
+    first();
+  });
+
+  } finally {
+    unregisterKind();
+  }
+}
+
+{
   const scene = core.defineScene({
     id: "sparkline-bounds-scene",
     layers: [{ id: "main", name: "Main" }],
@@ -651,6 +818,19 @@ const web = await import(
 check("hit-testing-suite", () => {});
 
 report();
+
+function createRecordingContext() {
+  return {
+    fills: [],
+    fillStyle: "#000000",
+    save() {},
+    restore() {},
+    transform() {},
+    fillRect(x, y, w, h) {
+      this.fills.push({ fillStyle: String(this.fillStyle), x, y, w, h });
+    }
+  };
+}
 
 function createBox(nodeId, position) {
   const mesh = new Mesh(new BoxGeometry(1, 1, 1), new MeshBasicMaterial());

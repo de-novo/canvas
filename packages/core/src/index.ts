@@ -12,6 +12,7 @@ import {
   getPluginNodeKind,
   isCanvas2DPluginNode,
   isPluginNodeType,
+  listPluginNodeKinds,
   parsePluginNodeProps,
   pluginNodeKindSupportsMode,
   registerPluginNodeKind,
@@ -3011,6 +3012,7 @@ export {
   denovoSparklinePoints,
   denovoSparklineSize,
   getPluginNodeKind,
+  listPluginNodeKinds,
   isDenovoFieldNode,
   isDenovoFieldType,
   isDenovoShadeNode,
@@ -3028,6 +3030,7 @@ export {
 };
 export type {
   CanvasPluginNodeKind,
+  ListedPluginNodeKind,
   PluginNodeKindMode,
   PluginNodeType,
   PluginSceneMode

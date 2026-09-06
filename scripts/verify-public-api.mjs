@@ -360,6 +360,11 @@ assert.doesNotMatch(
   "facade declaration must not expose private registries or unconnected storage config"
 );
 assert.doesNotMatch(
+  facadeDeclaration,
+  /registerPluginNodeDrawer/,
+  "facade declaration must not export the host drawer seam"
+);
+assert.doesNotMatch(
   coreDeclaration,
   /CanvasNodeDefinition|registerNode|registerRenderer/,
   "core plugin declarations must not advertise unimplemented registrations"
@@ -447,6 +452,7 @@ for (const exportName of [
   "definePluginCommand",
   "definePluginNodeKind",
   "getPluginNodeKind",
+  "listPluginNodeKinds",
   "isCanvas2DPluginNode",
   "isPluginNodeType",
   "parsePluginNodeProps",
@@ -483,6 +489,39 @@ assert.equal(
   typeof facadeModule.CanvasPluginError,
   "function",
   "facade must export the ordinary plugin lifecycle error"
+);
+assert.equal(
+  Object.hasOwn(facadeModule, "registerPluginNodeDrawer"),
+  false,
+  "facade must not export registerPluginNodeDrawer"
+);
+const listedPluginKinds = facadeModule.listPluginNodeKinds();
+assert.ok(
+  listedPluginKinds.some(
+    (kind) => kind.type === "plugin.denovo.field" && kind.mode === "3d"
+  ),
+  "listPluginNodeKinds must include official field"
+);
+assert.ok(
+  listedPluginKinds.some(
+    (kind) => kind.type === "plugin.denovo.sparkline" && kind.mode === "2d"
+  ),
+  "listPluginNodeKinds must include official sparkline"
+);
+assert.ok(
+  listedPluginKinds.some(
+    (kind) => kind.type === "plugin.denovo.shade" && kind.mode === "2d"
+  ),
+  "listPluginNodeKinds must include official shade"
+);
+assert.ok(
+  listedPluginKinds.every(
+    (kind) =>
+      typeof kind.type === "string" &&
+      kind.type.startsWith("plugin.") &&
+      (kind.mode === "2d" || kind.mode === "3d" || kind.mode === "both")
+  ),
+  "listed kinds must be type plus mode snapshots"
 );
 const require = createRequire(import.meta.url);
 const facadeCommonJs = require(path.join(facadeDir, "dist", "index.cjs"));
@@ -2076,6 +2115,7 @@ writeFileSync(
   definePluginCommand,
   definePluginNodeKind,
   getPluginNodeKind,
+  listPluginNodeKinds,
   isCanvas2DPluginNode,
   isPluginNodeType,
   parsePluginNodeProps,
@@ -2163,6 +2203,7 @@ writeFileSync(
   type CanvasNodePatch,
   type Canvas2DPluginNode,
   type Canvas3DPluginNode,
+  type ListedPluginNodeKind,
   type PluginNodeKindMode,
   type PluginNodeType,
   type PluginSceneMode,
@@ -2652,9 +2693,20 @@ const invalidPluginKindMode: PluginNodeKindMode = "4d";
 void invalidPluginKindMode;
 void definePluginNodeKind;
 void getPluginNodeKind;
+void listPluginNodeKinds;
 void isCanvas2DPluginNode;
 void parsePluginNodeProps;
 void registerPluginNodeKind;
+const listedKinds: readonly ListedPluginNodeKind[] = listPluginNodeKinds();
+const listedField = listedKinds.find((kind) => kind.type === "plugin.denovo.field");
+const listedFieldMode: PluginNodeKindMode | undefined = listedField?.mode;
+void listedFieldMode;
+// @ts-expect-error listed kinds are a readonly snapshot
+const writableListedKinds: ListedPluginNodeKind[] = listPluginNodeKinds();
+void writableListedKinds;
+// @ts-expect-error listed type is plugin.<owner>.<kind>, not an open string
+const invalidListedKind: ListedPluginNodeKind = { mode: "2d", type: "shade" };
+void invalidListedKind;
 const typedRect: CanvasNodeByType<"2d", "rect"> = {
   fill: "#22c55e",
   id: "typed-rect",

@@ -22,6 +22,7 @@ import {
 
 import type { Canvas2DViewState } from "../view2d";
 import type { CanvasRenderStats } from "../types";
+import { PLUGIN_NODE_MARKER_FILL } from "../plugin-drawers";
 import {
   CANVAS_2D_ANCHOR_RADIUS,
   CANVAS_2D_ANNOTATION_FONT,
@@ -1127,7 +1128,14 @@ function recordPluginMarker(
 ) {
   const matrix = createCanvas2DTransformMatrix(resolveNodeRenderTransform(node, preview));
   const [width, height] = resolveCanvas2DPluginNodeLocalSize(node);
-  batch.rect(matrix, 0, 0, width, height, batch.fillColor("#64748b"));
+  batch.rect(
+    matrix,
+    0,
+    0,
+    width,
+    height,
+    batch.fillColor(PLUGIN_NODE_MARKER_FILL)
+  );
 }
 
 function recordConnectionHandles(batch: VertexBatch, frame: Canvas2DWebGpuFrame) {

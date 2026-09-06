@@ -32,6 +32,7 @@ import {
   type Canvas2DNodeRenderTransform
 } from "./matrix";
 import { CANVAS_2D_PLUGIN_MARKER_SIZE } from "./constants";
+import { resolveHostPluginNodeLocalSize2d } from "../plugin-drawers";
 import {
   getCanvas2DAncestors,
   getCanvas2DGroupChildren,
@@ -358,6 +359,11 @@ export function resolveCanvas2DPluginNodeLocalSize(
   }
   if (isDenovoShadeNode(node)) {
     return denovoShadeSize(node.props);
+  }
+
+  const hostSize = resolveHostPluginNodeLocalSize2d(node);
+  if (hostSize) {
+    return hostSize;
   }
 
   return [CANVAS_2D_PLUGIN_MARKER_SIZE, CANVAS_2D_PLUGIN_MARKER_SIZE];

@@ -22,6 +22,8 @@
   extension mechanisms are product surface (kinds and named operations),
   which are plumbing (host bundles and adapters), and which are not allowed
   to carry a visual (`pluginState`).
+- [Kind Drawer Seam](./kind-drawer-seam.md) is the host-kind paint and
+  pick registration on `@denovo/canvas-web`.
 - [Developer Experience](./developer-experience.md) defines how the SDK hides
   low-level rendering/editor complexity while preserving escape hatches.
 - [Dependency Strategy](./dependency-strategy.md) defines how proven libraries

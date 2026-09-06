@@ -12,6 +12,7 @@ import {
   defineScene,
   isDenovoFieldNode,
   isPluginNodeType,
+  type Canvas3DPluginNode,
   resolveCanvasMeshGeometry,
   type CanvasAuthoringPreviewForMode,
   type CanvasGeometryStore,
@@ -50,6 +51,10 @@ import {
   readDenovoFieldComputeResidentCopies,
   tickDenovoFieldObject
 } from "@denovo/canvas-three";
+import {
+  PLUGIN_NODE_MARKER_FILL,
+  resolveHostPluginNodeCreate3d
+} from "./plugin-drawers";
 import {
   AmbientLight,
   BoxGeometry,
@@ -3208,13 +3213,33 @@ function createObject(
         return createDenovoFieldObject(node.props);
       }
       if (isPluginNodeType(node.type)) {
-        return new Mesh(
-          getUnitBoxGeometry(),
-          createCanvas3DSurfaceMaterial("#64748b")
-        );
+        return createCanvas3DPluginNodeObject(node);
       }
       throw new Error(`Unsupported 3D canvas node: ${JSON.stringify(node)}`);
   }
+}
+
+export function createCanvas3DPluginNodeObject(
+  node: Canvas3DNode
+): Object3D {
+  if (isDenovoFieldNode(node)) {
+    return createDenovoFieldObject(node.props);
+  }
+
+  if (!isPluginNodeType(node.type)) {
+    throw new Error("createCanvas3DPluginNodeObject requires a plugin node.");
+  }
+
+  const pluginNode = node as Canvas3DPluginNode;
+  const create3d = resolveHostPluginNodeCreate3d(pluginNode);
+  if (create3d) {
+    return create3d(pluginNode);
+  }
+
+  return new Mesh(
+    getUnitBoxGeometry(),
+    createCanvas3DSurfaceMaterial(PLUGIN_NODE_MARKER_FILL)
+  );
 }
 
 /**

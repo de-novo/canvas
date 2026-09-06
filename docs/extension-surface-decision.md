@@ -318,14 +318,19 @@ decision:
 
 ## This Week
 
-1. Accept this decision (this change: document, status, history, two
+1. Accept this decision (landed 2026-09-04: document, status, history, two
    JSDoc clarifications on `CanvasPlugin` and `pluginState`).
 2. Freeze: no new `CanvasPluginContext` methods, no new `pluginState`
    consumers, no new ThreeUI rooms.
-3. Write the kind drawer seam contract with the acceptance criteria above
-   before implementing it. Use the
-   `$canvas-public-contract-change` skill.
-4. For the region/mask need, prototype in the consuming product with
+3. Kind drawer seam contract and implementation: see
+   [Kind Drawer Seam](./kind-drawer-seam.md). Host kinds register a
+   Canvas2D paint and a WebGL2 object on `@denovo/canvas-web`. Missing
+   drawers stay the gray marker. The facade does not export engine types
+   for this.
+4. Kind enumeration: read-only `listPluginNodeKinds()` returns
+   `{ type, mode }` snapshots. Unregistered types stay fail-closed at
+   parse.
+5. For the region/mask need, prototype in the consuming product with
    `rect` and `circle` plus `metadata`, and report whether polygons are
    required before any canvas change is scheduled.
 

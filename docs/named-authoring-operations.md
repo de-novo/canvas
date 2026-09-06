@@ -99,6 +99,7 @@ function to `applyNamedOperations` / `editor.apply` is the list path.
 | `reorderLayer` | `@denovo/canvas-editor` | `@denovo/canvas` |
 | `setFieldPattern` | `@denovo/canvas-editor` | `@denovo/canvas` |
 | `setSparklineStyle` | `@denovo/canvas-editor` | `@denovo/canvas` |
+| `setShadePattern` | `@denovo/canvas-editor` | `@denovo/canvas` |
 | `setNodeVisible` | `@denovo/canvas-editor` | `@denovo/canvas` |
 | `setNodeLocked` | `@denovo/canvas-editor` | `@denovo/canvas` |
 | `setNodeLayer` | `@denovo/canvas-editor` | `@denovo/canvas` |

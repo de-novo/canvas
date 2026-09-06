@@ -34,6 +34,7 @@ The default package must expose:
 - `definePluginNodeKind`
 - `registerPluginNodeKind`
 - `getPluginNodeKind`
+- `listPluginNodeKinds`
 - `parsePluginNodeProps`
 - `pluginNodeKindSupportsMode`
 - `isPluginNodeType`
@@ -81,6 +82,12 @@ The default package must expose:
 - `isDenovoSparklineType`
 - `parseDenovoSparklineProps`
 - `setSparklineStyle`
+- `setShadePattern`
+- `DENOVO_SHADE_NODE_TYPE`
+- `denovoShadeSize`
+- `isDenovoShadeNode`
+- `isDenovoShadeType`
+- `parseDenovoShadeProps`
 - `defineMeshGeometry`
 - `createMemoryGeometryStore`
 - `createMeshGeometryAssetRef`
@@ -498,7 +505,10 @@ The official 2D kind `plugin.denovo.shade` is pre-registered. Its
 `hue` is 0–360, `speed` is 0–40, and `width` / `height` are ranges.
 `setShadePattern` compiles to `node.update`. The official 2D drawer
 reads only those properties. Other 2D plugin kinds still draw as the
-48×48 marker.
+48×48 marker until a host registers a drawer on `@denovo/canvas-web`.
+`listPluginNodeKinds()` returns a readonly `{ type, mode }` snapshot.
+The default facade does not export `registerPluginNodeDrawer`. See
+[Kind Drawer Seam](./kind-drawer-seam.md).
 
 `createRelationGraphLayoutAdapter` and `createTimeGraphLayoutAdapter`
 register with `editor.registerLayoutAdapter`. `editor.applyLayout` commits

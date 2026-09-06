@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: 2026-09-04.
+Last updated: 2026-09-06.
 
 This is the canonical project status index. Keep milestone definitions in
 [Vision and Milestones](./vision-and-milestones.md); keep chronological evidence
@@ -257,6 +257,13 @@ product-level extension seam, `CanvasPlugin` is a host bundle, and
 
 ## Active
 
+- Kind drawer seam and kind enumeration (2026-09-06): a host
+  `plugin.<org>.<kind>` registers paint and pick on
+  `@denovo/canvas-web`. Missing drawers stay the gray marker.
+  Unregister restores it. `listPluginNodeKinds()` returns readonly
+  `{ type, mode }`. The facade does not export the drawer registration.
+  See [Kind Drawer Seam](./kind-drawer-seam.md) and
+  [2026-09-06 kind drawer seam](./history/2026-09-06-kind-drawer-seam.md).
 - Extension surface decision (2026-09-04): kinds (schema, official
   drawer, named operations) are the only product-level extension seam.
   Optional engines are packages that emit core kinds. `CanvasPlugin`
@@ -361,7 +368,8 @@ product-level extension seam, `CanvasPlugin` is a host bundle, and
    `plugin.denovo.field`, official `plugin.denovo.sparkline`, official
    `plugin.denovo.shade`, and the
    Warp Field catalog landed. A kind declares `2d`, `3d`, or `both`.
-   Markers draw until a kind has a drawer. Do not wrap more ThreeUI
+   Host kinds register a drawer on `@denovo/canvas-web` or stay the
+   gray marker. Do not wrap more ThreeUI
    rooms. Do not wrap Canvas UI rooms. `keycaps` / `hyperspace` stay
    unabsorbed. See
    [Framework Surface](./framework-surface.md) and
@@ -427,15 +435,14 @@ product-level extension seam, `CanvasPlugin` is a host bundle, and
    [2026-08-23 BIM multi-model federation](./history/2026-08-23-bim-multi-model-federation.md),
    and
    [2026-08-23 BIM federated origin](./history/2026-08-23-bim-federated-origin.md).
-7. **Extension surface (decided 2026-09-04):** next contract candidates
-   are a per-kind drawer seam in `@denovo/canvas-web` so a host
-   `plugin.<org>.<kind>` stops drawing as a marker without a custom
-   renderer, and a read-only `listPluginNodeKinds()`. Write the drawer
-   seam contract before implementing it. Do not add
+7. **Extension surface (drawer seam and kind enumeration complete):**
+   `registerPluginNodeDrawer` lives on `@denovo/canvas-web`.
+   `listPluginNodeKinds()` is a facade read. Do not add
    `CanvasPluginContext` methods, `pluginState` consumers, ThreeUI
    rooms, a photo-editor vocabulary, BIM UI, a capability graph, or an
    agent protocol package. The region/mask need elsewhere is served by
    `rect` / `circle` plus host `metadata` today. See
+   [Kind Drawer Seam](./kind-drawer-seam.md) and
    [Extension Surface Decision](./extension-surface-decision.md).
 
 ## Blocked
@@ -444,6 +451,19 @@ product-level extension seam, `CanvasPlugin` is a host bundle, and
 
 ## Evidence
 
+- Kind drawer seam and kind enumeration (2026-09-06). Host
+  `plugin.test.host` paints non-marker Canvas2D fills and a non-gray
+  WebGL2 object, hits by id, falls back to `#64748b` without a drawer,
+  and restores the marker after unregister. `listPluginNodeKinds()`
+  returns official field/sparkline/shade with mode. Facade does not
+  export `registerPluginNodeDrawer`.
+  `pnpm typecheck` 36/36. `pnpm build` 25/25.
+  `pnpm verify:public-api` ok. `pnpm verify:hit-testing` 6/6 including
+  the four host-drawer observations plus double-register.
+  `pnpm verify:docs` 166 Markdown files, 577/577 local targets.
+  2D WebGPU host-drawer pixels unmeasured. No vanilla host-kind page
+  (vanilla must not depend on `@denovo/canvas-web`). See
+  [2026-09-06 kind drawer seam](./history/2026-09-06-kind-drawer-seam.md).
 - Extension surface decision (2026-09-04). Documentation plus JSDoc on
   `CanvasPlugin` and `pluginState`; no export or schema change.
   `pnpm verify:docs` 160 Markdown files, 542/542 local targets.
