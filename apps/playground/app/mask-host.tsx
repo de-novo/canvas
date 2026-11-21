@@ -7,8 +7,8 @@ import {
   listNodes,
   setNodeVisible,
   shallowEqual
-} from "@denovo/canvas";
-import { CanvasView, useCanvasSelector } from "@denovo/react-canvas";
+} from "@denovo/canvas/2d";
+import { Canvas2DView, useCanvasSelector } from "@denovo/react-canvas/2d";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -146,9 +146,9 @@ export function MaskHost({ className }: { className: string }) {
       data-denovo-mask-pixels={String(mask.pixelCount)}
       data-denovo-rect-sample={String(sampleRegionMask(mask, 80, 80))}
     >
-      <CanvasView
+      <Canvas2DView
         className={className}
-        scene={documentModel.scene}
+        scene={documentModel.scene.mode === "2d" ? documentModel.scene : createMaskDocument().scene as Extract<ReturnType<typeof createMaskDocument>["scene"], { mode: "2d" }>}
         onRuntime={(runtime) => {
           if (!runtime) {
             return;

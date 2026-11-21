@@ -1,15 +1,13 @@
 import {
   connectCanvasToolInput,
   createCanvas2D,
-  type Canvas2DRenderNodeContext
-} from "@denovo/canvas-web";
-import {
   createEditor,
   createSelectTool,
   defineDocument,
   type Canvas2DNode,
+  type Canvas2DRenderNodeContext,
   type CanvasSceneInput
-} from "@denovo/canvas";
+} from "@denovo/canvas/2d";
 import {
   createAlignAdapter,
   createConnectorTool,

@@ -1,4 +1,4 @@
-import type { Canvas2DNode, Canvas2DRenderNodeContext } from "@denovo/canvas";
+import type { Canvas2DNode, Canvas2DRenderNodeContext } from "@denovo/canvas/2d";
 
 export const NETWORK_SERVICE_ROLES = [
   "edge",

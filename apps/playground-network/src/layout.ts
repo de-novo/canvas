@@ -2,7 +2,7 @@ import {
   createRelationGraphLayoutAdapter,
   createTimeGraphLayoutAdapter,
   type CanvasEditor
-} from "@denovo/canvas";
+} from "@denovo/canvas/2d";
 
 import { NETWORK_DEPLOYED_AT, NETWORK_SERVICE_NODE_IDS } from "./document";
 

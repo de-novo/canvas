@@ -12,6 +12,11 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
+    },
+    "./2d": {
+      "types": "./dist/2d.d.ts",
+      "import": "./dist/2d.js",
+      "require": "./dist/2d.cjs"
     }
   },
   "files": [
@@ -19,7 +24,7 @@
   ],
   "sideEffects": false,
   "scripts": {
-    "build": "tsup src/index.tsx --format esm,cjs --clean --external react --external react/jsx-runtime --external three --external @react-three/fiber --external @react-three/drei --external @denovo/canvas --external @denovo/canvas-core --external @denovo/canvas-three && tsc --emitDeclarationOnly",
+    "build": "tsup src/index.tsx src/2d.tsx --format esm,cjs --clean --external react --external react/jsx-runtime --external three --external @react-three/fiber --external @react-three/drei --external @denovo/canvas --external @denovo/canvas/2d --external @denovo/canvas-core --external @denovo/canvas-three && tsc --emitDeclarationOnly",
     "clean": "rm -rf dist .turbo",
     "typecheck": "tsc --noEmit"
   },

@@ -85,6 +85,10 @@ assert.ok(
   facadePackage.exports?.["./2d"],
   "facade must export ./2d as a Three.js-free 2D entrypoint"
 );
+assert.ok(
+  facadePackage.exports?.["./react/2d"],
+  "facade must export ./react/2d as a Three.js/R3F/Drei-free React 2D entrypoint"
+);
 const facade2dDist = readFileSync(path.join(facadeDir, "dist", "2d.js"), "utf8");
 for (const forbidden of [
   "\"three\"",
@@ -98,21 +102,37 @@ for (const forbidden of [
     `facade ./2d bundle must not import ${forbidden}`
   );
 }
-const flowAssetsDir = path.join(root, "apps", "playground-flow", "dist", "assets");
-if (existsSync(flowAssetsDir)) {
-  const flowJsFiles = readdirSync(flowAssetsDir).filter((file) =>
-    file.endsWith(".js")
-  );
+const react2dDist = readFileSync(
+  path.join(packagesDir, "react", "dist", "2d.js"),
+  "utf8"
+);
+for (const forbidden of [
+  "\"three\"",
+  "\"@react-three/fiber\"",
+  "\"@react-three/drei\"",
+  "\"@denovo/canvas-three\"",
+  "\"@denovo/canvas\""
+]) {
   assert.ok(
-    !flowJsFiles.some((file) => file.includes("three")),
-    `playground-flow dist must not emit any Three.js chunk, found: ${flowJsFiles.join(", ")}`
+    !react2dDist.includes(forbidden),
+    `react ./2d bundle must not import ${forbidden}`
   );
-  for (const file of flowJsFiles) {
-    const content = readFileSync(path.join(flowAssetsDir, file), "utf8");
+}
+for (const appName of ["playground-flow", "playground-network", "playground-diagram"]) {
+  const assetsDir = path.join(root, "apps", appName, "dist", "assets");
+  if (existsSync(assetsDir)) {
+    const jsFiles = readdirSync(assetsDir).filter((file) => file.endsWith(".js"));
     assert.ok(
-      !content.includes("WebGLRenderer"),
-      `playground-flow bundle ${file} must not contain Three.js WebGLRenderer`
+      !jsFiles.some((file) => file.includes("three")),
+      `${appName} dist must not emit any Three.js chunk, found: ${jsFiles.join(", ")}`
     );
+    for (const file of jsFiles) {
+      const content = readFileSync(path.join(assetsDir, file), "utf8");
+      assert.ok(
+        !content.includes("WebGLRenderer"),
+        `${appName} bundle ${file} must not contain Three.js WebGLRenderer`
+      );
+    }
   }
 }
 assert.equal(
@@ -3969,6 +3989,12 @@ writeFileSync(
   type DenovoCanvas2DRuntime
 } from "${facadeName}/2d";
 
+import {
+  Canvas2DView,
+  useCanvasSelector as useReact2DSelector,
+  type Canvas2DViewProps
+} from "${facadeName}/react/2d";
+
 const doc2d = defineDocument({
   id: "smoke-2d-doc",
   scene: {
@@ -4024,6 +4050,23 @@ runtime.update({
   layers: [{ id: "default", name: "Default" }],
   nodes: []
 });
+
+const validReact2DProps: Canvas2DViewProps = {
+  scene: { id: "r2d", mode: "2d", layers: [{ id: "default", name: "Default" }], nodes: [] }
+};
+const badReact2DProps: Canvas2DViewProps = {
+  // @ts-expect-error Canvas2DView rejects 3D scenes at compile time.
+  scene: { id: "r3d", mode: "3d", layers: [{ id: "default", name: "Default" }], nodes: [] }
+};
+function React2DSmoke() {
+  const canUndo: boolean = useReact2DSelector(editor, (s) => s.history.canUndo);
+  // @ts-expect-error mismatched React 2D selector equality comparator.
+  useReact2DSelector(editor, (s) => s.history.canUndo, (a: number, b: number) => a === b);
+  void canUndo;
+  return Canvas2DView(validReact2DProps);
+}
+void badReact2DProps;
+void React2DSmoke;
 `
 );
 
@@ -4161,7 +4204,9 @@ writeFileSync(
         lib: ["ES2022", "DOM"],
         noEmit: true,
         paths: {
-          [`${facadeName}/2d`]: ["../../packages/canvas/dist/2d.d.ts"]
+          [`${facadeName}/2d`]: ["../../packages/canvas/dist/2d.d.ts"],
+          [`${facadeName}/react/2d`]: ["../../packages/canvas/dist/react-2d.d.ts"],
+          "@denovo/react-canvas/2d": ["../../packages/react/dist/2d.d.ts"]
         }
       },
       include: ["facade-2d-smoke.ts"]
