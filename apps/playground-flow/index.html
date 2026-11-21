@@ -19,8 +19,9 @@
         <p class="eyebrow">Absorbed showcase</p>
         <h1>Release board</h1>
         <p>
-          Select a card to edit its title and status. Use Move to reposition it
-          or Connect to link two cards. Save the board to reopen it in this browser.
+          Add or select a card to edit its title, owner and status, delete
+          selected cards or edges, use Move to reposition, or Connect to link
+          cards. Save or reset the board in this browser.
         </p>
         <div class="controls">
           <button id="select-tool" type="button" data-denovo-control="select">
@@ -36,6 +37,17 @@
           >
             Connect
           </button>
+          <button id="add-card" type="button" data-denovo-control="add-card">
+            Add card
+          </button>
+          <button
+            id="delete-selected"
+            type="button"
+            data-denovo-control="delete-selected"
+            disabled
+          >
+            Delete selected
+          </button>
           <button
             id="hide-labels"
             type="button"
@@ -50,14 +62,19 @@
           >
             Show labels
           </button>
-          <button id="undo" type="button" data-denovo-control="undo">
+          <button id="undo" type="button" data-denovo-control="undo" disabled>
             Undo
           </button>
+          <button id="redo" type="button" data-denovo-control="redo" disabled>
+            Redo
+          </button>
           <button id="save-board" type="button">Save board</button>
+          <button id="reset-board" type="button">Reset board</button>
         </div>
         <output id="storage-notice" aria-live="polite"></output>
         <form id="card-editor" class="controls" hidden>
           <label>Card title <input id="card-title" required /></label>
+          <label>Owner <input id="card-owner" required /></label>
           <label>Status <select id="card-status"></select></label>
           <button type="submit">Apply changes</button>
         </form>

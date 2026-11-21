@@ -98,8 +98,13 @@ h1 {
   cursor: pointer;
 }
 
-.controls button:hover {
+.controls button:hover:not(:disabled) {
   border-color: #64748b;
+}
+
+.controls button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .status {

@@ -29,4 +29,13 @@ The single-column grid uses a zero minimum track size so the canvas cannot
 expand the page width during editing. Both showcase cases passed and the
 restored mobile screenshot is stored at
 [flow-release-board-mobile.png](../../artifacts/verification/flow-release-board-mobile.png).
+
+The board now also supports adding cards into non-overlapping slots (one
+transaction adding and selecting the card), editing card owners alongside title
+and status, deleting selected cards (removing incident edges first via
+`removeEdge` + `removeNode` in one `editor.apply` undo step) or selected edges,
+Redo with synchronized disabled states for Undo/Redo/Delete, and resetting the
+browser-saved board back to the five-card example. Both
+`pnpm verify:flow-showcase` cases (desktop mouse and iPhone 14 touch
+emulation), `pnpm typecheck`, `pnpm build`, and `pnpm verify:docs` passed.
 Physical devices, iOS Safari and on-screen keyboard input remain unmeasured.

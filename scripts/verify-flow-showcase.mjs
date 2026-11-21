@@ -120,16 +120,20 @@ try {
       assert.equal(restored?.undoDepth, 0);
 
       await page.getByLabel("Card title").fill("Prepare release");
+      await page.getByLabel("Owner").fill("Core");
       await page.locator("#card-status").selectOption("review");
       await page.getByRole("button", { name: "Apply changes" }).click();
       const card = page.locator('[data-flow-card="build"]');
       await card.locator(".flow-card-title", { hasText: "Prepare release" }).waitFor();
+      await card.locator(".flow-card-owner", { hasText: "Core" }).waitFor();
       assert.equal(await card.getAttribute("data-flow-status"), "review");
       assert.equal(await page.evaluate(() => window.__flowShowcase.undoDepth), 1);
       await page.getByRole("button", { name: "Undo" }).click();
       await card.locator(".flow-card-title", { hasText: "Build" }).waitFor();
+      await card.locator(".flow-card-owner", { hasText: "Engineering" }).waitFor();
       assert.equal(await card.getAttribute("data-flow-status"), "progress");
       assert.equal(await page.getByLabel("Card title").inputValue(), "Build");
+      assert.equal(await page.getByLabel("Owner").inputValue(), "Engineering");
 
       await verifySavedEdits(page, false);
       assert.deepEqual(consoleErrors, []);
@@ -156,9 +160,10 @@ try {
       assert.equal(await page.locator("[data-flow-card]").count(), 5);
       const point = await pickCard(page, "build");
       await page.touchscreen.tap(point.x, point.y);
-      await verifySavedEdits(page, true);
-      mkdirSync(path.dirname(mobileShot), { recursive: true });
-      await page.screenshot({ path: mobileShot, fullPage: true });
+      await verifySavedEdits(page, true, async () => {
+        mkdirSync(path.dirname(mobileShot), { recursive: true });
+        await page.screenshot({ path: mobileShot, fullPage: true });
+      });
     } finally {
       await browser.close();
     }
@@ -189,16 +194,53 @@ async function pickCard(page, id) {
   }, id);
 }
 
-async function verifySavedEdits(page, touch) {
+async function pickEdge(page, id) {
+  await page.locator("#stage").scrollIntoViewIfNeeded();
+  return page.evaluate(edgeId => {
+    const runtime = window.__denovoRuntime;
+    const editor = window.__denovoEditor;
+    const rect = runtime.canvas.getBoundingClientRect();
+    const edge = editor.getState().document.scene.nodes.find(node => node.id === edgeId);
+    if (!edge || edge.type !== "edge") {
+      throw new Error("Missing edge " + edgeId);
+    }
+    const bounds = runtime.current.resolveNodeBounds([edge.sourceId, edge.targetId]);
+    const source = bounds.get(edge.sourceId);
+    const target = bounds.get(edge.targetId);
+    const minX = Math.min(source.minX, target.minX);
+    const maxX = Math.max(source.maxX, target.maxX);
+    const minY = Math.min(source.minY, target.minY);
+    const maxY = Math.max(source.maxY, target.maxY);
+    const topLeft = runtime.current.sceneToCanvas([minX, minY]);
+    const bottomRight = runtime.current.sceneToCanvas([maxX, maxY]);
+    for (let y = Math.floor(topLeft[1]); y <= Math.ceil(bottomRight[1]); y += 2) {
+      for (let x = Math.floor(topLeft[0]); x <= Math.ceil(bottomRight[0]); x += 2) {
+        const hit = runtime.hitTest({ point: [x, y] });
+        if (hit.kind === "node" && hit.nodeId === edgeId) {
+          return { x: rect.left + x, y: rect.top + y };
+        }
+      }
+    }
+    throw new Error("Could not pick edge " + edgeId);
+  }, id);
+}
+
+async function verifySavedEdits(page, touch, onRestored) {
   const card = page.locator('[data-flow-card="build"]');
   const press = name => {
     const button = page.getByRole("button", { name, exact: true });
     return touch ? button.tap() : button.click();
   };
+  const selectPoint = point =>
+    touch ? page.touchscreen.tap(point.x, point.y) : page.mouse.click(point.x, point.y);
+  const snapshot = () => page.evaluate(() => window.__denovoEditor.getState().document);
+
   await page.getByLabel("Card title").fill("Release candidate");
+  await page.getByLabel("Owner").fill("Platform");
   await page.locator("#card-status").selectOption("review");
   await press("Apply changes");
   await card.getByText("Release candidate").waitFor();
+  await card.locator(".flow-card-owner", { hasText: "Platform" }).waitFor();
 
   async function cardOffsetY(id) {
     await page.locator("#stage").scrollIntoViewIfNeeded();
@@ -240,7 +282,63 @@ async function verifySavedEdits(page, touch) {
   await drag(await pickCard(page, "intake"), await pickCard(page, "build"));
   await page.waitForFunction(() => window.__flowShowcase.undoDepth === 3, undefined, { timeout: 4000 }).catch(() => { throw new Error("Connector did not commit"); });
 
-  const snapshot = () => page.evaluate(() => window.__denovoEditor.getState().document);
+  // Add a new card, edit it, and verify undo/redo.
+  await press("Add card");
+  const addedCard = page.locator('[data-flow-card="card-1"]');
+  await addedCard.waitFor({ timeout: 4000 });
+  assert.equal(await page.locator("[data-flow-card]").count(), 6);
+  assert.equal(await page.evaluate(() => window.__flowShowcase.selectedId), "card-1");
+  assert.equal(await page.evaluate(() => window.__flowShowcase.undoDepth), 4);
+  await page.getByLabel("Card title").fill("Verify rollout");
+  await page.getByLabel("Owner").fill("Ops");
+  await page.locator("#card-status").selectOption("progress");
+  await press("Apply changes");
+  await addedCard.locator(".flow-card-title", { hasText: "Verify rollout" }).waitFor();
+  await addedCard.locator(".flow-card-owner", { hasText: "Ops" }).waitFor();
+  assert.equal(await page.evaluate(() => window.__flowShowcase.undoDepth), 5);
+  await press("Undo");
+  await addedCard.locator(".flow-card-title", { hasText: "Task 1" }).waitFor();
+  assert.equal(await page.evaluate(() => window.__flowShowcase.redoDepth), 1);
+  await press("Redo");
+  await addedCard.locator(".flow-card-title", { hasText: "Verify rollout" }).waitFor();
+  assert.equal(await page.evaluate(() => window.__flowShowcase.redoDepth), 0);
+
+  // Connect build -> card-1, delete card-1 with its incident edge in one undo step, then restore both.
+  await press("Connect");
+  await drag(await pickCard(page, "build"), await pickCard(page, "card-1"));
+  await page.waitForFunction(() => window.__flowShowcase.undoDepth === 6, undefined, { timeout: 4000 }).catch(() => { throw new Error("Second connector did not commit"); });
+  const hasNewCardEdge = async () =>
+    (await snapshot()).scene.nodes.some(
+      node => node.type === "edge" && node.sourceId === "build" && node.targetId === "card-1"
+    );
+  assert.equal(await hasNewCardEdge(), true);
+  await press("Select");
+  await selectPoint(await pickCard(page, "card-1"));
+  await page.waitForFunction(() => window.__flowShowcase.selectedId === "card-1", undefined, { timeout: 4000 });
+  await press("Delete selected");
+  await page.waitForFunction(() => window.__flowShowcase.undoDepth === 7, undefined, { timeout: 4000 });
+  assert.equal(await page.locator('[data-flow-card="card-1"]').count(), 0);
+  assert.equal(await hasNewCardEdge(), false);
+  await press("Undo");
+  await addedCard.waitFor({ timeout: 4000 });
+  assert.equal(await hasNewCardEdge(), true);
+  assert.equal(await page.evaluate(() => window.__flowShowcase.undoDepth), 6);
+
+  // Select and delete an existing edge, verify undo restores it, then redo to keep it deleted for save/reload.
+  await selectPoint(await pickEdge(page, "edge-qa-ship"));
+  await page.waitForFunction(() => window.__flowShowcase.selectedId === "edge-qa-ship", undefined, { timeout: 4000 });
+  await press("Delete selected");
+  await page.waitForFunction(() => window.__flowShowcase.undoDepth === 7, undefined, { timeout: 4000 });
+  const hasQaShipEdge = async () =>
+    (await snapshot()).scene.nodes.some(node => node.id === "edge-qa-ship");
+  assert.equal(await hasQaShipEdge(), false);
+  await press("Undo");
+  await page.waitForFunction(() => window.__flowShowcase.undoDepth === 6, undefined, { timeout: 4000 });
+  assert.equal(await hasQaShipEdge(), true);
+  await press("Redo");
+  await page.waitForFunction(() => window.__flowShowcase.undoDepth === 7, undefined, { timeout: 4000 });
+  assert.equal(await hasQaShipEdge(), false);
+
   const saved = await snapshot();
   assert.ok(saved.scene.nodes.some(node => node.type === "edge" &&
     node.sourceId === "intake" && node.targetId === "build"));
@@ -249,9 +347,33 @@ async function verifySavedEdits(page, touch) {
   await page.reload();
   await page.getByText("Opened saved board.").waitFor();
   await card.getByText("Release candidate").waitFor();
+  await card.locator(".flow-card-owner", { hasText: "Platform" }).waitFor();
+  await addedCard.getByText("Verify rollout").waitFor();
   assert.equal(await card.getAttribute("data-flow-status"), "review");
   assert.deepEqual(await snapshot(), saved);
   assert.ok(Math.abs((await cardOffsetY("build")) - moved) < 1);
+  if (onRestored) {
+    await onRestored();
+  }
+
+  // Reset board clears saved state and restores the default 5-card example.
+  await press("Reset board");
+  await page.getByText("Reset to example board.").waitFor();
+  assert.equal(await page.locator("[data-flow-card]").count(), 5);
+  await card.locator(".flow-card-title", { hasText: "Build" }).waitFor();
+  assert.equal(await page.evaluate(() => window.__flowShowcase.undoDepth), 0);
+  assert.equal(await hasQaShipEdge(), true);
+  await page.reload();
+  await page.waitForFunction(
+    () =>
+      document.querySelector("#stage")?.getAttribute("data-denovo-flow-ready") ===
+      "true",
+    undefined,
+    { timeout: 30_000 }
+  );
+  assert.equal(await page.locator("#storage-notice").textContent(), "");
+  assert.equal(await page.locator("[data-flow-card]").count(), 5);
+  await card.locator(".flow-card-title", { hasText: "Build" }).waitFor();
 }
 
 /**

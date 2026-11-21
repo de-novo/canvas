@@ -110,4 +110,7 @@ export function createReleaseBoardDocument(): CanvasDocument {
   });
 }
 
+export const FLOW_BOARD_LAYER_ID = BOARD_LAYER;
 export const FLOW_LABEL_LAYER_ID = LABELS_LAYER;
+export const FLOW_CARD_WIDTH = CARD_WIDTH;
+export const FLOW_CARD_HEIGHT = CARD_HEIGHT;

@@ -486,7 +486,7 @@ product-level extension seam, `CanvasPlugin` is a host bundle, and
 
 ## Evidence
 
-- 2026-11-21: The release board edits a selected card’s title and status in one undo step. Desktop mouse and mobile-emulated Chromium touch both verify that saving and reopening restores edited content, card positions and new connectors. See [release board card editing](./history/2026-11-21-release-board-editing.md).
+- 2026-11-21: The release board edits a selected card’s title, owner and status in one undo step, adds new cards, deletes selected cards (with incident edges) or edges in one undo step with Undo/Redo, and resets browser-saved state. Desktop mouse and mobile-emulated Chromium touch both verify that saving and reopening restores edited content, added cards, deleted edges, card positions and new connectors, and resetting restores the example board. See [release board card editing](./history/2026-11-21-release-board-editing.md).
 
 - 2026-11-20: Next mask visibility, undo and redo passed through desktop mouse clicks and mobile-emulated Chromium taps in `pnpm verify:region-mask` (6/6). See [mask editing controls](./history/2026-11-20-mask-editing-controls.md).
 
