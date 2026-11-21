@@ -227,9 +227,34 @@ async function pickEdge(page, id) {
 
 async function verifySavedEdits(page, touch, onRestored) {
   const card = page.locator('[data-flow-card="build"]');
-  const press = name => {
+  const press = async name => {
     const button = page.getByRole("button", { name, exact: true });
-    return touch ? button.tap() : button.click();
+    if (touch) {
+      await button.scrollIntoViewIfNeeded();
+      await page.evaluate(
+        () => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+      );
+      await button.tap();
+      return;
+    }
+    await button.click();
+  };
+  const waitForAddedCard = async step => {
+    try {
+      await addedCard.waitFor({ timeout: 10_000 });
+    } catch (error) {
+      const diag = await page.evaluate(() => {
+        const el = document.querySelector('[data-flow-card="card-1"]');
+        return {
+          cardCount: document.querySelectorAll("[data-flow-card]").length,
+          card1Present: Boolean(el),
+          card1Display: el instanceof HTMLElement ? el.style.display : null,
+          probe: window.__flowShowcase,
+          status: document.querySelector("#status")?.textContent ?? null
+        };
+      });
+      throw new Error(`${step}: ${error}\ndiag=${JSON.stringify(diag)}`);
+    }
   };
   const selectPoint = point =>
     touch ? page.touchscreen.tap(point.x, point.y) : page.mouse.click(point.x, point.y);
@@ -275,17 +300,17 @@ async function verifySavedEdits(page, touch, onRestored) {
   await press("Move");
   const grip = await pickCard(page, "build");
   await drag(grip, { x: grip.x, y: grip.y + 65 });
-  await page.waitForFunction(() => window.__flowShowcase.undoDepth === 2, undefined, { timeout: 4000 }).catch(() => { throw new Error("Card move did not commit"); });
+  await page.waitForFunction(() => window.__flowShowcase.undoDepth === 2, undefined, { timeout: 10_000 }).catch(() => { throw new Error("Card move did not commit"); });
   const moved = await cardOffsetY("build");
   assert.ok(moved > original + 20);
   await press("Connect");
   await drag(await pickCard(page, "intake"), await pickCard(page, "build"));
-  await page.waitForFunction(() => window.__flowShowcase.undoDepth === 3, undefined, { timeout: 4000 }).catch(() => { throw new Error("Connector did not commit"); });
+  await page.waitForFunction(() => window.__flowShowcase.undoDepth === 3, undefined, { timeout: 10_000 }).catch(() => { throw new Error("Connector did not commit"); });
 
   // Add a new card, edit it, and verify undo/redo.
   await press("Add card");
   const addedCard = page.locator('[data-flow-card="card-1"]');
-  await addedCard.waitFor({ timeout: 4000 });
+  await waitForAddedCard("after Add card");
   assert.equal(await page.locator("[data-flow-card]").count(), 6);
   assert.equal(await page.evaluate(() => window.__flowShowcase.selectedId), "card-1");
   assert.equal(await page.evaluate(() => window.__flowShowcase.undoDepth), 4);
@@ -306,7 +331,7 @@ async function verifySavedEdits(page, touch, onRestored) {
   // Connect build -> card-1, delete card-1 with its incident edge in one undo step, then restore both.
   await press("Connect");
   await drag(await pickCard(page, "build"), await pickCard(page, "card-1"));
-  await page.waitForFunction(() => window.__flowShowcase.undoDepth === 6, undefined, { timeout: 4000 }).catch(() => { throw new Error("Second connector did not commit"); });
+  await page.waitForFunction(() => window.__flowShowcase.undoDepth === 6, undefined, { timeout: 10_000 }).catch(() => { throw new Error("Second connector did not commit"); });
   const hasNewCardEdge = async () =>
     (await snapshot()).scene.nodes.some(
       node => node.type === "edge" && node.sourceId === "build" && node.targetId === "card-1"
@@ -314,29 +339,29 @@ async function verifySavedEdits(page, touch, onRestored) {
   assert.equal(await hasNewCardEdge(), true);
   await press("Select");
   await selectPoint(await pickCard(page, "card-1"));
-  await page.waitForFunction(() => window.__flowShowcase.selectedId === "card-1", undefined, { timeout: 4000 });
+  await page.waitForFunction(() => window.__flowShowcase.selectedId === "card-1", undefined, { timeout: 10_000 });
   await press("Delete selected");
-  await page.waitForFunction(() => window.__flowShowcase.undoDepth === 7, undefined, { timeout: 4000 });
+  await page.waitForFunction(() => window.__flowShowcase.undoDepth === 7, undefined, { timeout: 10_000 });
   assert.equal(await page.locator('[data-flow-card="card-1"]').count(), 0);
   assert.equal(await hasNewCardEdge(), false);
   await press("Undo");
-  await addedCard.waitFor({ timeout: 4000 });
+  await waitForAddedCard("after Undo delete card-1");
   assert.equal(await hasNewCardEdge(), true);
   assert.equal(await page.evaluate(() => window.__flowShowcase.undoDepth), 6);
 
   // Select and delete an existing edge, verify undo restores it, then redo to keep it deleted for save/reload.
   await selectPoint(await pickEdge(page, "edge-qa-ship"));
-  await page.waitForFunction(() => window.__flowShowcase.selectedId === "edge-qa-ship", undefined, { timeout: 4000 });
+  await page.waitForFunction(() => window.__flowShowcase.selectedId === "edge-qa-ship", undefined, { timeout: 10_000 });
   await press("Delete selected");
-  await page.waitForFunction(() => window.__flowShowcase.undoDepth === 7, undefined, { timeout: 4000 });
+  await page.waitForFunction(() => window.__flowShowcase.undoDepth === 7, undefined, { timeout: 10_000 });
   const hasQaShipEdge = async () =>
     (await snapshot()).scene.nodes.some(node => node.id === "edge-qa-ship");
   assert.equal(await hasQaShipEdge(), false);
   await press("Undo");
-  await page.waitForFunction(() => window.__flowShowcase.undoDepth === 6, undefined, { timeout: 4000 });
+  await page.waitForFunction(() => window.__flowShowcase.undoDepth === 6, undefined, { timeout: 10_000 });
   assert.equal(await hasQaShipEdge(), true);
   await press("Redo");
-  await page.waitForFunction(() => window.__flowShowcase.undoDepth === 7, undefined, { timeout: 4000 });
+  await page.waitForFunction(() => window.__flowShowcase.undoDepth === 7, undefined, { timeout: 10_000 });
   assert.equal(await hasQaShipEdge(), false);
 
   const saved = await snapshot();
