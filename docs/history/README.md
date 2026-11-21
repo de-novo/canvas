@@ -166,3 +166,4 @@ Each entry should include:
 - [2026-11-20 mask editing controls](./2026-11-20-mask-editing-controls.md)
 - [2026-11-21 release board card editing](./2026-11-21-release-board-editing.md)
 - [2026-11-21 2D spatial index and viewport culling](./2026-11-21-2d-spatial-index-viewport-culling.md)
+- [2026-11-21 TanStack-style fine-grained selector subscriptions](./2026-11-21-selector-subscriptions.md)

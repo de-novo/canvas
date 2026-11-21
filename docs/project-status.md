@@ -486,6 +486,8 @@ product-level extension seam, `CanvasPlugin` is a host bundle, and
 
 ## Evidence
 
+- 2026-11-21: TanStack-style fine-grained selector subscriptions (`subscribeCanvasSelector`, `shallowEqual`, React/Vue/Solid `useCanvasSelector`, Svelte `createCanvasSelectorStore`) landed for Issue #3 and were adopted by Next `MaskHost`. `pnpm verify:selectors` passed (4/4, 0 unnecessary React/Vue/headless updates across 100 hover transitions), along with `pnpm verify:public-api`, `pnpm verify:region-mask` (6/6), `pnpm verify:editor-core`, `pnpm typecheck`, `pnpm build`, and `pnpm verify:docs`. See [selector subscriptions](./history/2026-11-21-selector-subscriptions.md).
+
 - 2026-11-21: 2D spatial index, viewport culling, O(visible) HTML overlay sync, and O(1) node lookups landed for Issue #2. `pnpm verify:2d-performance` passed (10k 2D rects `drawCalls` 10,001 → 28, `panRender` p50 3.70 ms → 0.00 ms, 200 `hitTest` calls 118.5 ms → 0.5 ms, `marquee` p50 3.30 ms → 0.00 ms; 1k HTML overlays `panRender` p50 0.80 ms → 0.10 ms). See [2D spatial index and viewport culling](./history/2026-11-21-2d-spatial-index-viewport-culling.md).
 
 - 2026-11-21: The release board edits a selected card’s title, owner and status in one undo step, adds new cards, deletes selected cards (with incident edges) or edges in one undo step with Undo/Redo, and resets browser-saved state. Desktop mouse and mobile-emulated Chromium touch both verify that saving and reopening restores edited content, added cards, deleted edges, card positions and new connectors, and resetting restores the example board. See [release board card editing](./history/2026-11-21-release-board-editing.md).

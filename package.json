@@ -35,6 +35,7 @@
     "verify:2d-performance": "node scripts/verify-2d-performance.mjs",
     "verify:performance": "node scripts/verify-performance.mjs",
     "verify:point-field": "node scripts/verify-point-field.mjs",
+    "verify:selectors": "node scripts/verify-selectors.mjs",
     "verify:server": "node scripts/verify-server.mjs",
     "verify:worker-tasks": "node scripts/verify-worker-tasks.mjs"
   },

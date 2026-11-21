@@ -47,6 +47,8 @@ The default package must expose:
 - `createCanvas2D`
 - `createCanvas3D`
 - `createEditor`
+- `subscribeCanvasSelector`
+- `shallowEqual`
 - `createRelationGraphLayoutAdapter`
 - `createTimeGraphLayoutAdapter`
 - `applyCommandsToDocument`
@@ -140,7 +142,7 @@ The default package must expose:
 The package must also expose:
 
 - `./styles.css` for the styling contract;
-- `./react` for optional React adapter exports;
+- `./react` for optional React adapter exports (`CanvasView`, `CanvasStage3D`, `useCanvasSelector`, `shallowEqual`);
 - `./web` for host kind drawer registration (`registerPluginNodeDrawer`).
   The default import must not export that function or Canvas2D/Three
   types for it.

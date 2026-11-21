@@ -1,14 +1,24 @@
 import {
+  computed,
   defineComponent,
+  getCurrentScope,
   h,
   onBeforeUnmount,
   onMounted,
+  onScopeDispose,
   shallowRef,
   watch,
+  type ComputedRef,
   type PropType
 } from "vue";
 import {
   createCanvas,
+  shallowEqual,
+  subscribeCanvasSelector,
+  type CanvasEditor,
+  type CanvasEditorState,
+  type CanvasSelector,
+  type CanvasSelectorEquality,
   type DenovoCanvasCommonConfig,
   type DenovoCanvasRuntime
 } from "@denovo/canvas";
@@ -135,10 +145,44 @@ function parseInlineStyle(value: string): Record<string, string> {
   return result;
 }
 
+/**
+ * Subscribes a Vue component or effect scope to a derived slice of a
+ * {@link CanvasEditor}. Updates only when `equals(previous, next)` returns
+ * `false` (defaults to `Object.is`; pass `shallowEqual` for derived objects
+ * or arrays) and disposes automatically with the active Vue effect scope.
+ */
+export function useCanvasSelector<TSelected>(
+  editor: CanvasEditor,
+  selector: CanvasSelector<TSelected>,
+  equals?: CanvasSelectorEquality<TSelected>
+): ComputedRef<TSelected> {
+  const selected = shallowRef<TSelected>(selector(editor.getState()));
+  const unsubscribe = subscribeCanvasSelector(
+    editor,
+    selector,
+    (next) => {
+      selected.value = next;
+    },
+    equals === undefined ? undefined : { equals }
+  );
+
+  if (getCurrentScope()) {
+    onScopeDispose(unsubscribe);
+  }
+
+  return computed(() => selected.value);
+}
+
 export type DenovoCanvasInstance = InstanceType<typeof DenovoCanvas>;
 
 export {
   createCanvas,
+  shallowEqual,
+  subscribeCanvasSelector,
+  type CanvasEditor,
+  type CanvasEditorState,
+  type CanvasSelector,
+  type CanvasSelectorEquality,
   type DenovoCanvasCommonConfig,
   type DenovoCanvasRuntime
 } from "@denovo/canvas";

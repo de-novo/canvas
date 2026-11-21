@@ -1,13 +1,21 @@
 import {
+  type Accessor,
   type Component,
   type JSX,
   createEffect,
+  createSignal,
   on,
   onCleanup,
   onMount
 } from "solid-js";
 import {
   createCanvas,
+  shallowEqual,
+  subscribeCanvasSelector,
+  type CanvasEditor,
+  type CanvasEditorState,
+  type CanvasSelector,
+  type CanvasSelectorEquality,
   type DenovoCanvasCommonConfig,
   type DenovoCanvasRuntime
 } from "@denovo/canvas";
@@ -91,8 +99,42 @@ export const DenovoCanvas: Component<DenovoCanvasProps> = (props) => {
   );
 };
 
+/**
+ * Subscribes a Solid computation to a derived slice of a {@link CanvasEditor}.
+ * Emits updates only when `equals(previous, next)` returns `false` (defaults
+ * to `Object.is`; pass `shallowEqual` for derived objects or arrays) and
+ * unsubscribes automatically on owner cleanup.
+ */
+export function useCanvasSelector<TSelected>(
+  editor: CanvasEditor,
+  selector: CanvasSelector<TSelected>,
+  equals?: CanvasSelectorEquality<TSelected>
+): Accessor<TSelected> {
+  const [selected, setSelected] = createSignal<TSelected>(
+    selector(editor.getState()),
+    { equals: false }
+  );
+  const unsubscribe = subscribeCanvasSelector(
+    editor,
+    selector,
+    (next) => {
+      setSelected(() => next);
+    },
+    equals === undefined ? undefined : { equals }
+  );
+
+  onCleanup(unsubscribe);
+  return selected;
+}
+
 export {
   createCanvas,
+  shallowEqual,
+  subscribeCanvasSelector,
+  type CanvasEditor,
+  type CanvasEditorState,
+  type CanvasSelector,
+  type CanvasSelectorEquality,
   type DenovoCanvasCommonConfig,
   type DenovoCanvasRuntime
 } from "@denovo/canvas";

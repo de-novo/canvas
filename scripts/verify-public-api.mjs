@@ -3806,6 +3806,124 @@ unregister();
 );
 
 writeFileSync(
+  path.join(tmpDir, "selectors-smoke.ts"),
+  `import {
+  createEditor,
+  defineDocument,
+  shallowEqual,
+  subscribeCanvasSelector,
+  type CanvasEditor,
+  type CanvasSelector,
+  type CanvasSelectorEquality
+} from "${facadeName}";
+import {
+  useCanvasSelector as useReactCanvasSelector
+} from "${facadeName}/react";
+import {
+  useCanvasSelector as useVueCanvasSelector
+} from "@denovo/vue-canvas";
+import {
+  createCanvasSelectorStore,
+  type CanvasReadableStore
+} from "@denovo/svelte-canvas";
+import {
+  useCanvasSelector as useSolidCanvasSelector
+} from "@denovo/solid-canvas";
+
+const doc = defineDocument({
+  id: "selector-smoke",
+  scene: {
+    id: "selector-scene",
+    mode: "2d",
+    layers: [{ id: "default", name: "Default" }],
+    nodes: [
+      { id: "n1", type: "rect", layerId: "default", position: [0, 0], size: [40, 40], fill: "#22c55e" }
+    ]
+  }
+});
+const editor: CanvasEditor = createEditor({ document: doc });
+
+const canUndoSelector: CanvasSelector<boolean> = (state) => state.history.canUndo;
+const eqBool: CanvasSelectorEquality<boolean> = (a, b) => a === b;
+const unsub = subscribeCanvasSelector(
+  editor,
+  canUndoSelector,
+  (next, prev) => {
+    const a: boolean = next;
+    const b: boolean = prev;
+    void a;
+    void b;
+  },
+  { equals: eqBool, fireImmediately: true }
+);
+unsub();
+
+const unsubShallow = subscribeCanvasSelector(
+  editor,
+  (state) => ({
+    canRedo: state.history.canRedo,
+    canUndo: state.history.canUndo
+  }),
+  (next) => {
+    const flag: boolean = next.canUndo && next.canRedo;
+    void flag;
+  },
+  { equals: shallowEqual }
+);
+unsubShallow();
+
+// @ts-expect-error listener parameter must match selector return type.
+subscribeCanvasSelector(editor, (state) => state.history.canUndo, (next: string) => {
+  void next;
+});
+// @ts-expect-error equality comparator must match selector return type.
+subscribeCanvasSelector(editor, (state) => state.history.canUndo, () => {}, {
+  equals: (a: number, b: number) => a === b
+});
+
+function ReactSmoke() {
+  const canUndo: boolean = useReactCanvasSelector(editor, (s) => s.history.canUndo);
+  const pair = useReactCanvasSelector(
+    editor,
+    (s) => ({ canRedo: s.history.canRedo, canUndo: s.history.canUndo }),
+    shallowEqual
+  );
+  // @ts-expect-error string is not assignable to boolean selector result.
+  const wrongReact: string = useReactCanvasSelector(editor, (s) => s.history.canUndo);
+  // @ts-expect-error mismatched equality function parameter type.
+  useReactCanvasSelector(editor, (s) => s.history.canUndo, (a: string, b: string) => a === b);
+  void canUndo;
+  void pair;
+  void wrongReact;
+}
+void ReactSmoke;
+
+const vueRef = useVueCanvasSelector(editor, (s) => s.history.undoDepth);
+const vueDepth: number = vueRef.value;
+// @ts-expect-error mismatched Vue selector equality comparator.
+useVueCanvasSelector(editor, (s) => s.history.undoDepth, (a: boolean, b: boolean) => a === b);
+void vueDepth;
+
+const svelteStore: CanvasReadableStore<string | null> = createCanvasSelectorStore(
+  editor,
+  (s) => s.selection.primaryId
+);
+svelteStore.subscribe((id) => {
+  const value: string | null = id;
+  void value;
+});
+// @ts-expect-error mismatched Svelte store equality comparator.
+createCanvasSelectorStore(editor, (s) => s.selection.primaryId, (a: number, b: number) => a === b);
+
+const solidDepth = useSolidCanvasSelector(editor, (s) => s.history.undoDepth);
+const depthValue: number = solidDepth();
+// @ts-expect-error mismatched Solid selector equality comparator.
+useSolidCanvasSelector(editor, (s) => s.history.undoDepth, (a: string, b: string) => a === b);
+void depthValue;
+`
+);
+
+writeFileSync(
   path.join(tmpDir, "tsconfig.json"),
   JSON.stringify(
     {
@@ -3906,6 +4024,30 @@ writeFileSync(
   )
 );
 
+writeFileSync(
+  path.join(tmpDir, "selectors-tsconfig.json"),
+  JSON.stringify(
+    {
+      extends: "../../tsconfig.base.json",
+      compilerOptions: {
+        lib: ["ES2022", "DOM"],
+        noEmit: true,
+        paths: {
+          [facadeName]: ["../../packages/canvas/dist/index.d.ts"],
+          [`${facadeName}/react`]: ["../../packages/canvas/dist/react.d.ts"],
+          "@denovo/react-canvas": ["../../packages/react/dist/index.d.ts"],
+          "@denovo/vue-canvas": ["../../packages/vue-canvas/dist/index.d.ts"],
+          "@denovo/svelte-canvas": ["../../packages/svelte-canvas/dist/index.d.ts"],
+          "@denovo/solid-canvas": ["../../packages/solid-canvas/dist/index.d.ts"]
+        }
+      },
+      include: ["selectors-smoke.ts"]
+    },
+    null,
+    2
+  )
+);
+
 try {
   execFileSync("pnpm", ["exec", "tsc", "-p", path.join(tmpDir, "tsconfig.json")], {
     cwd: root,
@@ -3938,6 +4080,14 @@ try {
   execFileSync(
     "pnpm",
     ["exec", "tsc", "-p", path.join(tmpDir, "web-tsconfig.json")],
+    {
+      cwd: root,
+      stdio: "pipe"
+    }
+  );
+  execFileSync(
+    "pnpm",
+    ["exec", "tsc", "-p", path.join(tmpDir, "selectors-tsconfig.json")],
     {
       cwd: root,
       stdio: "pipe"

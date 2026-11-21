@@ -6,9 +6,9 @@ import {
   defineDocument,
   listNodes,
   setNodeVisible,
-  type CanvasDocument
+  shallowEqual
 } from "@denovo/canvas";
-import { CanvasView } from "@denovo/react-canvas";
+import { CanvasView, useCanvasSelector } from "@denovo/react-canvas";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -71,8 +71,14 @@ export function MaskHost({ className }: { className: string }) {
     () => createEditor({ document: createMaskDocument() }),
     []
   );
-  const [documentModel, setDocumentModel] = useState<CanvasDocument>(
-    () => editor.getState().document
+  const documentModel = useCanvasSelector(editor, (state) => state.document);
+  const { canUndo, canRedo } = useCanvasSelector(
+    editor,
+    (state) => ({
+      canRedo: state.history.canRedo,
+      canUndo: state.history.canUndo
+    }),
+    shallowEqual
   );
   const previewRef = useRef<HTMLCanvasElement>(null);
   const [hostReady, setHostReady] = useState(false);
@@ -127,7 +133,6 @@ export function MaskHost({ className }: { className: string }) {
   async function edit(action: () => Promise<unknown>) {
     try {
       await action();
-      setDocumentModel(editor.getState().document);
       setEditError("");
     } catch (error) {
       setEditError(String(error));
@@ -165,9 +170,9 @@ export function MaskHost({ className }: { className: string }) {
         >
           {rectHidden ? "Show rect mask" : "Hide rect mask"}
         </Button>
-        <Button type="button" variant="outline" disabled={!editor.canUndo()}
+        <Button type="button" variant="outline" disabled={!canUndo}
           onClick={() => void edit(() => editor.undo())}>Undo</Button>
-        <Button type="button" variant="outline" disabled={!editor.canRedo()}
+        <Button type="button" variant="outline" disabled={!canRedo}
           onClick={() => void edit(() => editor.redo())}>Redo</Button>
         {editError && <p role="alert">{editError}</p>}
         <p className="m-0 text-xs text-muted-foreground">

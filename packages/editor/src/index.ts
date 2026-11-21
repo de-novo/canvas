@@ -323,6 +323,12 @@ export {
   connectEditorToRuntime,
   connectEditorToStorage
 } from "./editor.js";
+export { shallowEqual, subscribeCanvasSelector } from "./selector.js";
+export type {
+  CanvasSelector,
+  CanvasSelectorEquality,
+  SubscribeCanvasSelectorOptions
+} from "./selector.js";
 export type {
   CanvasEditor,
   CanvasEditorState,
