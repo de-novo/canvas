@@ -486,6 +486,8 @@ product-level extension seam, `CanvasPlugin` is a host bundle, and
 
 ## Evidence
 
+- 2026-11-21: 3D `render.batch` sphere instancing and per-runtime `Canvas3DResourceCache` isolation landed for Issue #6. `pnpm verify:performance` passed with `drawCalls=1` / `geometries=1` on `1k-spheres` (8.30 ms p50) alongside `100-boxes` / `1k-boxes` / `10k-boxes` (all 8.30 ms p50, 16 ms GPU gates passed), and `pnpm verify:browser-rendering` passed across desktop and mobile with zero WebGL cross-context disposal warnings. See [3D sphere batching and resource cache](./history/2026-11-21-3d-sphere-batching-and-resource-cache.md).
+
 - 2026-11-21: 2D high-frequency input rAF render coalescing landed for Issue #5. `pnpm verify:2d-performance` passed including the burst coalescing gate (20 synchronous wheel pan events → 1 Canvas2D render with full accumulated pan delta), alongside `pnpm verify:webgpu` (11/11), `pnpm verify:flow-showcase` (2/2), `pnpm verify:network-showcase` (2/2), `pnpm verify:diagram-rendering`, `pnpm verify:hit-testing` (7/7), `pnpm typecheck`, `pnpm build`, and `pnpm verify:docs`. See [2D rAF render coalescing](./history/2026-11-21-2d-raf-render-coalescing.md).
 
 - 2026-11-21: 2D WebGPU GPU-resident vertex/atlas/bindGroup caching and `Canvas2DSpatialIndex` viewport culling landed for Issue #4. `pnpm verify:2d-performance` `10k-2d-webgpu` dropped `panRender` p50/p95 from 6.90 ms / 14.40 ms to 0.00 ms / 0.10 ms and GPU triangles from 20,002 to 210 (`drawCalls=1`), alongside `pnpm verify:webgpu` (11/11), `pnpm verify:hit-testing` (7/7), `pnpm verify:public-api`, `pnpm typecheck`, `pnpm build`, and `pnpm verify:docs`. See [2D WebGPU GPU-resident caching](./history/2026-11-21-2d-webgpu-resident-caching.md).

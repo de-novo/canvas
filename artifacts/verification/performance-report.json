@@ -1,8 +1,8 @@
 {
   "environment": {
     "devicePixelRatio": 1,
-    "hardwareConcurrency": 18,
-    "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M5 Pro, Unspecified Version)",
+    "hardwareConcurrency": 10,
+    "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Pro, Unspecified Version)",
     "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/149.0.7827.55 Safari/537.36",
     "vendor": "Google Inc. (Apple)"
   },
@@ -11,8 +11,8 @@
     "passed": true,
     "reason": "gpu-within-budget",
     "kind": "gpu",
-    "p50": 8.300000000000011,
-    "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M5 Pro, Unspecified Version)",
+    "p50": 8.300000000000068,
+    "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Pro, Unspecified Version)",
     "requireGpu": true,
     "targetMs": 16,
     "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/149.0.7827.55 Safari/537.36",
@@ -24,10 +24,10 @@
     "passed": true,
     "reason": "gpu-within-budget",
     "backend": "webgpu",
-    "drawCalls": 24,
+    "drawCalls": 36,
     "kind": "gpu",
     "p50": 8.300000000000011,
-    "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M5 Pro, Unspecified Version)",
+    "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Pro, Unspecified Version)",
     "requireGpu": true,
     "targetMs": 16,
     "workload": "1k-boxes"
@@ -39,8 +39,8 @@
       "backend": "webgl2",
       "environment": {
         "devicePixelRatio": 1,
-        "hardwareConcurrency": 18,
-        "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M5 Pro, Unspecified Version)",
+        "hardwareConcurrency": 10,
+        "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Pro, Unspecified Version)",
         "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/149.0.7827.55 Safari/537.36",
         "vendor": "Google Inc. (Apple)"
       },
@@ -48,12 +48,12 @@
       "threeChildCount": 6,
       "contextLostCount": 0,
       "frameTimeMs": {
-        "p50": 8.200000000000045,
-        "p95": 17.399999999999977,
-        "p99": 39.05000000000001,
-        "min": 7.300000000000068,
-        "max": 39.05000000000001,
-        "sampleCount": 30
+        "p50": 8.300000000000182,
+        "p95": 41.700000000000045,
+        "p99": 745.6999999999999,
+        "min": 7.5,
+        "max": 745.6999999999999,
+        "sampleCount": 31
       },
       "renderStats": {
         "drawCalls": 1,
@@ -69,8 +69,8 @@
       "backend": "webgl2",
       "environment": {
         "devicePixelRatio": 1,
-        "hardwareConcurrency": 18,
-        "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M5 Pro, Unspecified Version)",
+        "hardwareConcurrency": 10,
+        "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Pro, Unspecified Version)",
         "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/149.0.7827.55 Safari/537.36",
         "vendor": "Google Inc. (Apple)"
       },
@@ -78,11 +78,11 @@
       "threeChildCount": 6,
       "contextLostCount": 0,
       "frameTimeMs": {
-        "p50": 8.300000000000011,
-        "p95": 9.200000000000045,
-        "p99": 41.60000000000002,
-        "min": 7.2999999999999545,
-        "max": 41.60000000000002,
+        "p50": 8.300000000000068,
+        "p95": 9.299999999999955,
+        "p99": 40.81400000000002,
+        "min": 7.399999999999977,
+        "max": 40.81400000000002,
         "sampleCount": 31
       },
       "renderStats": {
@@ -99,8 +99,8 @@
       "backend": "webgl2",
       "environment": {
         "devicePixelRatio": 1,
-        "hardwareConcurrency": 18,
-        "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M5 Pro, Unspecified Version)",
+        "hardwareConcurrency": 10,
+        "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Pro, Unspecified Version)",
         "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/149.0.7827.55 Safari/537.36",
         "vendor": "Google Inc. (Apple)"
       },
@@ -108,16 +108,46 @@
       "threeChildCount": 6,
       "contextLostCount": 0,
       "frameTimeMs": {
-        "p50": 8.300000000000068,
-        "p95": 25,
-        "p99": 33.5,
-        "min": 7.300000000000068,
-        "max": 33.5,
-        "sampleCount": 34
+        "p50": 8.299999999999955,
+        "p95": 8.700000000000045,
+        "p99": 58.39999999999998,
+        "min": 8,
+        "max": 58.39999999999998,
+        "sampleCount": 31
       },
       "renderStats": {
         "drawCalls": 1,
         "triangles": 120000,
+        "geometries": 1,
+        "textures": 1,
+        "programs": 1
+      }
+    },
+    {
+      "label": "1k-spheres",
+      "nodeCount": 1000,
+      "backend": "webgl2",
+      "environment": {
+        "devicePixelRatio": 1,
+        "hardwareConcurrency": 10,
+        "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Pro, Unspecified Version)",
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/149.0.7827.55 Safari/537.36",
+        "vendor": "Google Inc. (Apple)"
+      },
+      "sceneNodeCount": 1000,
+      "threeChildCount": 6,
+      "contextLostCount": 0,
+      "frameTimeMs": {
+        "p50": 8.300000000000011,
+        "p95": 41.69999999999999,
+        "p99": 49.30000000000001,
+        "min": 7.600000000000023,
+        "max": 49.30000000000001,
+        "sampleCount": 33
+      },
+      "renderStats": {
+        "drawCalls": 1,
+        "triangles": 2208000,
         "geometries": 1,
         "textures": 1,
         "programs": 1
@@ -131,8 +161,8 @@
       "backend": "webgpu",
       "environment": {
         "devicePixelRatio": 1,
-        "hardwareConcurrency": 18,
-        "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M5 Pro, Unspecified Version)",
+        "hardwareConcurrency": 10,
+        "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Pro, Unspecified Version)",
         "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/149.0.7827.55 Safari/537.36",
         "vendor": "Google Inc. (Apple)"
       },
@@ -141,14 +171,14 @@
       "contextLostCount": 0,
       "frameTimeMs": {
         "p50": 8.300000000000011,
-        "p95": 32.799999999999955,
-        "p99": 66.59999999999991,
-        "min": 7.600000000000023,
-        "max": 66.59999999999991,
+        "p95": 49.299999999999955,
+        "p99": 549.9000000000001,
+        "min": 7.399999999999977,
+        "max": 549.9000000000001,
         "sampleCount": 32
       },
       "renderStats": {
-        "drawCalls": 24,
+        "drawCalls": 36,
         "triangles": 0,
         "geometries": 2,
         "textures": 3,

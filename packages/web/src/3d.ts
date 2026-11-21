@@ -251,6 +251,7 @@ export function createCanvas3D(
    * Object3Ds when a node has not changed value across an update.
    */
   const prevNodesById = new Map<string, Canvas3DNode>();
+  const resourceCache = createCanvas3DResourceCache();
   const contentColors = resolveCanvas3DContentColors(resolved.canvas);
   let hitSubTarget: string | undefined;
   const hitTester = createThreeHitTester({
@@ -368,6 +369,7 @@ export function createCanvas3D(
       nodeStates,
       contentColors,
       prevNodesById,
+      resourceCache,
       options.geometryStore
     );
     store.getState().setScene(nextScene);
@@ -1530,6 +1532,7 @@ export function createCanvas3D(
       currentScene,
       objects,
       contentColors,
+      resourceCache,
       options.geometryStore
     );
     disposeGroup(authoringPreviewRoot);
@@ -1680,6 +1683,7 @@ export function createCanvas3D(
     transformHandleTarget = null;
     disposeGroup(content);
     disposeGroup(transformHandles);
+    resourceCache.dispose();
     objects.clear();
     hitTestObjects.length = 0;
     nodeStates.clear();
@@ -1868,6 +1872,7 @@ export function createCanvas3D(
     nodeStates,
     contentColors,
     prevNodesById,
+    resourceCache,
     options.geometryStore
   );
   syncCameraControls(controls, currentScene);
@@ -2066,6 +2071,7 @@ function applyScene(
   nodeStates: Map<NodeId, Canvas3DNodeState>,
   colors: Canvas3DContentColors,
   prevNodesById: Map<string, Canvas3DNode>,
+  resourceCache: Canvas3DResourceCache,
   geometryStore?: CanvasGeometryStore
 ) {
   const lod = sceneData.render.lod;
@@ -2077,25 +2083,39 @@ function applyScene(
 
   const batchedNodeIds = new Set<string>();
 
-  // Optional draw-call batching: collapse same-color top-level box nodes into
-  // one InstancedMesh per color. Only top-level (parentId === null) boxes are
-  // batched so hierarchy and per-node transforms on nested nodes are
-  // unaffected. Hit testing resolves back to nodes via INSTANCE_NODE_IDS.
+  // Optional draw-call batching: collapse same-color top-level box and sphere
+  // nodes into one InstancedMesh per primitive+color. Only visible top-level
+  // (parentId === null) nodes are batched so hierarchy and per-node transforms
+  // on nested nodes are unaffected (spheres stay on THREE.LOD when LOD is on).
+  // Hit testing resolves back to nodes via INSTANCE_NODE_IDS.
   if (sceneData.render.batch) {
-    const boxesByColor = new Map<string, BatchedBoxEntry[]>();
+    const boxesByColor = new Map<string, BatchedPrimitiveEntry[]>();
+    const spheresByColor = new Map<string, BatchedPrimitiveEntry[]>();
 
     for (const node of sceneData.nodes) {
-      if (node.parentId !== null || node.type !== "box") {
+      if (node.parentId !== null) {
+        continue;
+      }
+      if (nextNodeStates.get(node.id)?.visible === false) {
         continue;
       }
 
-      const entry = boxEntryFromNode(node);
-      const entries = boxesByColor.get(entry.color);
-
-      if (entries) {
-        entries.push(entry);
-      } else {
-        boxesByColor.set(entry.color, [entry]);
+      if (node.type === "box") {
+        const entry = boxEntryFromNode(node);
+        const entries = boxesByColor.get(entry.color);
+        if (entries) {
+          entries.push(entry);
+        } else {
+          boxesByColor.set(entry.color, [entry]);
+        }
+      } else if (node.type === "sphere" && !lod?.enabled) {
+        const entry = sphereEntryFromNode(node);
+        const entries = spheresByColor.get(entry.color);
+        if (entries) {
+          entries.push(entry);
+        } else {
+          spheresByColor.set(entry.color, [entry]);
+        }
       }
     }
 
@@ -2104,8 +2124,32 @@ function applyScene(
         continue;
       }
 
-      const mesh = createBatchedBoxMesh(entries);
+      const mesh = createBatchedPrimitiveMesh(
+        resourceCache.getUnitBoxGeometry(),
+        resourceCache.getSurfaceMaterial(entries[0]!.color),
+        entries
+      );
       mesh.name = `denovo-batch:${entries[0]!.color}`;
+      mesh.visible = true;
+      nextContent.add(mesh);
+      nextHitTestObjects.push(mesh);
+
+      for (const entry of entries) {
+        batchedNodeIds.add(entry.id);
+      }
+    }
+
+    for (const entries of spheresByColor.values()) {
+      if (entries.length < 2) {
+        continue;
+      }
+
+      const mesh = createBatchedPrimitiveMesh(
+        resourceCache.getUnitSphereGeometry(),
+        resourceCache.getSurfaceMaterial(entries[0]!.color),
+        entries
+      );
+      mesh.name = `denovo-batch-sphere:${entries[0]!.color}`;
       mesh.visible = true;
       nextContent.add(mesh);
       nextHitTestObjects.push(mesh);
@@ -2134,7 +2178,8 @@ function applyScene(
           ? objects.get(node.id)
           : undefined;
       const object =
-        reusedObject ?? createObject(node, colors, geometryStore, lod);
+        reusedObject ??
+        createObject(node, colors, resourceCache, geometryStore, lod);
 
       if (reusedObject) {
         // Mark as reused so it is not disposed with removed nodes below.
@@ -2366,6 +2411,7 @@ function createCanvas3DAuthoringPreviewGroup(
   scene: Canvas3DScene,
   objects: ReadonlyMap<string, Object3D>,
   colors: Canvas3DContentColors,
+  resourceCache: Canvas3DResourceCache,
   geometryStore?: CanvasGeometryStore
 ): Group {
   const root = new Group();
@@ -2381,6 +2427,7 @@ function createCanvas3DAuthoringPreviewGroup(
               scene,
               objects,
               colors,
+              resourceCache,
               geometryStore
             )
           );
@@ -2417,7 +2464,7 @@ function createCanvas3DAuthoringPreviewGroup(
           root.add(createAuthoringSnapMarker(preview.position, colors.accent));
           break;
         case "primitive.ghost":
-          root.add(createCanvas3DPrimitiveGhost(preview.primitive));
+          root.add(createCanvas3DPrimitiveGhost(preview.primitive, resourceCache));
           break;
         default: {
           const exhaustive: never = preview;
@@ -2437,11 +2484,12 @@ function createCanvas3DPrimitiveGhost(
   primitive: Extract<
     CanvasAuthoringPreviewForMode<"3d">,
     { kind: "primitive.ghost" }
-  >["primitive"]
+  >["primitive"],
+  resourceCache: Canvas3DResourceCache
 ): Mesh {
   const object = new Mesh(
     new BoxGeometry(1, 1, 1),
-    createCanvas3DSurfaceMaterial(primitive.color)
+    resourceCache.getSurfaceMaterial(primitive.color)
   );
   setVector(object.position, primitive.position);
   setEuler(object.rotation, primitive.rotation);
@@ -2455,10 +2503,11 @@ function createCanvas3DNodeAuthoringPreview(
   scene: Canvas3DScene,
   objects: ReadonlyMap<string, Object3D>,
   colors: Canvas3DContentColors,
+  resourceCache: Canvas3DResourceCache,
   geometryStore?: CanvasGeometryStore
 ): Group {
   const container = new Group();
-  const object = createObject(node, colors, geometryStore);
+  const object = createObject(node, colors, resourceCache, geometryStore);
 
   try {
     object.name = `denovo-node-preview:${node.id}`;
@@ -3094,7 +3143,7 @@ function getTransformHandleColorToken(
   }
 }
 
-interface BatchedBoxEntry {
+interface BatchedPrimitiveEntry {
   readonly id: string;
   readonly color: string;
   readonly position: readonly [number, number, number];
@@ -3102,7 +3151,7 @@ interface BatchedBoxEntry {
   readonly scale: readonly [number, number, number];
 }
 
-function boxEntryFromNode(node: Canvas3DNode): BatchedBoxEntry {
+function boxEntryFromNode(node: Canvas3DNode): BatchedPrimitiveEntry {
   if (node.type !== "box") {
     throw new Error(`Expected box node: ${node.id}`);
   }
@@ -3116,30 +3165,50 @@ function boxEntryFromNode(node: Canvas3DNode): BatchedBoxEntry {
   };
 }
 
+function sphereEntryFromNode(node: Canvas3DNode): BatchedPrimitiveEntry {
+  if (node.type !== "sphere") {
+    throw new Error(`Expected sphere node: ${node.id}`);
+  }
+
+  return {
+    id: node.id,
+    color: node.color,
+    position: node.position,
+    rotation: node.rotation,
+    scale: [
+      node.scale[0] * node.radius,
+      node.scale[1] * node.radius,
+      node.scale[2] * node.radius
+    ]
+  };
+}
+
 /**
- * Builds a single InstancedMesh that batches many same-color unit-box nodes.
+ * Builds a single InstancedMesh that batches many same-color primitive nodes.
  * Each instance carries its own transform; the node id per instance is stored
  * under userData[INSTANCE_NODE_IDS_USER_DATA_KEY] so createThreeHitTester can
  * resolve hits back to document nodes. Enabled only when render.batch is on.
  */
-function createBatchedBoxMesh(boxes: readonly BatchedBoxEntry[]): InstancedMesh {
-  const geometry = getUnitBoxGeometry();
-  const material = createCanvas3DSurfaceMaterial(boxes[0]!.color);
-  const mesh = new InstancedMesh(geometry, material, boxes.length);
+function createBatchedPrimitiveMesh(
+  geometry: BufferGeometry,
+  material: MeshStandardMaterial,
+  entries: readonly BatchedPrimitiveEntry[]
+): InstancedMesh {
+  const mesh = new InstancedMesh(geometry, material, entries.length);
   const transform = new Object3D();
   const matrix = new Matrix4();
   const nodeIds: string[] = [];
 
   mesh.instanceMatrix.setUsage(DynamicDrawUsage);
 
-  boxes.forEach((box, index) => {
-    transform.position.set(box.position[0], box.position[1], box.position[2]);
-    transform.rotation.set(box.rotation[0], box.rotation[1], box.rotation[2]);
-    transform.scale.set(box.scale[0], box.scale[1], box.scale[2]);
+  entries.forEach((entry, index) => {
+    transform.position.set(entry.position[0], entry.position[1], entry.position[2]);
+    transform.rotation.set(entry.rotation[0], entry.rotation[1], entry.rotation[2]);
+    transform.scale.set(entry.scale[0], entry.scale[1], entry.scale[2]);
     transform.updateMatrix();
     matrix.copy(transform.matrix);
     mesh.setMatrixAt(index, matrix);
-    nodeIds.push(box.id);
+    nodeIds.push(entry.id);
   });
 
   mesh.instanceMatrix.needsUpdate = true;
@@ -3152,23 +3221,24 @@ function createBatchedBoxMesh(boxes: readonly BatchedBoxEntry[]): InstancedMesh 
 function createObject(
   node: Canvas3DNode,
   colors: Canvas3DContentColors,
+  resourceCache: Canvas3DResourceCache,
   geometryStore?: CanvasGeometryStore,
   lod?: RenderLodOptions
 ): Object3D {
   switch (node.type) {
     case "box":
       return new Mesh(
-        getUnitBoxGeometry(),
-        createCanvas3DSurfaceMaterial(node.color)
+        resourceCache.getUnitBoxGeometry(),
+        resourceCache.getSurfaceMaterial(node.color)
       );
     case "sphere": {
       if (lod?.enabled) {
-        return createSphereLod(node.radius, node.color, lod);
+        return createSphereLod(node.radius, node.color, lod, resourceCache);
       }
 
       const sphereGeometry = new SphereGeometry(node.radius, 48, 24);
       prepareGeometryBounds(sphereGeometry);
-      return new Mesh(sphereGeometry, createCanvas3DSurfaceMaterial(node.color));
+      return new Mesh(sphereGeometry, resourceCache.getSurfaceMaterial(node.color));
     }
     case "mesh": {
       const resolved = resolveCanvasMeshGeometry(node, geometryStore);
@@ -3197,7 +3267,7 @@ function createObject(
       }
       geometry.setIndex(Array.from(resolved.indices));
       prepareGeometryBounds(geometry);
-      let material = createCanvas3DSurfaceMaterial(node.color);
+      let material = resourceCache.getSurfaceMaterial(node.color);
       if (node.wireframe) {
         material = material.clone();
         material.wireframe = true;
@@ -3217,14 +3287,15 @@ function createObject(
         return createDenovoFieldObject(node.props);
       }
       if (isPluginNodeType(node.type)) {
-        return createCanvas3DPluginNodeObject(node);
+        return createCanvas3DPluginNodeObject(node, resourceCache);
       }
       throw new Error(`Unsupported 3D canvas node: ${JSON.stringify(node)}`);
   }
 }
 
 export function createCanvas3DPluginNodeObject(
-  node: Canvas3DNode
+  node: Canvas3DNode,
+  resourceCache?: Canvas3DResourceCache
 ): Object3D {
   if (isDenovoFieldNode(node)) {
     return createDenovoFieldObject(node.props);
@@ -3240,22 +3311,87 @@ export function createCanvas3DPluginNodeObject(
     return create3d(pluginNode);
   }
 
+  if (resourceCache) {
+    return new Mesh(
+      resourceCache.getUnitBoxGeometry(),
+      resourceCache.getSurfaceMaterial(PLUGIN_NODE_MARKER_FILL)
+    );
+  }
+
+  const geometry = new BoxGeometry(1, 1, 1);
+  prepareGeometryBounds(geometry);
   return new Mesh(
-    getUnitBoxGeometry(),
-    createCanvas3DSurfaceMaterial(PLUGIN_NODE_MARKER_FILL)
+    geometry,
+    new MeshStandardMaterial({
+      color: new Color(PLUGIN_NODE_MARKER_FILL),
+      roughness: 0.68,
+      metalness: 0.02
+    })
   );
 }
 
 /**
- * Cached resources shared across nodes. Tracked in `cachedResources` so that
- * `disposeGroup` does not dispose a geometry/material still in use by another
- * node or a future scene. This is the M4 Phase B foundation; it reduces GPU
- * upload and allocation churn but does not yet collapse draw calls (that needs
- * InstancedMesh/BatchedMesh batching).
+ * Tracks runtime-owned cached resources so `disposeGroup` skips them across
+ * scene updates while `resourceCache.dispose()` disposes them inside their
+ * owning WebGL/WebGPU context on runtime destroy (preventing cross-context
+ * `INVALID_OPERATION: delete` warnings across 3D->2D->3D replacements).
  */
 const cachedResources = new WeakSet<object>();
-const cachedSurfaceMaterials = new Map<string, MeshStandardMaterial>();
-let unitBoxGeometry: BoxGeometry | null = null;
+
+type Canvas3DResourceCache = {
+  dispose: () => void;
+  getSurfaceMaterial: (color: string) => MeshStandardMaterial;
+  getUnitBoxGeometry: () => BoxGeometry;
+  getUnitSphereGeometry: () => SphereGeometry;
+};
+
+function createCanvas3DResourceCache(): Canvas3DResourceCache {
+  const surfaceMaterials = new Map<string, MeshStandardMaterial>();
+  let unitBoxGeometry: BoxGeometry | null = null;
+  let unitSphereGeometry: SphereGeometry | null = null;
+
+  return {
+    getUnitBoxGeometry() {
+      if (!unitBoxGeometry) {
+        unitBoxGeometry = new BoxGeometry(1, 1, 1);
+        prepareGeometryBounds(unitBoxGeometry);
+        cachedResources.add(unitBoxGeometry);
+      }
+      return unitBoxGeometry;
+    },
+    getUnitSphereGeometry() {
+      if (!unitSphereGeometry) {
+        unitSphereGeometry = new SphereGeometry(1, 48, 24);
+        prepareGeometryBounds(unitSphereGeometry);
+        cachedResources.add(unitSphereGeometry);
+      }
+      return unitSphereGeometry;
+    },
+    getSurfaceMaterial(color: string) {
+      let material = surfaceMaterials.get(color);
+      if (!material) {
+        material = new MeshStandardMaterial({
+          color: new Color(color),
+          roughness: 0.68,
+          metalness: 0.02
+        });
+        cachedResources.add(material);
+        surfaceMaterials.set(color, material);
+      }
+      return material;
+    },
+    dispose() {
+      unitBoxGeometry?.dispose();
+      unitBoxGeometry = null;
+      unitSphereGeometry?.dispose();
+      unitSphereGeometry = null;
+      for (const material of surfaceMaterials.values()) {
+        material.dispose();
+      }
+      surfaceMaterials.clear();
+    }
+  };
+}
 
 /**
  * Builds a BVH bounds tree on a geometry when three-mesh-bvh has been installed
@@ -3285,10 +3421,11 @@ const SPHERE_LOD_SEGMENTS: ReadonlyArray<readonly [number, number]> = [
 function createSphereLod(
   radius: number,
   color: string,
-  lod: RenderLodOptions
+  lod: RenderLodOptions,
+  resourceCache: Canvas3DResourceCache
 ): LOD {
   const lodObject = new LOD();
-  const material = createCanvas3DSurfaceMaterial(color);
+  const material = resourceCache.getSurfaceMaterial(color);
 
   SPHERE_LOD_SEGMENTS.forEach(([widthSegments, heightSegments], index) => {
     const geometry = new SphereGeometry(radius, widthSegments, heightSegments);
@@ -3300,31 +3437,6 @@ function createSphereLod(
   });
 
   return lodObject;
-}
-
-function getUnitBoxGeometry(): BoxGeometry {
-  if (!unitBoxGeometry) {
-    unitBoxGeometry = new BoxGeometry(1, 1, 1);
-    prepareGeometryBounds(unitBoxGeometry);
-    cachedResources.add(unitBoxGeometry);
-  }
-  return unitBoxGeometry;
-}
-
-function createCanvas3DSurfaceMaterial(color: string): MeshStandardMaterial {
-  let material = cachedSurfaceMaterials.get(color);
-
-  if (!material) {
-    material = new MeshStandardMaterial({
-      color: new Color(color),
-      roughness: 0.68,
-      metalness: 0.02
-    });
-    cachedResources.add(material);
-    cachedSurfaceMaterials.set(color, material);
-  }
-
-  return material;
 }
 
 function createMeasurementObject(

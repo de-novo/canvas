@@ -169,3 +169,4 @@ Each entry should include:
 - [2026-11-21 TanStack-style fine-grained selector subscriptions](./2026-11-21-selector-subscriptions.md)
 - [2026-11-21 2D WebGPU GPU-resident caching and spatial viewport culling](./2026-11-21-2d-webgpu-resident-caching.md)
 - [2026-11-21 2D high-frequency input rAF render coalescing](./2026-11-21-2d-raf-render-coalescing.md)
+- [2026-11-21 3D sphere instancing batching and per-runtime resource cache](./2026-11-21-3d-sphere-batching-and-resource-cache.md)

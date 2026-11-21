@@ -70,9 +70,10 @@ assert.equal(classifyGlRenderer(""), "unknown");
 }
 
 const WORKLOADS = [
-  { label: "100-boxes", nodeCount: 100 },
-  { label: "1k-boxes", nodeCount: 1_000 },
-  { label: "10k-boxes", nodeCount: 10_000 }
+  { label: "100-boxes", nodeCount: 100, primitive: "box" },
+  { label: "1k-boxes", nodeCount: 1_000, primitive: "box" },
+  { label: "10k-boxes", nodeCount: 10_000, primitive: "box" },
+  { label: "1k-spheres", nodeCount: 1_000, primitive: "sphere" }
 ];
 
 const CAPTURE_FRAMES = 30;
@@ -250,7 +251,8 @@ console.log(`[perf] report written to ${REPORT_PATH}`);
  * @param {"webgl2" | "webgpu"} backend
  */
 async function measureWorkload(baseUrl, workload, backend) {
-  const url = `${baseUrl}perf-bench.html?count=${workload.nodeCount}&frames=${CAPTURE_FRAMES}&backend=${backend}`;
+  const primitive = workload.primitive ?? "box";
+  const url = `${baseUrl}perf-bench.html?count=${workload.nodeCount}&frames=${CAPTURE_FRAMES}&backend=${backend}&primitive=${primitive}`;
   await writeFile(PERF_HTML, perfBenchHtml());
 
   const browser =
@@ -323,18 +325,30 @@ function perfBenchHtml() {
     "    import { createCanvas } from \"@denovo/canvas\";",
     "    const params = new URLSearchParams(location.search);",
     "    const count = Number(params.get(\"count\") || \"1000\");",
+    "    const primitive = params.get(\"primitive\") || \"box\";",
     "    const captureFrames = Number(params.get(\"frames\") || \"120\");",
     "    const host = document.getElementById(\"stage\");",
     "    let contextLostCount = 0;",
     "    const nodes = [];",
     "    for (let i = 0; i < count; i += 1) {",
-    "      nodes.push({",
-    "        id: `box-${i}`,",
-    "        layerId: \"default\",",
-    "        type: \"box\",",
-    "        color: \"#22c55e\",",
-    "        position: [(i % 32) - 16, 0, Math.floor(i / 32) - 16],",
-    "      });",
+    "      if (primitive === \"sphere\") {",
+    "        nodes.push({",
+    "          id: `sphere-${i}`,",
+    "          layerId: \"default\",",
+    "          type: \"sphere\",",
+    "          color: \"#38bdf8\",",
+    "          radius: 0.45 + (i % 3) * 0.08,",
+    "          position: [(i % 32) - 16, 0, Math.floor(i / 32) - 16],",
+    "        });",
+    "      } else {",
+    "        nodes.push({",
+    "          id: `box-${i}`,",
+    "          layerId: \"default\",",
+    "          type: \"box\",",
+    "          color: \"#22c55e\",",
+    "          position: [(i % 32) - 16, 0, Math.floor(i / 32) - 16],",
+    "        });",
+    "      }",
     "    }",
     "    const collected = [];",
     "    const requestedBackend = params.get(\"backend\") || \"webgl2\";",
