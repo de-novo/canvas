@@ -24,16 +24,20 @@ import {
 } from "./lib/chromium.mjs";
 
 const MEASURE_ONLY = process.argv.includes("--measure-only");
+const CANVAS2D_ONLY = process.argv.includes("--canvas2d-only");
 const REPORT_PATH = "artifacts/verification/performance-2d-report.json";
 const PERF_HTML = "apps/vanilla/perf-2d-bench.html";
 const PORT = 5189;
 
-const WORKLOADS = [
+const ALL_WORKLOADS = [
   { label: "1k-2d-rects", kind: "rects", backend: "canvas2d", nodeCount: 1_000, cols: 50 },
   { label: "10k-2d-rects", kind: "rects", backend: "canvas2d", nodeCount: 10_000, cols: 100 },
   { label: "1k-2d-overlays", kind: "html", backend: "canvas2d", nodeCount: 1_000, cols: 50 },
   { label: "10k-2d-webgpu", kind: "rects", backend: "webgpu", nodeCount: 10_000, cols: 100 }
 ];
+const WORKLOADS = CANVAS2D_ONLY
+  ? ALL_WORKLOADS.filter((item) => item.backend === "canvas2d")
+  : ALL_WORKLOADS;
 
 const server = await startViteServer();
 const report = {
@@ -44,10 +48,12 @@ const report = {
 try {
   await writeFile(PERF_HTML, perf2DBenchHtml());
   const pixelBrowser = await launchPixelChromium();
-  const webgpuBrowser = await launchGpuWebGpuChromium();
+  const webgpuBrowser = CANVAS2D_ONLY ? null : await launchGpuWebGpuChromium();
   try {
     for (const workload of WORKLOADS) {
-      const browser = workload.backend === "webgpu" ? webgpuBrowser : pixelBrowser;
+      const browser =
+        workload.backend === "webgpu" ? webgpuBrowser : pixelBrowser;
+      assert.ok(browser, `browser unavailable for backend ${workload.backend}`);
       const result = await measureWorkload(browser, server.url, workload);
       report.workloads.push(result);
       console.log(
@@ -61,7 +67,9 @@ try {
       );
     }
   } finally {
-    await Promise.all([pixelBrowser.close(), webgpuBrowser.close()]);
+    await Promise.all(
+      [pixelBrowser, webgpuBrowser].filter(Boolean).map((browser) => browser.close())
+    );
   }
 } finally {
   server.process.kill("SIGTERM");
@@ -112,24 +120,26 @@ if (!MEASURE_ONLY) {
     `[perf-2d] HTML overlay diff passed: 1-card edit in 1,001 cards -> ${overlays.singleCardEditRenderNodeCalls} renderNode call`
   );
 
-  const webgpuTenK = report.workloads.find((item) => item.label === "10k-2d-webgpu");
-  assert.ok(webgpuTenK, "10k-2d-webgpu workload missing");
-  // Spatial culling + GPU-resident caching must keep 10k 2D WebGPU pan well under 16ms
-  // and triangles far below the unculled 20,002 triangles (2 triangles per rect).
-  assert.ok(
-    webgpuTenK.panRenderMs.p50 < 4,
-    `expected 10k-2d-webgpu panRender p50 < 4ms, got ${webgpuTenK.panRenderMs.p50.toFixed(2)}ms`
-  );
-  assert.ok(
-    typeof webgpuTenK.triangles === "number" &&
-      webgpuTenK.triangles > 0 &&
-      webgpuTenK.triangles < 2_000,
-    `expected culled 10k-2d-webgpu triangles in (0, 2000), got ${webgpuTenK.triangles}`
-  );
-  assert.ok(
-    webgpuTenK.hitTestMs.p50 < 1,
-    `expected 10k-2d-webgpu hitTest p50 < 1ms, got ${webgpuTenK.hitTestMs.p50.toFixed(3)}ms`
-  );
+  if (!CANVAS2D_ONLY) {
+    const webgpuTenK = report.workloads.find((item) => item.label === "10k-2d-webgpu");
+    assert.ok(webgpuTenK, "10k-2d-webgpu workload missing");
+    // Spatial culling + GPU-resident caching must keep 10k 2D WebGPU pan well under 16ms
+    // and triangles far below the unculled 20,002 triangles (2 triangles per rect).
+    assert.ok(
+      webgpuTenK.panRenderMs.p50 < 4,
+      `expected 10k-2d-webgpu panRender p50 < 4ms, got ${webgpuTenK.panRenderMs.p50.toFixed(2)}ms`
+    );
+    assert.ok(
+      typeof webgpuTenK.triangles === "number" &&
+        webgpuTenK.triangles > 0 &&
+        webgpuTenK.triangles < 2_000,
+      `expected culled 10k-2d-webgpu triangles in (0, 2000), got ${webgpuTenK.triangles}`
+    );
+    assert.ok(
+      webgpuTenK.hitTestMs.p50 < 1,
+      `expected 10k-2d-webgpu hitTest p50 < 1ms, got ${webgpuTenK.hitTestMs.p50.toFixed(3)}ms`
+    );
+  }
 
   for (const item of report.workloads) {
     assert.equal(item.topmostHitOk, true, `${item.label}: topmost z-order hit failed`);

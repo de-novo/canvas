@@ -1,0 +1,117 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  static-and-unit:
+    name: Static, Public API & Unit Gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Bootstrap optional React peer declarations for clean checkout
+        run: |
+          pnpm --filter @denovo/canvas-core --filter @denovo/canvas-worker --filter @denovo/canvas-three --filter @denovo/canvas-editor --filter @denovo/canvas-web build
+          pnpm --filter @denovo/canvas build || true
+          pnpm --filter @denovo/react-canvas build
+
+      - name: Build all packages and apps
+        run: pnpm build
+
+      - name: Typecheck all packages and apps
+        run: pnpm typecheck
+
+      - name: Verify documentation and governance links
+        run: pnpm verify:docs
+
+      - name: Verify public API contract and consumer fixtures
+        run: pnpm verify:public-api
+
+      - name: Verify document schema
+        run: pnpm verify:document-schema
+
+      - name: Verify editor core
+        run: pnpm verify:editor-core
+
+      - name: Verify hit testing
+        run: pnpm verify:hit-testing
+
+      - name: Verify persistence server
+        run: pnpm verify:server
+
+      - name: Verify worker tasks
+        run: pnpm verify:worker-tasks
+
+      - name: Verify M4 performance contracts
+        run: pnpm verify:m4-performance
+
+  browser-gates:
+    name: Browser & 2D Performance Gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Bootstrap optional React peer declarations for clean checkout
+        run: |
+          pnpm --filter @denovo/canvas-core --filter @denovo/canvas-worker --filter @denovo/canvas-three --filter @denovo/canvas-editor --filter @denovo/canvas-web build
+          pnpm --filter @denovo/canvas build || true
+          pnpm --filter @denovo/react-canvas build
+
+      - name: Build workspace
+        run: pnpm build
+
+      - name: Verify fine-grained selector subscriptions (headless, Vue, React DOM)
+        run: pnpm verify:selectors
+
+      - name: Verify 2D spatial culling, HTML diff, and rAF coalescing (Canvas2D)
+        run: node scripts/verify-2d-performance.mjs --canvas2d-only
+
+      - name: Verify flow showcase (desktop & mobile touch)
+        run: pnpm verify:flow-showcase
+
+      - name: Verify network showcase (desktop & mobile)
+        run: pnpm verify:network-showcase
+
+      - name: Verify diagram rendering (desktop & mobile)
+        run: pnpm verify:diagram-rendering
+
+      - name: Verify region/mask host (vanilla & Next /mask desktop + mobile)
+        run: pnpm verify:region-mask
