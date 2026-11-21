@@ -3688,21 +3688,158 @@ function disposeObject3D(object: Object3D) {
   }
 }
 
+function vec3Equal(
+  a: readonly [number, number, number],
+  b: readonly [number, number, number]
+): boolean {
+  return a[0] === b[0] && a[1] === b[1] && a[2] === b[2];
+}
+
+function deepValueEqual(a: unknown, b: unknown): boolean {
+  if (Object.is(a, b)) {
+    return true;
+  }
+  if (
+    typeof a !== "object" ||
+    a === null ||
+    typeof b !== "object" ||
+    b === null
+  ) {
+    return false;
+  }
+  if (Array.isArray(a) || Array.isArray(b)) {
+    if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) {
+      return false;
+    }
+    for (let i = 0; i < a.length; i += 1) {
+      if (!deepValueEqual(a[i], b[i])) {
+        return false;
+      }
+    }
+    return true;
+  }
+  const recA = a as Record<string, unknown>;
+  const recB = b as Record<string, unknown>;
+  const keysA = Object.keys(recA);
+  const keysB = Object.keys(recB);
+  if (keysA.length !== keysB.length) {
+    return false;
+  }
+  for (let i = 0; i < keysA.length; i += 1) {
+    const key = keysA[i]!;
+    if (
+      !Object.prototype.hasOwnProperty.call(recB, key) ||
+      !deepValueEqual(recA[key], recB[key])
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
 /**
  * Structural equality for diff-based `applyScene`. Node identity is by value,
- * not reference, because scene updates may rebuild node objects. Falls back to
- * JSON serialization for correctness across all node variants.
+ * not reference, because scene updates may rebuild node objects. Uses direct
+ * field comparisons to avoid per-node `JSON.stringify` allocations.
  */
 function canvas3DNodeEqual(a: Canvas3DNode, b: Canvas3DNode): boolean {
   if (a === b) {
     return true;
   }
 
-  if (a.type !== b.type) {
+  if (
+    a.type !== b.type ||
+    a.id !== b.id ||
+    a.layerId !== b.layerId ||
+    a.parentId !== b.parentId ||
+    a.visible !== b.visible ||
+    a.locked !== b.locked
+  ) {
     return false;
   }
 
-  return JSON.stringify(a) === JSON.stringify(b);
+  switch (a.type) {
+    case "box": {
+      const other = b as typeof a;
+      return (
+        a.color === other.color &&
+        vec3Equal(a.position, other.position) &&
+        vec3Equal(a.rotation, other.rotation) &&
+        vec3Equal(a.scale, other.scale) &&
+        deepValueEqual(a.metadata, other.metadata)
+      );
+    }
+    case "sphere": {
+      const other = b as typeof a;
+      return (
+        a.color === other.color &&
+        a.radius === other.radius &&
+        vec3Equal(a.position, other.position) &&
+        vec3Equal(a.rotation, other.rotation) &&
+        vec3Equal(a.scale, other.scale) &&
+        deepValueEqual(a.metadata, other.metadata)
+      );
+    }
+    case "group": {
+      const other = b as typeof a;
+      return (
+        vec3Equal(a.position, other.position) &&
+        vec3Equal(a.rotation, other.rotation) &&
+        vec3Equal(a.scale, other.scale) &&
+        deepValueEqual(a.metadata, other.metadata)
+      );
+    }
+    case "measurement": {
+      const other = b as typeof a;
+      return (
+        a.precision === other.precision &&
+        a.unit.symbol === other.unit.symbol &&
+        a.unit.metersPerUnit === other.unit.metersPerUnit &&
+        vec3Equal(a.start, other.start) &&
+        vec3Equal(a.end, other.end) &&
+        deepValueEqual(a.metadata, other.metadata)
+      );
+    }
+    case "annotation": {
+      const other = b as typeof a;
+      return (
+        a.text === other.text &&
+        a.targetId === other.targetId &&
+        vec3Equal(a.anchor, other.anchor) &&
+        deepValueEqual(a.metadata, other.metadata)
+      );
+    }
+    case "mesh": {
+      const other = b as typeof a;
+      return (
+        a.color === other.color &&
+        a.wireframe === other.wireframe &&
+        a.geometryAssetId === other.geometryAssetId &&
+        vec3Equal(a.position, other.position) &&
+        vec3Equal(a.rotation, other.rotation) &&
+        vec3Equal(a.scale, other.scale) &&
+        deepValueEqual(a.positions, other.positions) &&
+        deepValueEqual(a.indices, other.indices) &&
+        deepValueEqual(a.normals, other.normals) &&
+        deepValueEqual(a.uvs, other.uvs) &&
+        deepValueEqual(a.metadata, other.metadata)
+      );
+    }
+    case "instances": {
+      const other = b as typeof a;
+      return (
+        a.color === other.color &&
+        a.geometry === other.geometry &&
+        vec3Equal(a.position, other.position) &&
+        vec3Equal(a.rotation, other.rotation) &&
+        vec3Equal(a.scale, other.scale) &&
+        deepValueEqual(a.instances, other.instances) &&
+        deepValueEqual(a.metadata, other.metadata)
+      );
+    }
+    default:
+      return deepValueEqual(a, b);
+  }
 }
 
 function setVector(target: Vector3, source: readonly [number, number, number]) {

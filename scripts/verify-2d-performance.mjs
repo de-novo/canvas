@@ -101,6 +101,16 @@ if (!MEASURE_ONLY) {
     overlays.panRenderMs.p50 < 16,
     `expected 1k-2d-overlays panRender p50 < 16ms, got ${overlays.panRenderMs.p50.toFixed(2)}ms`
   );
+  // HTML overlay diff gate: editing 1 card in a 1k-card scene must invoke
+  // renderNode only once (for the edited card), not for all 1,001 cards.
+  assert.equal(
+    overlays.singleCardEditRenderNodeCalls,
+    1,
+    `expected 1 renderNode call on 1-card edit in 1k-card scene, got ${overlays.singleCardEditRenderNodeCalls}`
+  );
+  console.log(
+    `[perf-2d] HTML overlay diff passed: 1-card edit in 1,001 cards -> ${overlays.singleCardEditRenderNodeCalls} renderNode call`
+  );
 
   const webgpuTenK = report.workloads.find((item) => item.label === "10k-2d-webgpu");
   assert.ok(webgpuTenK, "10k-2d-webgpu workload missing");
@@ -256,15 +266,20 @@ function perf2DBenchHtml() {
           }
     );
 
+    let renderNodeCalls = 0;
     const runtime = createCanvas(host, {
       canvas2d: {
         initialView: { offset: [40, 40], zoom: 1 },
+        minimap: kind === "rects" && backend === "canvas2d" ? { position: "bottom-right" } : undefined,
         navigation: { enablePan: true, enableZoom: true }
       },
       renderer: { backend },
       renderNode:
         kind === "html"
-          ? (node) => (node.type === "html" ? node.html : "")
+          ? (node) => {
+              renderNodeCalls += 1;
+              return node.type === "html" ? node.html : "";
+            }
           : undefined,
       scene: {
         id: "perf-2d",
@@ -422,6 +437,23 @@ function perf2DBenchHtml() {
       }
     }
 
+    // For HTML overlays, verify editing 1 card out of 1,001 only invokes renderNode once.
+    let singleCardEditRenderNodeCalls = null;
+    if (kind === "html") {
+      const beforeCalls = renderNodeCalls;
+      const updatedNodes = nodes.map((node, index) =>
+        index === 0 ? { ...node, html: "Updated Card 0" } : { ...node }
+      );
+      runtime.update({
+        id: "perf-2d",
+        mode: "2d",
+        background: "#0b1220",
+        layers: [{ id: "default", name: "Default" }],
+        nodes: updatedNodes
+      });
+      singleCardEditRenderNodeCalls = renderNodeCalls - beforeCalls;
+    }
+
     window.__perf2dResult = {
       burstCoalesceRenders,
       burstCoalesceViewMoved,
@@ -443,6 +475,7 @@ function perf2DBenchHtml() {
         p50: percentile(panSamples, 0.5),
         p95: percentile(panSamples, 0.95)
       },
+      singleCardEditRenderNodeCalls,
       topmostHitOk,
       triangles
     };

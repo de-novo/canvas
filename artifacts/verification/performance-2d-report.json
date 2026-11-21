@@ -1,5 +1,5 @@
 {
-  "measuredAt": "2026-11-21T08:21:45.291Z",
+  "measuredAt": "2026-11-21T09:06:18.244Z",
   "workloads": [
     {
       "label": "1k-2d-rects",
@@ -16,7 +16,7 @@
         "p50": 0,
         "p95": 0
       },
-      "hitTestTotalMs": 0.5999999046325684,
+      "hitTestTotalMs": 0.5,
       "marqueeMs": {
         "p50": 0,
         "p95": 0.09999990463256836
@@ -25,8 +25,9 @@
       "nonBlank": true,
       "panRenderMs": {
         "p50": 0,
-        "p95": 0.10000038146972656
+        "p95": 0.09999990463256836
       },
+      "singleCardEditRenderNodeCalls": null,
       "topmostHitOk": true,
       "triangles": null
     },
@@ -45,7 +46,7 @@
         "p50": 0,
         "p95": 0
       },
-      "hitTestTotalMs": 0.40000009536743164,
+      "hitTestTotalMs": 0.5,
       "marqueeMs": {
         "p50": 0,
         "p95": 0.09999990463256836
@@ -54,8 +55,9 @@
       "nonBlank": true,
       "panRenderMs": {
         "p50": 0,
-        "p95": 0.09999990463256836
+        "p95": 0.10000038146972656
       },
+      "singleCardEditRenderNodeCalls": null,
       "topmostHitOk": true,
       "triangles": null
     },
@@ -74,7 +76,7 @@
         "p50": 0,
         "p95": 0
       },
-      "hitTestTotalMs": 0.7999997138977051,
+      "hitTestTotalMs": 0.8000001907348633,
       "marqueeMs": {
         "p50": 0,
         "p95": 0
@@ -85,6 +87,7 @@
         "p50": 0.09999990463256836,
         "p95": 0.10000038146972656
       },
+      "singleCardEditRenderNodeCalls": 1,
       "topmostHitOk": true,
       "triangles": null
     },
@@ -103,7 +106,7 @@
         "p50": 0,
         "p95": 0
       },
-      "hitTestTotalMs": 0.5,
+      "hitTestTotalMs": 0.5999999046325684,
       "marqueeMs": {
         "p50": 0,
         "p95": 0.09999990463256836
@@ -112,8 +115,9 @@
       "nonBlank": true,
       "panRenderMs": {
         "p50": 0,
-        "p95": 0.09999990463256836
+        "p95": 0.10000038146972656
       },
+      "singleCardEditRenderNodeCalls": null,
       "topmostHitOk": true,
       "triangles": 210
     }

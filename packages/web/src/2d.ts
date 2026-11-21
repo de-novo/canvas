@@ -88,7 +88,10 @@ import {
   type Canvas2DContentColors,
   type Canvas2DTransformHandleColors
 } from "./2d/render";
-import { createCanvas2DSpatialIndex } from "./2d/spatial-index";
+import {
+  createCanvas2DSpatialIndex,
+  type Canvas2DSpatialIndex
+} from "./2d/spatial-index";
 import { createCanvas2DWebGpuPresenter, type Canvas2DWebGpuPresenter } from "./2d/webgpu";
 import type { Canvas2DRenderNodeContext } from "./types";
 import type {
@@ -175,6 +178,7 @@ export function createCanvas2D(
   const context2d = createCanvas2DMeasureContext(resolved.canvas, useWebGpu);
   const objects = new Map<string, Canvas2DObject>();
   const overlayElements = new Map<string, HTMLElement>();
+  const prevHtmlNodesById = new Map<string, Extract<Canvas2DNode, { type: "html" }>>();
   let activeOverlayIds = new Set<string>();
   const renderNode = options.renderNode;
   const contentColors = resolveContentColors(resolved.canvas);
@@ -250,7 +254,7 @@ export function createCanvas2D(
     currentScene = nextScene;
     sceneGraph = createCanvas2DSceneGraph(nextScene);
     spatialIndex = createCanvas2DSpatialIndex(nextScene, sceneGraph);
-    rebuildObjects(currentScene, sceneGraph, objects, contentColors, overlayElements, activeOverlayIds, renderNode, {
+    rebuildObjects(currentScene, sceneGraph, objects, contentColors, overlayElements, prevHtmlNodesById, activeOverlayIds, renderNode, {
       sceneToCanvas: (point) => sceneToCanvasPoint(viewState, point),
       viewState,
       viewportSize: { width: resizeState.width, height: resizeState.height }
@@ -639,7 +643,7 @@ export function createCanvas2D(
       renderCanvas2DMinimap(
         minimap,
         currentScene,
-        sceneGraph,
+        spatialIndex,
         getCanvas2DVisibleBounds(viewState, {
           width: resizeState.width,
           height: resizeState.height
@@ -751,7 +755,7 @@ export function createCanvas2D(
       renderCanvas2DMinimap(
         minimap,
         currentScene,
-        sceneGraph,
+        spatialIndex,
         getCanvas2DVisibleBounds(viewState, {
           width: resizeState.width,
           height: resizeState.height
@@ -949,6 +953,7 @@ export function createCanvas2D(
       element.remove();
     }
     overlayElements.clear();
+    prevHtmlNodesById.clear();
     activeOverlayIds.clear();
 
     if (activeAnimation) {
@@ -1491,7 +1496,7 @@ export function createCanvas2D(
   }
   syncNavigationTouchAction();
   resizeObserver.observe(resolved.host);
-  rebuildObjects(currentScene, sceneGraph, objects, contentColors, overlayElements, activeOverlayIds, renderNode, {
+  rebuildObjects(currentScene, sceneGraph, objects, contentColors, overlayElements, prevHtmlNodesById, activeOverlayIds, renderNode, {
     sceneToCanvas: (point) => sceneToCanvasPoint(viewState, point),
     viewState,
     viewportSize: { width: resizeState.width, height: resizeState.height }
@@ -1711,12 +1716,79 @@ function validateCanvas2DAuthoringPreview(
 
 
 
+function jsonValuesEqual(a: unknown, b: unknown): boolean {
+  if (Object.is(a, b)) {
+    return true;
+  }
+  if (
+    typeof a !== "object" ||
+    a === null ||
+    typeof b !== "object" ||
+    b === null
+  ) {
+    return false;
+  }
+  if (Array.isArray(a) || Array.isArray(b)) {
+    if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) {
+      return false;
+    }
+    for (let i = 0; i < a.length; i += 1) {
+      if (!jsonValuesEqual(a[i], b[i])) {
+        return false;
+      }
+    }
+    return true;
+  }
+  const recA = a as Record<string, unknown>;
+  const recB = b as Record<string, unknown>;
+  const keysA = Object.keys(recA);
+  const keysB = Object.keys(recB);
+  if (keysA.length !== keysB.length) {
+    return false;
+  }
+  for (let i = 0; i < keysA.length; i += 1) {
+    const key = keysA[i]!;
+    if (
+      !Object.prototype.hasOwnProperty.call(recB, key) ||
+      !jsonValuesEqual(recA[key], recB[key])
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function htmlNodeEqual(
+  a: Extract<Canvas2DNode, { type: "html" }>,
+  b: Extract<Canvas2DNode, { type: "html" }>
+): boolean {
+  if (a === b) {
+    return true;
+  }
+  return (
+    a.html === b.html &&
+    a.width === b.width &&
+    a.height === b.height &&
+    a.visible === b.visible &&
+    a.locked === b.locked &&
+    a.layerId === b.layerId &&
+    a.parentId === b.parentId &&
+    a.rotation === b.rotation &&
+    a.position[0] === b.position[0] &&
+    a.position[1] === b.position[1] &&
+    a.scale[0] === b.scale[0] &&
+    a.scale[1] === b.scale[1] &&
+    jsonValuesEqual(a.metadata, b.metadata)
+  );
+}
+
 function rebuildObjects(
   scene: Canvas2DScene,
   sceneGraph: Canvas2DSceneGraph,
   objects: Map<string, Canvas2DObject>,
   colors: Canvas2DContentColors,
   overlayElements: Map<string, HTMLElement>,
+  prevHtmlNodesById: Map<string, Extract<Canvas2DNode, { type: "html" }>>,
   activeOverlayIds: Set<string>,
   renderNode: CreateCanvasOptions["renderNode"],
   renderContext: Canvas2DRenderNodeContext,
@@ -1762,6 +1834,12 @@ function rebuildObjects(
 
     if (node.type === "html" && renderNode) {
       let element = overlayElements.get(node.id);
+      const prevNode = prevHtmlNodesById.get(node.id);
+      if (element && prevNode && htmlNodeEqual(prevNode, node)) {
+        prevHtmlNodesById.set(node.id, node);
+        continue;
+      }
+
       const rendered = renderNode(node, renderContext);
 
       if (typeof rendered === "string") {
@@ -1788,6 +1866,7 @@ function rebuildObjects(
         overlayElements.set(node.id, rendered);
         activeOverlayIds.delete(node.id);
       }
+      prevHtmlNodesById.set(node.id, node);
     }
   }
 
@@ -1795,6 +1874,7 @@ function rebuildObjects(
     if (!liveIds.has(id)) {
       element.remove();
       overlayElements.delete(id);
+      prevHtmlNodesById.delete(id);
       activeOverlayIds.delete(id);
     }
   }
@@ -1805,10 +1885,19 @@ function rebuildObjects(
 
 
 
+type Canvas2DMinimapCache = {
+  readonly bitmap: HTMLCanvasElement;
+  readonly color: string;
+  readonly contentBounds: Canvas2DRectBounds;
+  readonly scene: Canvas2DScene;
+  readonly sceneBounds: Canvas2DRectBounds | null;
+};
+
 type Canvas2DMinimap = {
   readonly canvas: HTMLCanvasElement;
   readonly context: CanvasRenderingContext2D;
   readonly interactive: boolean;
+  cache: Canvas2DMinimapCache | null;
   /**
    * Scene→minimap mapping from the most recent render, so a click can be turned
    * back into a scene point without recomputing content bounds.
@@ -1858,6 +1947,7 @@ function createCanvas2DMinimap(
   resolved.host.appendChild(canvas);
 
   return {
+    cache: null,
     canvas,
     context,
     interactive: options.interactive !== false,
@@ -1865,33 +1955,62 @@ function createCanvas2DMinimap(
   };
 }
 
+function minimapBoundsEqual(
+  a: Canvas2DRectBounds,
+  b: Canvas2DRectBounds
+): boolean {
+  return (
+    a.minX === b.minX &&
+    a.minY === b.minY &&
+    a.maxX === b.maxX &&
+    a.maxY === b.maxY
+  );
+}
+
 /**
  * Draws every node as a filled box plus the current viewport frame, scaled to
  * fit the union of scene content and viewport so the frame is always visible.
+ * Static node boxes are cached on an offscreen bitmap per (scene, color,
+ * contentBounds) so panning inside the scene bounds is O(1).
  */
 function renderCanvas2DMinimap(
   minimap: Canvas2DMinimap,
   scene: Canvas2DScene,
-  sceneGraph: Canvas2DSceneGraph,
+  spatialIndex: Canvas2DSpatialIndex,
   viewport: Canvas2DRectBounds,
   colors: Canvas2DContentColors
 ): void {
   const { canvas, context } = minimap;
-  context.clearRect(0, 0, canvas.width, canvas.height);
+  const cached = minimap.cache;
 
-  const nodeBounds = scene.nodes
-    .filter((node) => isNodeEffectivelyVisible(scene, sceneGraph, node))
-    .map((node) => resolveCanvas2DNodeWorldBounds(node, sceneGraph));
+  let sceneBounds: Canvas2DRectBounds | null;
+  if (cached && cached.scene === scene) {
+    sceneBounds = cached.sceneBounds;
+  } else if (spatialIndex.entries.length === 0) {
+    sceneBounds = null;
+  } else {
+    let minX = Number.POSITIVE_INFINITY;
+    let minY = Number.POSITIVE_INFINITY;
+    let maxX = Number.NEGATIVE_INFINITY;
+    let maxY = Number.NEGATIVE_INFINITY;
+    for (let i = 0; i < spatialIndex.entries.length; i += 1) {
+      const b = spatialIndex.entries[i]!.bounds;
+      if (b.minX < minX) minX = b.minX;
+      if (b.minY < minY) minY = b.minY;
+      if (b.maxX > maxX) maxX = b.maxX;
+      if (b.maxY > maxY) maxY = b.maxY;
+    }
+    sceneBounds = { minX, minY, maxX, maxY };
+  }
 
-  const content = nodeBounds.reduce<Canvas2DRectBounds>(
-    (accumulated, bounds) => ({
-      minX: Math.min(accumulated.minX, bounds.minX),
-      minY: Math.min(accumulated.minY, bounds.minY),
-      maxX: Math.max(accumulated.maxX, bounds.maxX),
-      maxY: Math.max(accumulated.maxY, bounds.maxY)
-    }),
-    viewport
-  );
+  const content: Canvas2DRectBounds = sceneBounds
+    ? {
+        minX: Math.min(sceneBounds.minX, viewport.minX),
+        minY: Math.min(sceneBounds.minY, viewport.minY),
+        maxX: Math.max(sceneBounds.maxX, viewport.maxX),
+        maxY: Math.max(sceneBounds.maxY, viewport.maxY)
+      }
+    : viewport;
 
   const contentWidth = Math.max(1, content.maxX - content.minX);
   const contentHeight = Math.max(1, content.maxY - content.minY);
@@ -1904,19 +2023,51 @@ function renderCanvas2DMinimap(
   const toMinimapY = (y: number) => inner + (y - content.minY) * scale;
   minimap.projection = { origin: [content.minX, content.minY], scale };
 
-  context.save();
-  context.globalAlpha = 0.6;
-  context.fillStyle = colors.foreground;
+  const cacheHit =
+    cached !== null &&
+    cached.scene === scene &&
+    cached.color === colors.foreground &&
+    cached.bitmap.width === canvas.width &&
+    cached.bitmap.height === canvas.height &&
+    minimapBoundsEqual(cached.contentBounds, content);
 
-  for (const bounds of nodeBounds) {
-    context.fillRect(
-      toMinimapX(bounds.minX),
-      toMinimapY(bounds.minY),
-      Math.max(1, (bounds.maxX - bounds.minX) * scale),
-      Math.max(1, (bounds.maxY - bounds.minY) * scale)
-    );
+  let bitmap: HTMLCanvasElement;
+  if (cacheHit) {
+    bitmap = cached.bitmap;
+  } else {
+    bitmap = cached?.bitmap ?? document.createElement("canvas");
+    if (bitmap.width !== canvas.width) bitmap.width = canvas.width;
+    if (bitmap.height !== canvas.height) bitmap.height = canvas.height;
+    const offscreen = bitmap.getContext("2d");
+    if (offscreen) {
+      offscreen.clearRect(0, 0, bitmap.width, bitmap.height);
+      offscreen.save();
+      offscreen.globalAlpha = 0.6;
+      offscreen.fillStyle = colors.foreground;
+      for (let i = 0; i < spatialIndex.entries.length; i += 1) {
+        const bounds = spatialIndex.entries[i]!.bounds;
+        offscreen.fillRect(
+          toMinimapX(bounds.minX),
+          toMinimapY(bounds.minY),
+          Math.max(1, (bounds.maxX - bounds.minX) * scale),
+          Math.max(1, (bounds.maxY - bounds.minY) * scale)
+        );
+      }
+      offscreen.restore();
+    }
+    minimap.cache = {
+      bitmap,
+      color: colors.foreground,
+      contentBounds: content,
+      scene,
+      sceneBounds
+    };
   }
 
+  context.clearRect(0, 0, canvas.width, canvas.height);
+  context.drawImage(bitmap, 0, 0);
+
+  context.save();
   context.globalAlpha = 1;
   context.strokeStyle = colors.accent;
   context.lineWidth = 1.5;
