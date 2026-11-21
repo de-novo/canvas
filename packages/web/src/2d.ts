@@ -223,6 +223,8 @@ export function createCanvas2D(
       : defineCanvas2DViewState(options.canvas2d.initialView);
   const minimap = createCanvas2DMinimap(resolved, options.canvas2d?.minimap);
   let frameId: number | null = null;
+  let scheduledRenderId: number | null = null;
+  let destroyed = false;
   let previousTime = 0;
   let gpuPresenter: Canvas2DWebGpuPresenter | null = null;
   let runtime: Canvas2DRuntime;
@@ -526,7 +528,7 @@ export function createCanvas2D(
     }
 
     transformHandleTarget = nextTarget;
-    render();
+    scheduleRender();
   }
 
   function setNodeTransformPreview(
@@ -534,7 +536,7 @@ export function createCanvas2D(
   ) {
     if (previewValue === null) {
       transformPreview = null;
-      render();
+      scheduleRender();
       return;
     }
 
@@ -555,7 +557,7 @@ export function createCanvas2D(
 
     assertCanvas2DTransformNode(node);
     transformPreview = preview;
-    render();
+    scheduleRender();
   }
 
   function resolveScenePoint(
@@ -603,7 +605,7 @@ export function createCanvas2D(
     });
 
     authoringPreviews = nextPreviews;
-    render();
+    scheduleRender();
   }
 
   function hitRenderer(): "canvas2d" | "webgpu" {
@@ -647,7 +649,40 @@ export function createCanvas2D(
     }
   }
 
+  function cancelScheduledRender() {
+    if (
+      scheduledRenderId !== null &&
+      typeof cancelAnimationFrame === "function"
+    ) {
+      cancelAnimationFrame(scheduledRenderId);
+    }
+    scheduledRenderId = null;
+  }
+
+  function scheduleRender() {
+    if (destroyed) {
+      return;
+    }
+    if (typeof requestAnimationFrame !== "function") {
+      render();
+      return;
+    }
+    if (scheduledRenderId !== null) {
+      return;
+    }
+    scheduledRenderId = requestAnimationFrame(() => {
+      scheduledRenderId = null;
+      if (!destroyed) {
+        render();
+      }
+    });
+  }
+
   function render() {
+    cancelScheduledRender();
+    if (destroyed) {
+      return;
+    }
     if (useWebGpu) {
       renderGpu();
       return;
@@ -886,6 +921,8 @@ export function createCanvas2D(
   }
 
   function destroy() {
+    destroyed = true;
+    cancelScheduledRender();
     runtime.stop();
     gpuPresenter?.destroy();
     gpuPresenter = null;
@@ -1076,13 +1113,13 @@ export function createCanvas2D(
     }
 
     hoveredId = id;
-    render();
+    scheduleRender();
   }
 
   function setSelection(ids?: readonly string[], primaryId?: string | null): void {
     selectionIds = new Set(ids ?? []);
     void primaryId;
-    render();
+    scheduleRender();
   }
 
 
@@ -1257,7 +1294,7 @@ export function createCanvas2D(
         next[0] - previousPoint[0],
         next[1] - previousPoint[1]
       ]);
-      render();
+      scheduleRender();
       return;
     }
 
@@ -1299,7 +1336,7 @@ export function createCanvas2D(
         nextGesture.center[0] - previousGesture.center[0],
         nextGesture.center[1] - previousGesture.center[1]
       ]);
-      render();
+      scheduleRender();
       return;
     }
 
@@ -1308,7 +1345,7 @@ export function createCanvas2D(
         nextPoint[0] - previousPoint[0],
         nextPoint[1] - previousPoint[1]
       ]);
-      render();
+      scheduleRender();
     }
   }
 
@@ -1347,7 +1384,7 @@ export function createCanvas2D(
 
     event.preventDefault();
     viewState = applied.view;
-    render();
+    scheduleRender();
   }
 
   function clearNavigationPointers() {

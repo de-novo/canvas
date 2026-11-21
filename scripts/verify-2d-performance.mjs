@@ -129,7 +129,24 @@ if (!MEASURE_ONLY) {
       assert.equal(item.nonBlank, true, `${item.label}: expected non-blank canvas`);
     }
   }
-  console.log("[perf-2d] all 2D culling, spatial-index, WebGPU caching, and correctness gates passed");
+  // rAF coalescing gate: a synchronous burst of 20 wheel pan events in one frame
+  // must coalesce into at most 1-2 actual Canvas2D renders instead of 20, while
+  // still updating viewState by the full accumulated pan delta.
+  assert.ok(
+    typeof tenK.burstCoalesceRenders === "number" &&
+      tenK.burstCoalesceRenders >= 1 &&
+      tenK.burstCoalesceRenders <= 2,
+    `expected 20-event wheel burst to coalesce into 1..2 renders, got ${tenK.burstCoalesceRenders}`
+  );
+  assert.equal(
+    tenK.burstCoalesceViewMoved,
+    true,
+    "expected coalesced wheel burst to apply accumulated pan delta"
+  );
+  console.log(
+    `[perf-2d] rAF burst coalescing passed: 20 wheel events -> ${tenK.burstCoalesceRenders} render(s)`
+  );
+  console.log("[perf-2d] all 2D culling, spatial-index, WebGPU caching, rAF coalescing, and correctness gates passed");
 }
 
 /**
@@ -241,7 +258,8 @@ function perf2DBenchHtml() {
 
     const runtime = createCanvas(host, {
       canvas2d: {
-        initialView: { offset: [40, 40], zoom: 1 }
+        initialView: { offset: [40, 40], zoom: 1 },
+        navigation: { enablePan: true, enableZoom: true }
       },
       renderer: { backend },
       renderNode:
@@ -363,7 +381,50 @@ function perf2DBenchHtml() {
     hitSamples.sort((a, b) => a - b);
     marqueeSamples.sort((a, b) => a - b);
 
+    // Measure rAF coalescing for a 20-event wheel burst in one synchronous turn
+    // on Canvas2D (counting background fillRect clears).
+    let burstCoalesceRenders = null;
+    let burstCoalesceViewMoved = null;
+    if (backend === "canvas2d") {
+      const stageCanvas = host.querySelector("canvas");
+      const stageCtx = stageCanvas instanceof HTMLCanvasElement ? stageCanvas.getContext("2d") : null;
+      if (stageCanvas && stageCtx) {
+        await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        const beforeMinX = current.getVisibleBounds().minX;
+        let clearCount = 0;
+        const origFillRect = stageCtx.fillRect.bind(stageCtx);
+        const w = stageCanvas.clientWidth;
+        const h = stageCanvas.clientHeight;
+        stageCtx.fillRect = (x, y, rw, rh) => {
+          if (x === 0 && y === 0 && Math.abs(rw - w) <= 1 && Math.abs(rh - h) <= 1) {
+            clearCount += 1;
+          }
+          return origFillRect(x, y, rw, rh);
+        };
+        for (let i = 0; i < 20; i += 1) {
+          stageCanvas.dispatchEvent(
+            new WheelEvent("wheel", {
+              bubbles: true,
+              cancelable: true,
+              clientX: 300,
+              clientY: 300,
+              deltaMode: 0,
+              deltaX: 12,
+              deltaY: 0
+            })
+          );
+        }
+        await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        stageCtx.fillRect = origFillRect;
+        burstCoalesceRenders = clearCount;
+        const afterMinX = current.getVisibleBounds().minX;
+        burstCoalesceViewMoved = Math.abs(afterMinX - (beforeMinX + 240)) < 1;
+      }
+    }
+
     window.__perf2dResult = {
+      burstCoalesceRenders,
+      burstCoalesceViewMoved,
       drawCalls,
       emptyHitOk,
       hitTestCalls: hitCalls,

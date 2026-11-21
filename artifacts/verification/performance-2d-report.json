@@ -1,5 +1,5 @@
 {
-  "measuredAt": "2026-11-21T08:13:11.179Z",
+  "measuredAt": "2026-11-21T08:21:45.291Z",
   "workloads": [
     {
       "label": "1k-2d-rects",
@@ -7,6 +7,8 @@
       "backend": "canvas2d",
       "nodeCount": 1000,
       "cols": 50,
+      "burstCoalesceRenders": 1,
+      "burstCoalesceViewMoved": true,
       "drawCalls": 28,
       "emptyHitOk": true,
       "hitTestCalls": 200,
@@ -14,7 +16,7 @@
         "p50": 0,
         "p95": 0
       },
-      "hitTestTotalMs": 0.5,
+      "hitTestTotalMs": 0.5999999046325684,
       "marqueeMs": {
         "p50": 0,
         "p95": 0.09999990463256836
@@ -23,7 +25,7 @@
       "nonBlank": true,
       "panRenderMs": {
         "p50": 0,
-        "p95": 0.09999990463256836
+        "p95": 0.10000038146972656
       },
       "topmostHitOk": true,
       "triangles": null
@@ -34,6 +36,8 @@
       "backend": "canvas2d",
       "nodeCount": 10000,
       "cols": 100,
+      "burstCoalesceRenders": 1,
+      "burstCoalesceViewMoved": true,
       "drawCalls": 28,
       "emptyHitOk": true,
       "hitTestCalls": 200,
@@ -41,7 +45,7 @@
         "p50": 0,
         "p95": 0
       },
-      "hitTestTotalMs": 0.5999999046325684,
+      "hitTestTotalMs": 0.40000009536743164,
       "marqueeMs": {
         "p50": 0,
         "p95": 0.09999990463256836
@@ -61,6 +65,8 @@
       "backend": "canvas2d",
       "nodeCount": 1000,
       "cols": 50,
+      "burstCoalesceRenders": 1,
+      "burstCoalesceViewMoved": true,
       "drawCalls": 0,
       "emptyHitOk": true,
       "hitTestCalls": 200,
@@ -68,7 +74,7 @@
         "p50": 0,
         "p95": 0
       },
-      "hitTestTotalMs": 1,
+      "hitTestTotalMs": 0.7999997138977051,
       "marqueeMs": {
         "p50": 0,
         "p95": 0
@@ -88,6 +94,8 @@
       "backend": "webgpu",
       "nodeCount": 10000,
       "cols": 100,
+      "burstCoalesceRenders": null,
+      "burstCoalesceViewMoved": null,
       "drawCalls": 1,
       "emptyHitOk": true,
       "hitTestCalls": 200,
@@ -95,7 +103,7 @@
         "p50": 0,
         "p95": 0
       },
-      "hitTestTotalMs": 0.6000003814697266,
+      "hitTestTotalMs": 0.5,
       "marqueeMs": {
         "p50": 0,
         "p95": 0.09999990463256836
@@ -104,7 +112,7 @@
       "nonBlank": true,
       "panRenderMs": {
         "p50": 0,
-        "p95": 0.10000038146972656
+        "p95": 0.09999990463256836
       },
       "topmostHitOk": true,
       "triangles": 210
