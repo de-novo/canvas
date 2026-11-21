@@ -148,6 +148,13 @@ try {
       const page = await browser.newPage({
         ...devices["iPhone 14"]
       });
+      const consoleErrors = [];
+      page.on("pageerror", (error) => consoleErrors.push(String(error)));
+      page.on("console", (message) => {
+        if (message.type() === "error") {
+          consoleErrors.push(message.text());
+        }
+      });
       await page.goto(server.url, { waitUntil: "networkidle" });
       await page.waitForFunction(
         () =>
@@ -160,10 +167,16 @@ try {
       assert.equal(await page.locator("[data-flow-card]").count(), 5);
       const point = await pickCard(page, "build");
       await page.touchscreen.tap(point.x, point.y);
-      await verifySavedEdits(page, true, async () => {
-        mkdirSync(path.dirname(mobileShot), { recursive: true });
-        await page.screenshot({ path: mobileShot, fullPage: true });
-      });
+      await verifySavedEdits(
+        page,
+        true,
+        async () => {
+          mkdirSync(path.dirname(mobileShot), { recursive: true });
+          await page.screenshot({ path: mobileShot, fullPage: true });
+        },
+        consoleErrors
+      );
+      assert.deepEqual(consoleErrors, []);
     } finally {
       await browser.close();
     }
@@ -225,16 +238,36 @@ async function pickEdge(page, id) {
   }, id);
 }
 
-async function verifySavedEdits(page, touch, onRestored) {
+async function verifySavedEdits(page, touch, onRestored, consoleErrors = []) {
   const card = page.locator('[data-flow-card="build"]');
+  let lastPressDiag = null;
   const press = async name => {
     const button = page.getByRole("button", { name, exact: true });
     if (touch) {
-      await button.scrollIntoViewIfNeeded();
+      await button.evaluate(el => {
+        el.scrollIntoView({ block: "center", inline: "nearest" });
+      });
       await page.evaluate(
         () => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
       );
+      await button.evaluate(el => {
+        const counts = { click: 0, pointerdown: 0, pointerup: 0, touchend: 0, touchstart: 0 };
+        for (const type of Object.keys(counts)) {
+          el.addEventListener(type, () => { counts[type] += 1; }, { once: true });
+        }
+        window.__lastPressCounts = counts;
+      });
       await button.tap();
+      lastPressDiag = await button.evaluate(el => {
+        const rect = el.getBoundingClientRect();
+        return {
+          counts: window.__lastPressCounts,
+          disabled: el.disabled,
+          name: el.textContent?.trim(),
+          rect: { height: rect.height, left: rect.left, top: rect.top, width: rect.width },
+          scrollY: window.scrollY
+        };
+      });
       return;
     }
     await button.click();
@@ -253,7 +286,9 @@ async function verifySavedEdits(page, touch, onRestored) {
           status: document.querySelector("#status")?.textContent ?? null
         };
       });
-      throw new Error(`${step}: ${error}\ndiag=${JSON.stringify(diag)}`);
+      throw new Error(
+        `${step}: ${error}\ndiag=${JSON.stringify({ ...diag, consoleErrors, lastPressDiag })}`
+      );
     }
   };
   const selectPoint = point =>
@@ -279,11 +314,17 @@ async function verifySavedEdits(page, touch, onRestored) {
     if (touch) {
       const session = await page.context().newCDPSession(page);
       try {
-        await session.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [from] });
+        await session.send("Input.dispatchTouchEvent", {
+          type: "touchStart",
+          touchPoints: [{ id: 0, x: Math.round(from.x), y: Math.round(from.y) }]
+        });
         for (let step = 1; step <= 10; step++) {
-          const x = from.x + (to.x - from.x) * step / 10;
-          const y = from.y + (to.y - from.y) * step / 10;
-          await session.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x, y }] });
+          const x = Math.round(from.x + (to.x - from.x) * step / 10);
+          const y = Math.round(from.y + (to.y - from.y) * step / 10);
+          await session.send("Input.dispatchTouchEvent", {
+            type: "touchMove",
+            touchPoints: [{ id: 0, x, y }]
+          });
         }
         await session.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
       } finally {
