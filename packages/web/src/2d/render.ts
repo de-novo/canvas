@@ -24,7 +24,15 @@ import {
   type CanvasNodeTransformPreview
 } from "@denovo/canvas-core";
 
-import { canvasToScenePoint, type Canvas2DViewState } from "../view2d";
+import {
+  canvasToScenePoint,
+  type Canvas2DRectBounds,
+  type Canvas2DViewState
+} from "../view2d";
+import {
+  resolveLiveParentWorldTransform,
+  type Canvas2DSpatialIndex
+} from "./spatial-index";
 import {
   CANVAS_2D_ANCHOR_RADIUS,
   CANVAS_2D_ANNOTATION_FONT,
@@ -436,8 +444,73 @@ export function renderCanvas2DScene(
   sceneGraph: Canvas2DSceneGraph,
   preview: CanvasNodeTransformPreview | null,
   colors: Canvas2DContentColors,
-  emphasis: Canvas2DEmphasis = CANVAS_2D_NO_EMPHASIS
-) {
+  emphasis: Canvas2DEmphasis = CANVAS_2D_NO_EMPHASIS,
+  spatialIndex?: Canvas2DSpatialIndex,
+  visibleBounds?: Canvas2DRectBounds
+): number {
+  if (spatialIndex && visibleBounds) {
+    const candidates = spatialIndex.queryRect(visibleBounds, preview, sceneGraph);
+    let drawnCount = 0;
+
+    for (let i = 0; i < candidates.length; i += 1) {
+      const entry = candidates[i]!;
+      const node = entry.node;
+      if (node.type === "html") {
+        continue;
+      }
+
+      drawnCount += 1;
+      if (node.type === "edge") {
+        context.save();
+        renderCanvas2DEdgeNode(
+          context,
+          node,
+          scene,
+          sceneGraph,
+          colors,
+          emphasis.selectedIds.has(node.id),
+          emphasis.hoveredId === node.id
+        );
+        context.restore();
+        continue;
+      }
+
+      const parentWorldTransform = resolveLiveParentWorldTransform(
+        entry,
+        sceneGraph,
+        preview
+      );
+      const applyParent =
+        !entry.isIdentityParent || (preview !== null && node.parentId !== null);
+      if (applyParent) {
+        context.save();
+        applyCanvas2DMatrix(context, parentWorldTransform);
+        renderCanvas2DDrawableNode(
+          context,
+          node,
+          parentWorldTransform,
+          preview,
+          colors,
+          scene,
+          sceneGraph
+        );
+        context.restore();
+      } else {
+        renderCanvas2DDrawableNode(
+          context,
+          node,
+          parentWorldTransform,
+          preview,
+          colors,
+          scene,
+          sceneGraph
+        );
+      }
+    }
+
+    return drawnCount;
+  }
+
   for (const layer of scene.layers) {
     if (!layer.visible) {
       continue;
@@ -458,6 +531,8 @@ export function renderCanvas2DScene(
       );
     }
   }
+
+  return scene.nodes.length;
 }
 export function renderCanvas2DTreeNode(
   context: CanvasRenderingContext2D,

@@ -61,6 +61,10 @@ import {
   resolveCanvas2DMeasurementLabel,
   wrapCanvas2DText
 } from "./text";
+import {
+  resolveLiveParentWorldTransform,
+  type Canvas2DSpatialIndex
+} from "./spatial-index";
 
 type Canvas2DTextNode = Extract<Canvas2DNode, { type: "text" }>;
 
@@ -74,8 +78,33 @@ export function hitTestSceneGraph(
   scene: Canvas2DScene,
   sceneGraph: Canvas2DSceneGraph,
   scenePoint: readonly [number, number],
-  preview: CanvasNodeTransformPreview | null
+  preview: CanvasNodeTransformPreview | null,
+  spatialIndex?: Canvas2DSpatialIndex
 ): Canvas2DNodeHit | null {
+  if (spatialIndex) {
+    const candidates = spatialIndex.queryPoint(scenePoint, preview, sceneGraph);
+    for (let i = 0; i < candidates.length; i += 1) {
+      const entry = candidates[i]!;
+      const parentWorldTransform = resolveLiveParentWorldTransform(
+        entry,
+        sceneGraph,
+        preview
+      );
+      const hit = hitTestCanvas2DDrawableNode(
+        context,
+        entry.node,
+        parentWorldTransform,
+        scenePoint,
+        preview,
+        sceneGraph
+      );
+      if (hit) {
+        return hit;
+      }
+    }
+    return null;
+  }
+
   for (const layer of [...scene.layers].reverse()) {
     if (!layer.visible) {
       continue;

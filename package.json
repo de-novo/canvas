@@ -32,6 +32,7 @@
     "verify:public-api": "node scripts/verify-public-api.mjs",
     "verify:region-mask": "node scripts/verify-region-mask.mjs",
     "verify:webgpu": "node scripts/verify-webgpu.mjs",
+    "verify:2d-performance": "node scripts/verify-2d-performance.mjs",
     "verify:performance": "node scripts/verify-performance.mjs",
     "verify:point-field": "node scripts/verify-point-field.mjs",
     "verify:server": "node scripts/verify-server.mjs",

@@ -33,6 +33,11 @@ export type Canvas2DDrawableNode = Exclude<Canvas2DNode, Canvas2DGroupNode>;
 
 export type Canvas2DSceneGraph = {
   readonly childrenByGroupId: ReadonlyMap<string, readonly Canvas2DNode[]>;
+  readonly edgesByEndpointId: ReadonlyMap<
+    string,
+    readonly Extract<Canvas2DNode, { type: "edge" }>[]
+  >;
+  readonly layersById: ReadonlyMap<string, Canvas2DScene["layers"][number]>;
   readonly nodesById: ReadonlyMap<string, Canvas2DNode>;
   readonly rootsByLayerId: ReadonlyMap<string, readonly Canvas2DNode[]>;
 };
@@ -41,10 +46,16 @@ export function createCanvas2DSceneGraph(
   scene: Canvas2DScene
 ): Canvas2DSceneGraph {
   const childrenByGroupId = new Map<string, Canvas2DNode[]>();
+  const edgesByEndpointId = new Map<
+    string,
+    Extract<Canvas2DNode, { type: "edge" }>[]
+  >();
+  const layersById = new Map<string, Canvas2DScene["layers"][number]>();
   const nodesById = new Map<string, Canvas2DNode>();
   const rootsByLayerId = new Map<string, Canvas2DNode[]>();
 
   for (const layer of scene.layers) {
+    layersById.set(layer.id, layer);
     rootsByLayerId.set(layer.id, []);
   }
 
@@ -53,6 +64,21 @@ export function createCanvas2DSceneGraph(
 
     if (node.type === "group") {
       childrenByGroupId.set(node.id, []);
+    } else if (node.type === "edge") {
+      const sourceEdges = edgesByEndpointId.get(node.sourceId);
+      if (sourceEdges) {
+        sourceEdges.push(node);
+      } else {
+        edgesByEndpointId.set(node.sourceId, [node]);
+      }
+      if (node.targetId !== node.sourceId) {
+        const targetEdges = edgesByEndpointId.get(node.targetId);
+        if (targetEdges) {
+          targetEdges.push(node);
+        } else {
+          edgesByEndpointId.set(node.targetId, [node]);
+        }
+      }
     }
   }
 
@@ -89,6 +115,8 @@ export function createCanvas2DSceneGraph(
 
   return {
     childrenByGroupId,
+    edgesByEndpointId,
+    layersById,
     nodesById,
     rootsByLayerId
   };
@@ -100,7 +128,8 @@ export function isNodeEffectivelyVisible(
   sceneGraph: Canvas2DSceneGraph,
   node: Canvas2DNode
 ): boolean {
-  if (!getCanvas2DLayer(scene, node.layerId).visible || !node.visible) {
+  const layer = sceneGraph.layersById.get(node.layerId) ?? getCanvas2DLayer(scene, node.layerId);
+  if (!layer.visible || !node.visible) {
     return false;
   }
 
@@ -119,7 +148,8 @@ export function isNodeEffectivelyLocked(
   sceneGraph: Canvas2DSceneGraph,
   node: Canvas2DNode
 ): boolean {
-  if (getCanvas2DLayer(scene, node.layerId).locked || node.locked) {
+  const layer = sceneGraph.layersById.get(node.layerId) ?? getCanvas2DLayer(scene, node.layerId);
+  if (layer.locked || node.locked) {
     return true;
   }
 

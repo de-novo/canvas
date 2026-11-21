@@ -88,6 +88,7 @@ import {
   type Canvas2DContentColors,
   type Canvas2DTransformHandleColors
 } from "./2d/render";
+import { createCanvas2DSpatialIndex } from "./2d/spatial-index";
 import { createCanvas2DWebGpuPresenter, type Canvas2DWebGpuPresenter } from "./2d/webgpu";
 import type { Canvas2DRenderNodeContext } from "./types";
 import type {
@@ -174,6 +175,7 @@ export function createCanvas2D(
   const context2d = createCanvas2DMeasureContext(resolved.canvas, useWebGpu);
   const objects = new Map<string, Canvas2DObject>();
   const overlayElements = new Map<string, HTMLElement>();
+  let activeOverlayIds = new Set<string>();
   const renderNode = options.renderNode;
   const contentColors = resolveContentColors(resolved.canvas);
   const navigationOptions = resolveCanvas2DNavigationOptions(
@@ -209,6 +211,8 @@ export function createCanvas2D(
   let hoveredId: string | null = null;
   let authoringPreviews: readonly CanvasAuthoringPreviewForMode<"2d">[] = [];
   let sceneGraph = createCanvas2DSceneGraph(initialScene);
+  let spatialIndex = createCanvas2DSpatialIndex(initialScene, sceneGraph);
+  let lastCanvas2DDrawCalls = 0;
   let navigationInputEnabled = navigationEnabledByConfig;
   let transformHandleColors = resolveTransformHandleColors(resolved.canvas);
   let transformHandleTarget: CanvasNodeTransformHandleTarget | null = null;
@@ -243,7 +247,8 @@ export function createCanvas2D(
     store.getState().setScene(nextScene);
     currentScene = nextScene;
     sceneGraph = createCanvas2DSceneGraph(nextScene);
-    rebuildObjects(currentScene, sceneGraph, objects, contentColors, overlayElements, renderNode, {
+    spatialIndex = createCanvas2DSpatialIndex(nextScene, sceneGraph);
+    rebuildObjects(currentScene, sceneGraph, objects, contentColors, overlayElements, activeOverlayIds, renderNode, {
       sceneToCanvas: (point) => sceneToCanvasPoint(viewState, point),
       viewState,
       viewportSize: { width: resizeState.width, height: resizeState.height }
@@ -305,7 +310,8 @@ export function createCanvas2D(
       currentScene,
       sceneGraph,
       scenePoint,
-      transformPreview
+      transformPreview,
+      spatialIndex
     );
 
     if (hit) {
@@ -338,7 +344,7 @@ export function createCanvas2D(
     inputValue: CanvasNodeTransformInput
   ): CanvasNodeTransformPreviewForMode<"2d"> {
     const input = CanvasNodeTransformInputSchema.parse(inputValue);
-    const node = currentScene.nodes.find((candidate) => candidate.id === input.nodeId);
+    const node = sceneGraph.nodesById.get(input.nodeId);
 
     if (!node) {
       throw new Error(`Canvas2D transform node was not found: ${input.nodeId}`);
@@ -660,13 +666,19 @@ export function createCanvas2D(
       resizeState,
       contentColors
     );
-    renderCanvas2DScene(
+    const visibleBounds = getCanvas2DVisibleBounds(viewState, {
+      width: resizeState.width,
+      height: resizeState.height
+    });
+    lastCanvas2DDrawCalls = renderCanvas2DScene(
       context2d,
       currentScene,
       sceneGraph,
       transformPreview,
       contentColors,
-      { selectedIds: selectionIds, hoveredId }
+      { selectedIds: selectionIds, hoveredId },
+      spatialIndex,
+      visibleBounds
     );
     renderCanvas2DAuthoringOverlayPreviews(
       context2d,
@@ -714,13 +726,35 @@ export function createCanvas2D(
   }
 
   function syncOverlayElements() {
+    if (overlayElements.size === 0) {
+      return;
+    }
+
     const visible = getCanvas2DVisibleBounds(viewState, {
       width: resizeState.width,
       height: resizeState.height
     });
+    const paddedVisible = {
+      minX: visible.minX - OVERLAY_CULL_PAD,
+      minY: visible.minY - OVERLAY_CULL_PAD,
+      maxX: visible.maxX + OVERLAY_CULL_PAD,
+      maxY: visible.maxY + OVERLAY_CULL_PAD
+    };
+    const candidateIds = spatialIndex.queryVisibleHtmlIds(
+      paddedVisible,
+      transformPreview,
+      sceneGraph
+    );
+    const nextActiveOverlayIds = new Set<string>();
+    const pixelRatio = resizeState.pixelRatio || 1;
 
-    for (const [id, element] of overlayElements) {
-      const node = currentScene.nodes.find((candidate) => candidate.id === id);
+    for (let i = 0; i < candidateIds.length; i += 1) {
+      const id = candidateIds[i]!;
+      const element = overlayElements.get(id);
+      if (!element) {
+        continue;
+      }
+      const node = sceneGraph.nodesById.get(id);
       if (!node || node.type !== "html") {
         continue;
       }
@@ -733,33 +767,41 @@ export function createCanvas2D(
         previewNode = { ...node, position: [...position], rotation, scale: [...scale] };
       }
       const bounds = resolveCanvas2DNodeWorldBounds(previewNode, sceneGraph);
-      const onScreen = rectsIntersect(bounds, {
-        minX: visible.minX - OVERLAY_CULL_PAD,
-        minY: visible.minY - OVERLAY_CULL_PAD,
-        maxX: visible.maxX + OVERLAY_CULL_PAD,
-        maxY: visible.maxY + OVERLAY_CULL_PAD
-      });
+      if (!rectsIntersect(bounds, paddedVisible)) {
+        continue;
+      }
 
       // Virtualization: skip DOM work for off-screen html nodes. We keep the
       // element mounted (cheap) but hide it; recreate on next become-visible via
       // rebuildObjects if it was pruned by the liveIds step.
-      element.style.display = onScreen ? "" : "none";
+      element.style.display = "";
+      const topLeft = sceneToCanvasPoint(viewState, [bounds.minX, bounds.minY]);
+      const x = Math.round(topLeft[0] * pixelRatio) / pixelRatio;
+      const y = Math.round(topLeft[1] * pixelRatio) / pixelRatio;
+      const width = Math.max(0, (bounds.maxX - bounds.minX) * viewState.zoom);
+      const height = Math.max(0, (bounds.maxY - bounds.minY) * viewState.zoom);
+      element.style.transform = `translate(${x}px, ${y}px)`;
+      element.style.transformOrigin = "0 0";
+      element.style.width = `${width}px`;
+      element.style.height = `${height}px`;
+      element.style.boxSizing = "border-box";
+      element.style.setProperty("--dc-html-zoom", String(viewState.zoom));
+      nextActiveOverlayIds.add(id);
+    }
 
-      if (onScreen) {
-        const topLeft = sceneToCanvasPoint(viewState, [bounds.minX, bounds.minY]);
-        const pixelRatio = resizeState.pixelRatio || 1;
-        const x = Math.round(topLeft[0] * pixelRatio) / pixelRatio;
-        const y = Math.round(topLeft[1] * pixelRatio) / pixelRatio;
-        const width = Math.max(0, (bounds.maxX - bounds.minX) * viewState.zoom);
-        const height = Math.max(0, (bounds.maxY - bounds.minY) * viewState.zoom);
-        element.style.transform = `translate(${x}px, ${y}px)`;
-        element.style.transformOrigin = "0 0";
-        element.style.width = `${width}px`;
-        element.style.height = `${height}px`;
-        element.style.boxSizing = "border-box";
-        element.style.setProperty("--dc-html-zoom", String(viewState.zoom));
+    for (const id of activeOverlayIds) {
+      if (!nextActiveOverlayIds.has(id)) {
+        const element = overlayElements.get(id);
+        if (element) {
+          element.style.display = "none";
+        }
       }
     }
+    activeOverlayIds = nextActiveOverlayIds;
+  }
+
+  function getRenderStats() {
+    return gpuPresenter ? gpuPresenter.getRenderStats() : { drawCalls: lastCanvas2DDrawCalls };
   }
 
   function loop(time: number) {
@@ -771,7 +813,7 @@ export function createCanvas2D(
         delta,
         elapsed: time,
         scene: currentScene,
-        ...(gpuPresenter ? { render: gpuPresenter.getRenderStats() } : {})
+        render: getRenderStats()
       },
       runtime
     );
@@ -869,6 +911,7 @@ export function createCanvas2D(
       element.remove();
     }
     overlayElements.clear();
+    activeOverlayIds.clear();
 
     if (activeAnimation) {
       activeAnimation();
@@ -910,7 +953,7 @@ export function createCanvas2D(
     store,
     destroy,
     getScene: () => currentScene,
-    getRenderStats: () => gpuPresenter?.getRenderStats(),
+    getRenderStats,
     async readPixels() {
       if (useWebGpu) {
         await ready;
@@ -953,7 +996,7 @@ export function createCanvas2D(
       return next;
     },
     flyToNode(nodeId, zoom, animate = false) {
-      const node = currentScene.nodes.find((candidate) => candidate.id === nodeId);
+      const node = sceneGraph.nodesById.get(nodeId);
       // Missing ids fail closed: do not fly toward the origin.
       if (!node) {
         return null;
@@ -980,16 +1023,7 @@ export function createCanvas2D(
       return measured;
     },
     getNodesInBounds(bounds) {
-      const ids: string[] = [];
-      for (const node of currentScene.nodes) {
-        if (!isNodeEffectivelyVisible(currentScene, sceneGraph, node)) {
-          continue;
-        }
-        if (rectsIntersect(resolveCanvas2DNodeWorldBounds(node, sceneGraph), bounds)) {
-          ids.push(node.id);
-        }
-      }
-      return ids;
+      return spatialIndex.queryRectIds(bounds, sceneGraph);
     },
     ...(renderNode === undefined ? {} : { renderOverlayNode: renderNode }),
     setConnectionHandlesVisible,
@@ -1005,9 +1039,7 @@ export function createCanvas2D(
       return null;
     }
 
-    const node = currentScene.nodes.find(
-      (candidate) => candidate.id === transformHandleTarget?.nodeId
-    );
+    const node = sceneGraph.nodesById.get(transformHandleTarget.nodeId);
 
     if (!node) {
       return null;
@@ -1421,7 +1453,7 @@ export function createCanvas2D(
   }
   syncNavigationTouchAction();
   resizeObserver.observe(resolved.host);
-  rebuildObjects(currentScene, sceneGraph, objects, contentColors, overlayElements, renderNode, {
+  rebuildObjects(currentScene, sceneGraph, objects, contentColors, overlayElements, activeOverlayIds, renderNode, {
     sceneToCanvas: (point) => sceneToCanvasPoint(viewState, point),
     viewState,
     viewportSize: { width: resizeState.width, height: resizeState.height }
@@ -1647,6 +1679,7 @@ function rebuildObjects(
   objects: Map<string, Canvas2DObject>,
   colors: Canvas2DContentColors,
   overlayElements: Map<string, HTMLElement>,
+  activeOverlayIds: Set<string>,
   renderNode: CreateCanvasOptions["renderNode"],
   renderContext: Canvas2DRenderNodeContext,
   overlayParent: HTMLElement
@@ -1697,8 +1730,10 @@ function rebuildObjects(
         if (!element) {
           element = document.createElement("div");
           element.style.position = "absolute";
+          element.style.display = "none";
           overlayElements.set(node.id, element);
           overlayParent.appendChild(element);
+          activeOverlayIds.delete(node.id);
         }
         // Strings are text, not markup. Hosts that need HTML return an Element.
         element.textContent = rendered;
@@ -1706,12 +1741,14 @@ function rebuildObjects(
         rendered.style.position = "absolute";
         rendered.style.left = "0";
         rendered.style.top = "0";
+        rendered.style.display = "none";
         if (element) {
           element.replaceWith(rendered);
         } else {
           overlayParent.appendChild(rendered);
         }
         overlayElements.set(node.id, rendered);
+        activeOverlayIds.delete(node.id);
       }
     }
   }
@@ -1720,6 +1757,7 @@ function rebuildObjects(
     if (!liveIds.has(id)) {
       element.remove();
       overlayElements.delete(id);
+      activeOverlayIds.delete(id);
     }
   }
 }
