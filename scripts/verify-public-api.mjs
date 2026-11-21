@@ -81,6 +81,40 @@ assert.ok(
   facadePackage.exports?.["./web"],
   "facade must export ./web for host kind drawers"
 );
+assert.ok(
+  facadePackage.exports?.["./2d"],
+  "facade must export ./2d as a Three.js-free 2D entrypoint"
+);
+const facade2dDist = readFileSync(path.join(facadeDir, "dist", "2d.js"), "utf8");
+for (const forbidden of [
+  "\"three\"",
+  "\"three/webgpu\"",
+  "\"three-mesh-bvh\"",
+  "\"@denovo/canvas-three\"",
+  "\"@denovo/canvas-web\""
+]) {
+  assert.ok(
+    !facade2dDist.includes(forbidden),
+    `facade ./2d bundle must not import ${forbidden}`
+  );
+}
+const flowAssetsDir = path.join(root, "apps", "playground-flow", "dist", "assets");
+if (existsSync(flowAssetsDir)) {
+  const flowJsFiles = readdirSync(flowAssetsDir).filter((file) =>
+    file.endsWith(".js")
+  );
+  assert.ok(
+    !flowJsFiles.some((file) => file.includes("three")),
+    `playground-flow dist must not emit any Three.js chunk, found: ${flowJsFiles.join(", ")}`
+  );
+  for (const file of flowJsFiles) {
+    const content = readFileSync(path.join(flowAssetsDir, file), "utf8");
+    assert.ok(
+      !content.includes("WebGLRenderer"),
+      `playground-flow bundle ${file} must not contain Three.js WebGLRenderer`
+    );
+  }
+}
 assert.equal(
   facadePackage.dependencies?.["@denovo/react-canvas"],
   undefined,
@@ -3924,6 +3958,76 @@ void depthValue;
 );
 
 writeFileSync(
+  path.join(tmpDir, "facade-2d-smoke.ts"),
+  `import {
+  connectEditorToCanvas,
+  createCanvas,
+  createEditor,
+  defineDocument,
+  shallowEqual,
+  subscribeCanvasSelector,
+  type DenovoCanvas2DRuntime
+} from "${facadeName}/2d";
+
+const doc2d = defineDocument({
+  id: "smoke-2d-doc",
+  scene: {
+    id: "smoke-2d-scene",
+    mode: "2d",
+    layers: [{ id: "board", name: "Board" }],
+    nodes: [
+      {
+        id: "r1",
+        type: "rect",
+        layerId: "board",
+        position: [10, 20],
+        size: [100, 60],
+        fill: "#22c55e"
+      }
+    ]
+  }
+});
+
+const editor = createEditor({ document: doc2d });
+const runtime: DenovoCanvas2DRuntime = createCanvas("#stage", {
+  document: doc2d,
+  editable: true,
+  renderer: "canvas2d"
+});
+const mode: "2d" = runtime.mode;
+void mode;
+const disconnect = connectEditorToCanvas(editor, runtime);
+const unsub = subscribeCanvasSelector(
+  editor,
+  (state) => ({ canRedo: state.history.canRedo, canUndo: state.history.canUndo }),
+  () => {},
+  { equals: shallowEqual }
+);
+unsub();
+disconnect();
+
+createCanvas("#stage", {
+  // @ts-expect-error @denovo/canvas/2d rejects 3D scenes at compile time.
+  scene: { id: "bad-3d", mode: "3d", layers: [{ id: "default", name: "Default" }], nodes: [] }
+});
+
+createCanvas("#stage", {
+  document: doc2d,
+  // @ts-expect-error @denovo/canvas/2d rejects WebGL2/Three backends at compile time.
+  renderer: "webgl2"
+});
+
+runtime.update({
+  id: "bad-3d-update",
+  // @ts-expect-error DenovoCanvas2DRuntime.update accepts only 2D scenes.
+  mode: "3d",
+  layers: [{ id: "default", name: "Default" }],
+  nodes: []
+});
+`
+);
+
+writeFileSync(
   path.join(tmpDir, "tsconfig.json"),
   JSON.stringify(
     {
@@ -4048,6 +4152,25 @@ writeFileSync(
   )
 );
 
+writeFileSync(
+  path.join(tmpDir, "facade-2d-tsconfig.json"),
+  JSON.stringify(
+    {
+      extends: "../../tsconfig.base.json",
+      compilerOptions: {
+        lib: ["ES2022", "DOM"],
+        noEmit: true,
+        paths: {
+          [`${facadeName}/2d`]: ["../../packages/canvas/dist/2d.d.ts"]
+        }
+      },
+      include: ["facade-2d-smoke.ts"]
+    },
+    null,
+    2
+  )
+);
+
 try {
   execFileSync("pnpm", ["exec", "tsc", "-p", path.join(tmpDir, "tsconfig.json")], {
     cwd: root,
@@ -4088,6 +4211,14 @@ try {
   execFileSync(
     "pnpm",
     ["exec", "tsc", "-p", path.join(tmpDir, "selectors-tsconfig.json")],
+    {
+      cwd: root,
+      stdio: "pipe"
+    }
+  );
+  execFileSync(
+    "pnpm",
+    ["exec", "tsc", "-p", path.join(tmpDir, "facade-2d-tsconfig.json")],
     {
       cwd: root,
       stdio: "pipe"

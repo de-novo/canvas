@@ -141,6 +141,7 @@ The default package must expose:
 
 The package must also expose:
 
+- `./2d` for the lightweight 2D-only facade entrypoint (`createCanvas`, `connectEditorToCanvas`, `connectEditorToRuntime`, editor/tools/named-operations/selectors, and 2D camera helpers) with zero `three`, `three/webgpu`, or `three-mesh-bvh` imports;
 - `./styles.css` for the styling contract;
 - `./react` for optional React adapter exports (`CanvasView`, `CanvasStage3D`, `useCanvasSelector`, `shallowEqual`);
 - `./web` for host kind drawer registration (`registerPluginNodeDrawer`).

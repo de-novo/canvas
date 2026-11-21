@@ -2080,6 +2080,56 @@ function renderCanvas2DMinimap(
   context.restore();
 }
 
+export { connectCanvasSelection, connectCanvasToolInput } from "./selection";
+export {
+  CanvasSceneChunkCancelledError,
+  createSceneChunkLoader,
+  type CanvasSceneChunkLoader,
+  type CanvasSceneChunkLoaderOptions,
+  type CanvasSceneChunkProgress
+} from "./scene-chunks";
+export {
+  canvasToScenePoint,
+  defineCanvas2DViewState,
+  fitCanvas2DView,
+  flyCanvas2DViewTo,
+  getCanvas2DVisibleBounds,
+  IDENTITY_CANVAS_2D_VIEW,
+  panCanvas2DView,
+  sceneToCanvasPoint,
+  zoomCanvas2DViewAt,
+  type Canvas2DRectBounds,
+  type Canvas2DViewportSize,
+  type Canvas2DViewState,
+  type Canvas2DViewStateInput
+} from "./view2d";
+export {
+  CanvasReadPixelsUnsupportedError,
+  type Canvas2DMinimapOptions,
+  type Canvas2DNavigationOptions,
+  type Canvas2DOptions,
+  type Canvas2DRenderNode,
+  type Canvas2DRenderNodeContext,
+  type Canvas2DViewportRuntime,
+  type CanvasAuthoringRuntime,
+  type CanvasFrame,
+  type CanvasHitSelectionTarget,
+  type CanvasHitTestRuntime,
+  type CanvasNavigationInputCapability,
+  type CanvasNavigationInputRuntime,
+  type CanvasNavigationInputUnsupported,
+  type CanvasNodeTransformHandleRuntime,
+  type CanvasNodeTransformRuntime,
+  type CanvasPointerSelectionOptions,
+  type CanvasRuntimeChange,
+  type CanvasRuntimeChangeListener,
+  type CanvasRuntimeChangeRuntime,
+  type CanvasTarget,
+  type CanvasToolInputTarget,
+  type CreateCanvasOptions,
+  type WebCanvasRuntime
+} from "./types";
+
 
 
 

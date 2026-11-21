@@ -171,3 +171,4 @@ Each entry should include:
 - [2026-11-21 2D high-frequency input rAF render coalescing](./2026-11-21-2d-raf-render-coalescing.md)
 - [2026-11-21 3D sphere instancing batching and per-runtime resource cache](./2026-11-21-3d-sphere-batching-and-resource-cache.md)
 - [2026-11-21 2D minimap cache, HTML overlay diffing, and fast 3D node equality](./2026-11-21-minimap-cache-html-diff-3d-eq.md)
+- [2026-11-21 Lightweight @denovo/canvas/2d entrypoint](./2026-11-21-2d-lightweight-entrypoint.md)
