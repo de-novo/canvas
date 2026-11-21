@@ -26,6 +26,11 @@ export type CanvasPluginNodeDrawer = {
 };
 
 const pluginNodeDrawers = new Map<PluginNodeType, CanvasPluginNodeDrawer>();
+let pluginNodeDrawerRegistryVersion = 0;
+
+export function getPluginNodeDrawerRegistryVersion(): number {
+  return pluginNodeDrawerRegistryVersion;
+}
 
 export function registerPluginNodeDrawer(
   drawer: CanvasPluginNodeDrawer
@@ -49,8 +54,11 @@ export function registerPluginNodeDrawer(
   }
 
   pluginNodeDrawers.set(drawer.type, drawer);
+  pluginNodeDrawerRegistryVersion += 1;
   return () => {
-    pluginNodeDrawers.delete(drawer.type);
+    if (pluginNodeDrawers.delete(drawer.type)) {
+      pluginNodeDrawerRegistryVersion += 1;
+    }
   };
 }
 

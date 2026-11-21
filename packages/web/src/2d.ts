@@ -625,6 +625,7 @@ export function createCanvas2D(
       scene: currentScene,
       sceneGraph,
       selectedIds: selectionIds,
+      spatialIndex,
       transformHandleColors,
       transformHandlePosition: getTransformHandlePosition(),
       transformHandleTarget,

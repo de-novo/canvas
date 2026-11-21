@@ -486,6 +486,8 @@ product-level extension seam, `CanvasPlugin` is a host bundle, and
 
 ## Evidence
 
+- 2026-11-21: 2D WebGPU GPU-resident vertex/atlas/bindGroup caching and `Canvas2DSpatialIndex` viewport culling landed for Issue #4. `pnpm verify:2d-performance` `10k-2d-webgpu` dropped `panRender` p50/p95 from 6.90 ms / 14.40 ms to 0.00 ms / 0.10 ms and GPU triangles from 20,002 to 210 (`drawCalls=1`), alongside `pnpm verify:webgpu` (11/11), `pnpm verify:hit-testing` (7/7), `pnpm verify:public-api`, `pnpm typecheck`, `pnpm build`, and `pnpm verify:docs`. See [2D WebGPU GPU-resident caching](./history/2026-11-21-2d-webgpu-resident-caching.md).
+
 - 2026-11-21: TanStack-style fine-grained selector subscriptions (`subscribeCanvasSelector`, `shallowEqual`, React/Vue/Solid `useCanvasSelector`, Svelte `createCanvasSelectorStore`) landed for Issue #3 and were adopted by Next `MaskHost`. `pnpm verify:selectors` passed (4/4, 0 unnecessary React/Vue/headless updates across 100 hover transitions), along with `pnpm verify:public-api`, `pnpm verify:region-mask` (6/6), `pnpm verify:editor-core`, `pnpm typecheck`, `pnpm build`, and `pnpm verify:docs`. See [selector subscriptions](./history/2026-11-21-selector-subscriptions.md).
 
 - 2026-11-21: 2D spatial index, viewport culling, O(visible) HTML overlay sync, and O(1) node lookups landed for Issue #2. `pnpm verify:2d-performance` passed (10k 2D rects `drawCalls` 10,001 → 28, `panRender` p50 3.70 ms → 0.00 ms, 200 `hitTest` calls 118.5 ms → 0.5 ms, `marquee` p50 3.30 ms → 0.00 ms; 1k HTML overlays `panRender` p50 0.80 ms → 0.10 ms). See [2D spatial index and viewport culling](./history/2026-11-21-2d-spatial-index-viewport-culling.md).

@@ -18,7 +18,10 @@ import { spawn } from "node:child_process";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { launchPixelChromium } from "./lib/chromium.mjs";
+import {
+  launchGpuWebGpuChromium,
+  launchPixelChromium
+} from "./lib/chromium.mjs";
 
 const MEASURE_ONLY = process.argv.includes("--measure-only");
 const REPORT_PATH = "artifacts/verification/performance-2d-report.json";
@@ -26,9 +29,10 @@ const PERF_HTML = "apps/vanilla/perf-2d-bench.html";
 const PORT = 5189;
 
 const WORKLOADS = [
-  { label: "1k-2d-rects", kind: "rects", nodeCount: 1_000, cols: 50 },
-  { label: "10k-2d-rects", kind: "rects", nodeCount: 10_000, cols: 100 },
-  { label: "1k-2d-overlays", kind: "html", nodeCount: 1_000, cols: 50 }
+  { label: "1k-2d-rects", kind: "rects", backend: "canvas2d", nodeCount: 1_000, cols: 50 },
+  { label: "10k-2d-rects", kind: "rects", backend: "canvas2d", nodeCount: 10_000, cols: 100 },
+  { label: "1k-2d-overlays", kind: "html", backend: "canvas2d", nodeCount: 1_000, cols: 50 },
+  { label: "10k-2d-webgpu", kind: "rects", backend: "webgpu", nodeCount: 10_000, cols: 100 }
 ];
 
 const server = await startViteServer();
@@ -39,9 +43,11 @@ const report = {
 
 try {
   await writeFile(PERF_HTML, perf2DBenchHtml());
-  const browser = await launchPixelChromium();
+  const pixelBrowser = await launchPixelChromium();
+  const webgpuBrowser = await launchGpuWebGpuChromium();
   try {
     for (const workload of WORKLOADS) {
+      const browser = workload.backend === "webgpu" ? webgpuBrowser : pixelBrowser;
       const result = await measureWorkload(browser, server.url, workload);
       report.workloads.push(result);
       console.log(
@@ -50,11 +56,12 @@ try {
           `hitTest p50=${result.hitTestMs.p50.toFixed(3)}ms (${result.hitTestTotalMs.toFixed(1)}ms/${result.hitTestCalls}), ` +
           `marquee p50=${result.marqueeMs.p50.toFixed(3)}ms, ` +
           `drawCalls=${result.drawCalls ?? "n/a"}, ` +
+          `triangles=${result.triangles ?? "n/a"}, ` +
           `nonBlank=${result.nonBlank}`
       );
     }
   } finally {
-    await browser.close();
+    await Promise.all([pixelBrowser.close(), webgpuBrowser.close()]);
   }
 } finally {
   server.process.kill("SIGTERM");
@@ -95,6 +102,25 @@ if (!MEASURE_ONLY) {
     `expected 1k-2d-overlays panRender p50 < 16ms, got ${overlays.panRenderMs.p50.toFixed(2)}ms`
   );
 
+  const webgpuTenK = report.workloads.find((item) => item.label === "10k-2d-webgpu");
+  assert.ok(webgpuTenK, "10k-2d-webgpu workload missing");
+  // Spatial culling + GPU-resident caching must keep 10k 2D WebGPU pan well under 16ms
+  // and triangles far below the unculled 20,002 triangles (2 triangles per rect).
+  assert.ok(
+    webgpuTenK.panRenderMs.p50 < 4,
+    `expected 10k-2d-webgpu panRender p50 < 4ms, got ${webgpuTenK.panRenderMs.p50.toFixed(2)}ms`
+  );
+  assert.ok(
+    typeof webgpuTenK.triangles === "number" &&
+      webgpuTenK.triangles > 0 &&
+      webgpuTenK.triangles < 2_000,
+    `expected culled 10k-2d-webgpu triangles in (0, 2000), got ${webgpuTenK.triangles}`
+  );
+  assert.ok(
+    webgpuTenK.hitTestMs.p50 < 1,
+    `expected 10k-2d-webgpu hitTest p50 < 1ms, got ${webgpuTenK.hitTestMs.p50.toFixed(3)}ms`
+  );
+
   for (const item of report.workloads) {
     assert.equal(item.topmostHitOk, true, `${item.label}: topmost z-order hit failed`);
     assert.equal(item.emptyHitOk, true, `${item.label}: empty hit failed`);
@@ -103,13 +129,13 @@ if (!MEASURE_ONLY) {
       assert.equal(item.nonBlank, true, `${item.label}: expected non-blank canvas`);
     }
   }
-  console.log("[perf-2d] all 2D culling, spatial-index, and correctness gates passed");
+  console.log("[perf-2d] all 2D culling, spatial-index, WebGPU caching, and correctness gates passed");
 }
 
 /**
  * @param {import("playwright").Browser} browser
  * @param {string} baseUrl
- * @param {{ label: string, kind: string, nodeCount: number, cols: number }} workload
+ * @param {{ label: string, kind: string, backend: string, nodeCount: number, cols: number }} workload
  */
 async function measureWorkload(browser, baseUrl, workload) {
   const page = await browser.newPage({
@@ -123,7 +149,7 @@ async function measureWorkload(browser, baseUrl, workload) {
     }
   });
   try {
-    const url = `${baseUrl}perf-2d-bench.html?kind=${workload.kind}&count=${workload.nodeCount}&cols=${workload.cols}`;
+    const url = `${baseUrl}perf-2d-bench.html?kind=${workload.kind}&backend=${workload.backend}&count=${workload.nodeCount}&cols=${workload.cols}`;
     await page.goto(url, { waitUntil: "networkidle" });
     await page.waitForFunction(
       // @ts-ignore
@@ -156,6 +182,7 @@ function perf2DBenchHtml() {
 
     const params = new URLSearchParams(location.search);
     const kind = params.get("kind") || "rects";
+    const backend = params.get("backend") || "canvas2d";
     const count = Number(params.get("count") || "1000");
     const cols = Number(params.get("cols") || "50");
     const pitch = 180;
@@ -216,6 +243,7 @@ function perf2DBenchHtml() {
       canvas2d: {
         initialView: { offset: [40, 40], zoom: 1 }
       },
+      renderer: { backend },
       renderNode:
         kind === "html"
           ? (node) => (node.type === "html" ? node.html : "")
@@ -265,16 +293,28 @@ function perf2DBenchHtml() {
 
     // Check non-blank canvas pixels for rect workloads.
     let nonBlank = false;
-    const canvas = host.querySelector("canvas");
-    if (canvas instanceof HTMLCanvasElement) {
-      const ctx = canvas.getContext("2d", { willReadFrequently: true });
-      if (ctx) {
-        const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const first = \`\${data[0]},\${data[1]},\${data[2]}\`;
-        for (let i = 0; i < data.length; i += 64) {
-          if (\`\${data[i]},\${data[i + 1]},\${data[i + 2]}\` !== first) {
-            nonBlank = true;
-            break;
+    if (backend === "webgpu") {
+      const pixels = await runtime.readPixels();
+      const data = pixels.data;
+      const first = \`\${data[0]},\${data[1]},\${data[2]}\`;
+      for (let i = 0; i < data.length; i += 64) {
+        if (\`\${data[i]},\${data[i + 1]},\${data[i + 2]}\` !== first) {
+          nonBlank = true;
+          break;
+        }
+      }
+    } else {
+      const canvas = host.querySelector("canvas");
+      if (canvas instanceof HTMLCanvasElement) {
+        const ctx = canvas.getContext("2d", { willReadFrequently: true });
+        if (ctx) {
+          const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const first = \`\${data[0]},\${data[1]},\${data[2]}\`;
+          for (let i = 0; i < data.length; i += 64) {
+            if (\`\${data[i]},\${data[i + 1]},\${data[i + 2]}\` !== first) {
+              nonBlank = true;
+              break;
+            }
           }
         }
       }
@@ -292,7 +332,9 @@ function perf2DBenchHtml() {
       current.setViewState({ offset: [-200 - i * 35, -150 - i * 25], zoom: 1 });
       panSamples.push(performance.now() - t0);
     }
-    const drawCalls = runtime.getRenderStats()?.drawCalls ?? null;
+    const finalStats = runtime.getRenderStats();
+    const drawCalls = finalStats?.drawCalls ?? null;
+    const triangles = finalStats?.triangles ?? null;
 
     // Measure 200 hitTest calls across the viewport
     const hitCalls = 200;
@@ -340,7 +382,8 @@ function perf2DBenchHtml() {
         p50: percentile(panSamples, 0.5),
         p95: percentile(panSamples, 0.95)
       },
-      topmostHitOk
+      topmostHitOk,
+      triangles
     };
   </script>
 </body>

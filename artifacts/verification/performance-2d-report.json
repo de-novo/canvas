@@ -1,36 +1,12 @@
 {
-  "measuredAt": "2026-11-21T07:54:15.424Z",
+  "measuredAt": "2026-11-21T08:13:11.179Z",
   "workloads": [
     {
       "label": "1k-2d-rects",
       "kind": "rects",
+      "backend": "canvas2d",
       "nodeCount": 1000,
       "cols": 50,
-      "drawCalls": 28,
-      "emptyHitOk": true,
-      "hitTestCalls": 200,
-      "hitTestMs": {
-        "p50": 0,
-        "p95": 0
-      },
-      "hitTestTotalMs": 0.5999999046325684,
-      "marqueeMs": {
-        "p50": 0,
-        "p95": 0.09999990463256836
-      },
-      "marqueeParityOk": true,
-      "nonBlank": true,
-      "panRenderMs": {
-        "p50": 0,
-        "p95": 0.09999990463256836
-      },
-      "topmostHitOk": true
-    },
-    {
-      "label": "10k-2d-rects",
-      "kind": "rects",
-      "nodeCount": 10000,
-      "cols": 100,
       "drawCalls": 28,
       "emptyHitOk": true,
       "hitTestCalls": 200,
@@ -49,11 +25,40 @@
         "p50": 0,
         "p95": 0.09999990463256836
       },
-      "topmostHitOk": true
+      "topmostHitOk": true,
+      "triangles": null
+    },
+    {
+      "label": "10k-2d-rects",
+      "kind": "rects",
+      "backend": "canvas2d",
+      "nodeCount": 10000,
+      "cols": 100,
+      "drawCalls": 28,
+      "emptyHitOk": true,
+      "hitTestCalls": 200,
+      "hitTestMs": {
+        "p50": 0,
+        "p95": 0
+      },
+      "hitTestTotalMs": 0.5999999046325684,
+      "marqueeMs": {
+        "p50": 0,
+        "p95": 0.09999990463256836
+      },
+      "marqueeParityOk": true,
+      "nonBlank": true,
+      "panRenderMs": {
+        "p50": 0,
+        "p95": 0.09999990463256836
+      },
+      "topmostHitOk": true,
+      "triangles": null
     },
     {
       "label": "1k-2d-overlays",
       "kind": "html",
+      "backend": "canvas2d",
       "nodeCount": 1000,
       "cols": 50,
       "drawCalls": 0,
@@ -63,7 +68,7 @@
         "p50": 0,
         "p95": 0
       },
-      "hitTestTotalMs": 1.6999998092651367,
+      "hitTestTotalMs": 1,
       "marqueeMs": {
         "p50": 0,
         "p95": 0
@@ -72,9 +77,37 @@
       "nonBlank": false,
       "panRenderMs": {
         "p50": 0.09999990463256836,
-        "p95": 0.19999980926513672
+        "p95": 0.10000038146972656
       },
-      "topmostHitOk": true
+      "topmostHitOk": true,
+      "triangles": null
+    },
+    {
+      "label": "10k-2d-webgpu",
+      "kind": "rects",
+      "backend": "webgpu",
+      "nodeCount": 10000,
+      "cols": 100,
+      "drawCalls": 1,
+      "emptyHitOk": true,
+      "hitTestCalls": 200,
+      "hitTestMs": {
+        "p50": 0,
+        "p95": 0
+      },
+      "hitTestTotalMs": 0.6000003814697266,
+      "marqueeMs": {
+        "p50": 0,
+        "p95": 0.09999990463256836
+      },
+      "marqueeParityOk": true,
+      "nonBlank": true,
+      "panRenderMs": {
+        "p50": 0,
+        "p95": 0.10000038146972656
+      },
+      "topmostHitOk": true,
+      "triangles": 210
     }
   ]
 }

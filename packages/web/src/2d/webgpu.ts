@@ -20,9 +20,18 @@ import {
   type CanvasNodeTransformPreview
 } from "@denovo/canvas-core";
 
-import type { Canvas2DViewState } from "../view2d";
+import {
+  getCanvas2DVisibleBounds,
+  type Canvas2DRectBounds,
+  type Canvas2DViewState
+} from "../view2d";
+import {
+  resolveLiveParentWorldTransform,
+  type Canvas2DSpatialIndex
+} from "./spatial-index";
 import type { CanvasRenderStats } from "../types";
 import {
+  getPluginNodeDrawerRegistryVersion,
   PLUGIN_NODE_MARKER_FILL,
   resolveHostPluginNodeDraw2d
 } from "../plugin-drawers";
@@ -184,6 +193,7 @@ export type Canvas2DWebGpuFrame = {
   readonly scene: Canvas2DScene;
   readonly sceneGraph: Canvas2DSceneGraph;
   readonly selectedIds: ReadonlySet<string>;
+  readonly spatialIndex?: Canvas2DSpatialIndex;
   readonly transformHandleColors: Canvas2DTransformHandleColors;
   readonly transformHandlePosition: readonly [number, number] | null;
   readonly transformHandleTarget: CanvasNodeTransformHandleTarget | null;
@@ -309,13 +319,44 @@ export async function createCanvas2DWebGpuPresenter(
     { width: 1, height: 1 }
   );
 
+  const FULL_SCENE_CACHE_THRESHOLD = 512;
+
+  function makeBindGroup(texture: GPUTexture): GPUBindGroup {
+    return device.createBindGroup({
+      layout: bindGroupLayout,
+      entries: [
+        { binding: 0, resource: { buffer: uniformBuffer } },
+        { binding: 1, resource: sampler },
+        { binding: 2, resource: texture.createView() }
+      ]
+    });
+  }
+
   let atlasTexture = whiteTexture;
+  let bindGroup = makeBindGroup(whiteTexture);
   let vertexBuffer: GPUBuffer | null = null;
   let vertexCapacity = 0;
+  let cachedVertexCount = 0;
   let drawCalls = 0;
   let triangles = 0;
   let destroyed = false;
   let lastFrame: Canvas2DWebGpuFrame | null = null;
+  let cachedClearCss: string | null = null;
+  let cachedClearRgba: GpuColor = [0, 0, 0, 1];
+  const uniforms = new Float32Array(8);
+  let geometryCache: {
+    readonly contentColors: Canvas2DContentColors;
+    readonly coveredBounds: Canvas2DRectBounds | null;
+    readonly coversFullScene: boolean;
+    readonly drawerRegistryVersion: number;
+    readonly hasAnimatedShade: boolean;
+    readonly hoveredId: string | null;
+    readonly scene: Canvas2DScene;
+    readonly sceneGraph: Canvas2DSceneGraph;
+    readonly selectedIds: ReadonlySet<string>;
+    readonly transformPreview: CanvasNodeTransformPreview | null;
+    readonly viewIndependent: boolean;
+  } | null = null;
   let pendingReadback: {
     buffer: GPUBuffer;
     bytesPerRow: number;
@@ -342,6 +383,29 @@ export async function createCanvas2DWebGpuPresenter(
     void pixelHeight;
   }
 
+  function boundsContains(
+    outer: Canvas2DRectBounds,
+    inner: Canvas2DRectBounds
+  ): boolean {
+    return (
+      outer.minX <= inner.minX &&
+      outer.minY <= inner.minY &&
+      outer.maxX >= inner.maxX &&
+      outer.maxY >= inner.maxY
+    );
+  }
+
+  function padBoundsForPanCache(bounds: Canvas2DRectBounds): Canvas2DRectBounds {
+    const padX = Math.max(128, (bounds.maxX - bounds.minX) * 0.5);
+    const padY = Math.max(128, (bounds.maxY - bounds.minY) * 0.5);
+    return {
+      minX: bounds.minX - padX,
+      minY: bounds.minY - padY,
+      maxX: bounds.maxX + padX,
+      maxY: bounds.maxY + padY
+    };
+  }
+
   function render(frame: Canvas2DWebGpuFrame) {
     if (destroyed) {
       return;
@@ -349,66 +413,114 @@ export async function createCanvas2DWebGpuPresenter(
 
     const width = Math.max(1, frame.resizeState.width);
     const height = Math.max(1, frame.resizeState.height);
-    const batch = new VertexBatch(frame.measureContext);
-    recordFrame(batch, frame);
-    const packed = batch.pack();
-    const vertexCount = packed.vertexCount;
-    triangles = vertexCount / 3;
-    drawCalls = vertexCount === 0 ? 0 : 1;
-
-    if (vertexCount > 0) {
-      const byteLength = packed.vertices.byteLength;
-      if (!vertexBuffer || vertexCapacity < byteLength) {
-        vertexBuffer?.destroy();
-        vertexCapacity = Math.max(byteLength, 4096);
-        vertexBuffer = device.createBuffer({
-          size: vertexCapacity,
-          usage: GPU_BUFFER_USAGE_VERTEX | GPU_BUFFER_USAGE_COPY_DST
-        });
-      }
-      device.queue.writeBuffer(vertexBuffer, 0, packed.vertices);
-    }
-
-    if (atlasTexture !== whiteTexture) {
-      atlasTexture.destroy();
-      atlasTexture = whiteTexture;
-    }
-    if (packed.atlas) {
-      atlasTexture = device.createTexture({
-        format: "rgba8unorm",
-        size: { width: packed.atlas.width, height: packed.atlas.height },
-        usage: GPU_TEXTURE_USAGE_TEXTURE_BINDING | GPU_TEXTURE_USAGE_COPY_DST
-      });
-      device.queue.writeTexture(
-        { texture: atlasTexture },
-        packed.atlas.data,
-        { bytesPerRow: packed.atlas.width * 4 },
-        { width: packed.atlas.width, height: packed.atlas.height }
-      );
-    }
-
-    const uniforms = new Float32Array([
-      frame.viewState.offset[0],
-      frame.viewState.offset[1],
-      frame.viewState.zoom,
-      0,
+    const visibleBounds = getCanvas2DVisibleBounds(frame.viewState, {
       width,
-      height,
-      0,
-      0
-    ]);
+      height
+    });
+    const drawerRegistryVersion = getPluginNodeDrawerRegistryVersion();
+    const viewIndependent =
+      frame.authoringPreviews.length === 0 &&
+      !frame.connectionHandlesVisible &&
+      !(frame.transformHandleTarget !== null && frame.transformHandlePosition !== null);
+
+    const canReuseGeometry =
+      geometryCache !== null &&
+      viewIndependent &&
+      geometryCache.viewIndependent &&
+      !geometryCache.hasAnimatedShade &&
+      geometryCache.scene === frame.scene &&
+      geometryCache.sceneGraph === frame.sceneGraph &&
+      geometryCache.selectedIds === frame.selectedIds &&
+      geometryCache.hoveredId === frame.hoveredId &&
+      geometryCache.transformPreview === frame.transformPreview &&
+      geometryCache.contentColors === frame.contentColors &&
+      geometryCache.drawerRegistryVersion === drawerRegistryVersion &&
+      (geometryCache.coversFullScene ||
+        (geometryCache.coveredBounds !== null &&
+          boundsContains(geometryCache.coveredBounds, visibleBounds)));
+
+    if (!canReuseGeometry) {
+      const useSpatialCulling =
+        frame.spatialIndex !== undefined &&
+        frame.spatialIndex.entries.length > FULL_SCENE_CACHE_THRESHOLD;
+      const cullBounds = useSpatialCulling
+        ? padBoundsForPanCache(visibleBounds)
+        : null;
+
+      const batch = new VertexBatch(frame.measureContext);
+      const { hasAnimatedShade } = recordFrame(batch, frame, cullBounds);
+      const packed = batch.pack();
+      cachedVertexCount = packed.vertexCount;
+      triangles = cachedVertexCount / 3;
+      drawCalls = cachedVertexCount === 0 ? 0 : 1;
+
+      if (cachedVertexCount > 0) {
+        const byteLength = packed.vertices.byteLength;
+        if (!vertexBuffer || vertexCapacity < byteLength) {
+          vertexBuffer?.destroy();
+          vertexCapacity = Math.max(byteLength, 4096);
+          vertexBuffer = device.createBuffer({
+            size: vertexCapacity,
+            usage: GPU_BUFFER_USAGE_VERTEX | GPU_BUFFER_USAGE_COPY_DST
+          });
+        }
+        device.queue.writeBuffer(vertexBuffer, 0, packed.vertices);
+      }
+
+      let atlasChanged = false;
+      if (atlasTexture !== whiteTexture) {
+        atlasTexture.destroy();
+        atlasTexture = whiteTexture;
+        atlasChanged = true;
+      }
+      if (packed.atlas) {
+        atlasTexture = device.createTexture({
+          format: "rgba8unorm",
+          size: { width: packed.atlas.width, height: packed.atlas.height },
+          usage: GPU_TEXTURE_USAGE_TEXTURE_BINDING | GPU_TEXTURE_USAGE_COPY_DST
+        });
+        device.queue.writeTexture(
+          { texture: atlasTexture },
+          packed.atlas.data,
+          { bytesPerRow: packed.atlas.width * 4 },
+          { width: packed.atlas.width, height: packed.atlas.height }
+        );
+        atlasChanged = true;
+      }
+      if (atlasChanged) {
+        bindGroup = makeBindGroup(atlasTexture);
+      }
+
+      geometryCache = {
+        contentColors: frame.contentColors,
+        coveredBounds: cullBounds,
+        coversFullScene: !useSpatialCulling,
+        drawerRegistryVersion,
+        hasAnimatedShade,
+        hoveredId: frame.hoveredId,
+        scene: frame.scene,
+        sceneGraph: frame.sceneGraph,
+        selectedIds: frame.selectedIds,
+        transformPreview: frame.transformPreview,
+        viewIndependent
+      };
+    }
+
+    uniforms[0] = frame.viewState.offset[0];
+    uniforms[1] = frame.viewState.offset[1];
+    uniforms[2] = frame.viewState.zoom;
+    uniforms[3] = 0;
+    uniforms[4] = width;
+    uniforms[5] = height;
+    uniforms[6] = 0;
+    uniforms[7] = 0;
     device.queue.writeBuffer(uniformBuffer, 0, uniforms);
 
-    const bindGroup = device.createBindGroup({
-      layout: bindGroupLayout,
-      entries: [
-        { binding: 0, resource: { buffer: uniformBuffer } },
-        { binding: 1, resource: sampler },
-        { binding: 2, resource: atlasTexture.createView() }
-      ]
-    });
-
-    const clear = cssToRgba(frame.measureContext, frame.scene.background);
+    if (cachedClearCss !== frame.scene.background) {
+      cachedClearCss = frame.scene.background;
+      cachedClearRgba = cssToRgba(frame.measureContext, frame.scene.background);
+    }
+    const clear = cachedClearRgba;
     const encoder = device.createCommandEncoder();
     const colorTexture = context.getCurrentTexture();
     const pass = encoder.beginRenderPass({
@@ -423,9 +535,9 @@ export async function createCanvas2DWebGpuPresenter(
     });
     pass.setPipeline(pipeline);
     pass.setBindGroup(0, bindGroup);
-    if (vertexBuffer && vertexCount > 0) {
+    if (vertexBuffer && cachedVertexCount > 0) {
       pass.setVertexBuffer(0, vertexBuffer);
-      pass.draw(vertexCount);
+      pass.draw(cachedVertexCount);
     }
     pass.end();
     if (pendingReadback) {
@@ -928,30 +1040,71 @@ function cssToRgba(
   ];
 }
 
-function recordFrame(batch: VertexBatch, frame: Canvas2DWebGpuFrame) {
+function recordFrame(
+  batch: VertexBatch,
+  frame: Canvas2DWebGpuFrame,
+  cullBounds: Canvas2DRectBounds | null
+): { readonly hasAnimatedShade: boolean } {
   recordGridPreviews(batch, frame);
-  recordScene(batch, frame);
+  const hasAnimatedShade = recordScene(batch, frame, cullBounds);
   recordOverlayPreviews(batch, frame);
   if (frame.connectionHandlesVisible) {
     recordConnectionHandles(batch, frame);
   }
   recordTransformHandles(batch, frame);
+  return { hasAnimatedShade };
 }
 
-function recordScene(batch: VertexBatch, frame: Canvas2DWebGpuFrame) {
+function recordScene(
+  batch: VertexBatch,
+  frame: Canvas2DWebGpuFrame,
+  cullBounds: Canvas2DRectBounds | null
+): boolean {
+  let hasAnimatedShade = false;
+
+  if (frame.spatialIndex && cullBounds) {
+    const candidates = frame.spatialIndex.queryRect(
+      cullBounds,
+      frame.transformPreview,
+      frame.sceneGraph
+    );
+    for (let i = 0; i < candidates.length; i += 1) {
+      const entry = candidates[i]!;
+      const node = entry.node;
+      if (node.type === "edge") {
+        recordEdge(
+          batch,
+          node,
+          frame,
+          frame.selectedIds.has(node.id),
+          frame.hoveredId === node.id
+        );
+        continue;
+      }
+      if (isDenovoShadeNode(node)) {
+        hasAnimatedShade = true;
+      }
+      const parentWorldTransform = resolveLiveParentWorldTransform(
+        entry,
+        frame.sceneGraph,
+        frame.transformPreview
+      );
+      recordDrawable(batch, node, frame, parentWorldTransform);
+    }
+    return hasAnimatedShade;
+  }
+
   for (const layer of frame.scene.layers) {
     if (!layer.visible) {
       continue;
     }
     for (const root of getCanvas2DLayerRoots(frame.sceneGraph, layer.id)) {
-      recordTreeNode(
-        batch,
-        root,
-        frame,
-        CANVAS_2D_IDENTITY_MATRIX
-      );
+      if (recordTreeNode(batch, root, frame, CANVAS_2D_IDENTITY_MATRIX)) {
+        hasAnimatedShade = true;
+      }
     }
   }
+  return hasAnimatedShade;
 }
 
 function recordTreeNode(
@@ -959,9 +1112,9 @@ function recordTreeNode(
   node: Canvas2DNode,
   frame: Canvas2DWebGpuFrame,
   parentWorldTransform: Canvas2DMatrix
-) {
+): boolean {
   if (!node.visible) {
-    return;
+    return false;
   }
   if (node.type === "edge") {
     recordEdge(
@@ -971,19 +1124,23 @@ function recordTreeNode(
       frame.selectedIds.has(node.id),
       frame.hoveredId === node.id
     );
-    return;
+    return false;
   }
   if (node.type !== "group") {
     recordDrawable(batch, node, frame, parentWorldTransform);
-    return;
+    return isDenovoShadeNode(node);
   }
   const worldTransform = multiplyCanvas2DMatrices(
     parentWorldTransform,
     createCanvas2DTransformMatrix(resolveNodeRenderTransform(node, frame.transformPreview))
   );
+  let hasAnimatedShade = false;
   for (const child of getCanvas2DGroupChildren(frame.sceneGraph, node.id)) {
-    recordTreeNode(batch, child, frame, worldTransform);
+    if (recordTreeNode(batch, child, frame, worldTransform)) {
+      hasAnimatedShade = true;
+    }
   }
+  return hasAnimatedShade;
 }
 
 function recordDrawable(
