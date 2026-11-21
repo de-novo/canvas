@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: 2026-09-07.
+Last updated: 2026-11-21.
 
 This is the canonical project status index. Keep milestone definitions in
 [Vision and Milestones](./vision-and-milestones.md); keep chronological evidence
@@ -485,6 +485,10 @@ product-level extension seam, `CanvasPlugin` is a host bundle, and
 - None.
 
 ## Evidence
+
+- 2026-11-21: The release board edits a selected card’s title and status in one undo step. Desktop mouse and mobile-emulated Chromium touch both verify that saving and reopening restores edited content, card positions and new connectors. See [release board card editing](./history/2026-11-21-release-board-editing.md).
+
+- 2026-11-20: Next mask visibility, undo and redo passed through desktop mouse clicks and mobile-emulated Chromium taps in `pnpm verify:region-mask` (6/6). See [mask editing controls](./history/2026-11-20-mask-editing-controls.md).
 
 - Next playground region/mask host (2026-09-07). `pnpm verify:region-mask`
   6/6 including Next `/mask` desktop and iPhone 14. `pnpm verify:public-api`

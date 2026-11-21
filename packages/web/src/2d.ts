@@ -727,7 +727,12 @@ export function createCanvas2D(
       // html origin is top-left, not the visual middle. A point test at that
       // origin hides a card whose body still intersects the view, while canvas
       // edges keep drawing to the card's ports.
-      const bounds = resolveCanvas2DNodeWorldBounds(node, sceneGraph);
+      let previewNode = node;
+      if (transformPreview?.nodeId === id) {
+        const { position, rotation, scale } = resolveNodeRenderTransform(node, transformPreview);
+        previewNode = { ...node, position: [...position], rotation, scale: [...scale] };
+      }
+      const bounds = resolveCanvas2DNodeWorldBounds(previewNode, sceneGraph);
       const onScreen = rectsIntersect(bounds, {
         minX: visible.minX - OVERLAY_CULL_PAD,
         minY: visible.minY - OVERLAY_CULL_PAD,

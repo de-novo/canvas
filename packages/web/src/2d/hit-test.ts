@@ -427,11 +427,12 @@ export function assertCanvas2DTransformNode(
 ): asserts node is Canvas2DTransformNode {
   if (
     !isCanvas2DShapeNode(node) &&
+    node.type !== "html" &&
     node.type !== "group" &&
     !isPluginNodeType(node.type)
   ) {
     throw new Error(
-      `Canvas2D transforms support rect, circle, group, and plugin nodes; received ${node.type}: ${node.id}`
+      `Canvas2D transforms support rect, circle, html, group, and plugin nodes; received ${node.type}: ${node.id}`
     );
   }
 }

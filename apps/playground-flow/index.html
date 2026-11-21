@@ -19,8 +19,8 @@
         <p class="eyebrow">Absorbed showcase</p>
         <h1>Release board</h1>
         <p>
-          A delivery board a product would keep: cards, edges, and labels as
-          one Denovo document. No iframe. Select a card, hide labels, undo.
+          Select a card to edit its title and status. Use Move to reposition it
+          or Connect to link two cards. Save the board to reopen it in this browser.
         </p>
         <div class="controls">
           <button id="select-tool" type="button" data-denovo-control="select">
@@ -53,7 +53,14 @@
           <button id="undo" type="button" data-denovo-control="undo">
             Undo
           </button>
+          <button id="save-board" type="button">Save board</button>
         </div>
+        <output id="storage-notice" aria-live="polite"></output>
+        <form id="card-editor" class="controls" hidden>
+          <label>Card title <input id="card-title" required /></label>
+          <label>Status <select id="card-status"></select></label>
+          <button type="submit">Apply changes</button>
+        </form>
         <p class="status">
           Status: <output id="status">idle</output>
         </p>

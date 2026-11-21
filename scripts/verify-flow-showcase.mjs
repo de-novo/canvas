@@ -119,13 +119,26 @@ try {
       assert.equal(restored?.labelVisible, true);
       assert.equal(restored?.undoDepth, 0);
 
+      await page.getByLabel("Card title").fill("Prepare release");
+      await page.locator("#card-status").selectOption("review");
+      await page.getByRole("button", { name: "Apply changes" }).click();
+      const card = page.locator('[data-flow-card="build"]');
+      await card.locator(".flow-card-title", { hasText: "Prepare release" }).waitFor();
+      assert.equal(await card.getAttribute("data-flow-status"), "review");
+      assert.equal(await page.evaluate(() => window.__flowShowcase.undoDepth), 1);
+      await page.getByRole("button", { name: "Undo" }).click();
+      await card.locator(".flow-card-title", { hasText: "Build" }).waitFor();
+      assert.equal(await card.getAttribute("data-flow-status"), "progress");
+      assert.equal(await page.getByLabel("Card title").inputValue(), "Build");
+
+      await verifySavedEdits(page, false);
       assert.deepEqual(consoleErrors, []);
     } finally {
       await browser.close();
     }
   });
 
-  await check("flow-showcase-mobile-paints-without-iframe", async () => {
+  await check("flow-showcase-mobile-touch-edits-and-restores", async () => {
     const browser = await launchPixelChromium();
     try {
       const page = await browser.newPage({
@@ -141,6 +154,9 @@ try {
       );
       assert.equal(await page.locator("iframe").count(), 0);
       assert.equal(await page.locator("[data-flow-card]").count(), 5);
+      const point = await pickCard(page, "build");
+      await page.touchscreen.tap(point.x, point.y);
+      await verifySavedEdits(page, true);
       mkdirSync(path.dirname(mobileShot), { recursive: true });
       await page.screenshot({ path: mobileShot, fullPage: true });
     } finally {
@@ -152,6 +168,91 @@ try {
 }
 
 report();
+
+async function pickCard(page, id) {
+  await page.locator("#stage").scrollIntoViewIfNeeded();
+  return page.evaluate(id => {
+    const runtime = window.__denovoRuntime;
+    const rect = runtime.canvas.getBoundingClientRect();
+    const bounds = runtime.current.resolveNodeBounds([id]).get(id);
+    for (const fraction of [0.25, 0.4, 0.65]) {
+      const point = runtime.current.sceneToCanvas([
+        bounds.minX + fraction * (bounds.maxX - bounds.minX),
+        bounds.minY + fraction * (bounds.maxY - bounds.minY)
+      ]);
+      const hit = runtime.hitTest({ point });
+      if (hit.kind === "node" && hit.nodeId === id) {
+        return { x: rect.left + point[0], y: rect.top + point[1] };
+      }
+    }
+    throw new Error("Could not pick " + id);
+  }, id);
+}
+
+async function verifySavedEdits(page, touch) {
+  const card = page.locator('[data-flow-card="build"]');
+  const press = name => {
+    const button = page.getByRole("button", { name, exact: true });
+    return touch ? button.tap() : button.click();
+  };
+  await page.getByLabel("Card title").fill("Release candidate");
+  await page.locator("#card-status").selectOption("review");
+  await press("Apply changes");
+  await card.getByText("Release candidate").waitFor();
+
+  async function cardOffsetY(id) {
+    await page.locator("#stage").scrollIntoViewIfNeeded();
+    const bounds = await page.locator(`[data-flow-card="${id}"]`).boundingBox();
+    assert.ok(bounds);
+    const stage = await page.locator("#stage").boundingBox();
+    assert.ok(stage);
+    return bounds.y - stage.y;
+  }
+  async function drag(from, to) {
+    if (touch) {
+      const session = await page.context().newCDPSession(page);
+      try {
+        await session.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [from] });
+        for (let step = 1; step <= 10; step++) {
+          const x = from.x + (to.x - from.x) * step / 10;
+          const y = from.y + (to.y - from.y) * step / 10;
+          await session.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x, y }] });
+        }
+        await session.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+      } finally {
+        await session.detach();
+      }
+      return;
+    }
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    await page.mouse.move(to.x, to.y, { steps: 10 });
+    await page.mouse.up();
+  }
+  const original = await cardOffsetY("build");
+  await press("Move");
+  const grip = await pickCard(page, "build");
+  await drag(grip, { x: grip.x, y: grip.y + 65 });
+  await page.waitForFunction(() => window.__flowShowcase.undoDepth === 2, undefined, { timeout: 4000 }).catch(() => { throw new Error("Card move did not commit"); });
+  const moved = await cardOffsetY("build");
+  assert.ok(moved > original + 20);
+  await press("Connect");
+  await drag(await pickCard(page, "intake"), await pickCard(page, "build"));
+  await page.waitForFunction(() => window.__flowShowcase.undoDepth === 3, undefined, { timeout: 4000 }).catch(() => { throw new Error("Connector did not commit"); });
+
+  const snapshot = () => page.evaluate(() => window.__denovoEditor.getState().document);
+  const saved = await snapshot();
+  assert.ok(saved.scene.nodes.some(node => node.type === "edge" &&
+    node.sourceId === "intake" && node.targetId === "build"));
+  await press("Save board");
+  await page.getByText("Saved in this browser.").waitFor();
+  await page.reload();
+  await page.getByText("Opened saved board.").waitFor();
+  await card.getByText("Release candidate").waitFor();
+  assert.equal(await card.getAttribute("data-flow-status"), "review");
+  assert.deepEqual(await snapshot(), saved);
+  assert.ok(Math.abs((await cardOffsetY("build")) - moved) < 1);
+}
 
 /**
  * @param {import("playwright").Page} page

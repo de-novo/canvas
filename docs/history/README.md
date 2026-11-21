@@ -163,3 +163,5 @@ Each entry should include:
 - [2026-09-06 GPU 16 ms frame budget](./2026-09-06-gpu-frame-budget-gate.md)
 - [2026-09-07 Status hygiene and 3D WebGPU 16 ms](./2026-09-07-status-hygiene-webgpu-frame-budget.md)
 - [2026-09-07 Next playground region/mask host](./2026-09-07-playground-region-mask-host.md)
+- [2026-11-20 mask editing controls](./2026-11-20-mask-editing-controls.md)
+- [2026-11-21 release board card editing](./2026-11-21-release-board-editing.md)

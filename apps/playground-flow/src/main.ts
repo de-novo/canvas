@@ -6,6 +6,7 @@ import {
   createSelectTool,
   createTransformTool,
   listNodes,
+  parseDocumentJson,
   setLayerVisible,
   type Canvas2DNode,
   type Canvas2DRenderNodeContext,
@@ -13,7 +14,7 @@ import {
 } from "@denovo/canvas";
 import "@denovo/canvas/styles.css";
 
-import { renderFlowCard } from "./cards";
+import { encodeFlowCard, FLOW_CARD_STATUSES, readFlowCard, renderFlowCard } from "./cards";
 import { createReleaseBoardDocument, FLOW_LABEL_LAYER_ID } from "./document";
 import "./styles.css";
 
@@ -26,7 +27,27 @@ if (!stage) {
 }
 
 const host = stage;
-const documentModel = createReleaseBoardDocument();
+const boardStorageKey = "denovo.playground.flow.release-board";
+const storageNotice = document.querySelector<HTMLOutputElement>("#storage-notice")!;
+
+function openBoard() {
+  try {
+    const saved = localStorage.getItem(boardStorageKey);
+    if (saved !== null) {
+      const board = parseDocumentJson(saved);
+      if (board.id !== "flow-release-board" || board.scene.mode !== "2d") {
+        throw new Error("Unexpected board document");
+      }
+      storageNotice.textContent = "Opened saved board.";
+      return board;
+    }
+  } catch {
+    storageNotice.textContent = "Could not open the saved board. Showing the example.";
+  }
+  return createReleaseBoardDocument();
+}
+
+const documentModel = openBoard();
 
 const renderNode = (
   node: Canvas2DNode,
@@ -60,8 +81,8 @@ editor.registerTool(
     operation: "translate"
   })
 );
-editor.registerTool(
-  createConnectorTool({
+editor.registerTool({
+  ...createConnectorTool({
     createId: () => `edge-${Math.random().toString(36).slice(2, 8)}`,
     id: "flow.connect",
     label: "Connect",
@@ -69,9 +90,56 @@ editor.registerTool(
     mode: "2d",
     stroke: "#64748b",
     strokeWidth: 2
-  })
-);
+  }),
+  // Reserve the primary drag for drawing an edge on this board.
+  navigation: "block"
+});
 editor.activateTool("flow.select");
+
+const form = document.querySelector<HTMLFormElement>("#card-editor")!;
+const titleInput = document.querySelector<HTMLInputElement>("#card-title")!;
+const statusInput = document.querySelector<HTMLSelectElement>("#card-status")!;
+for (const status of FLOW_CARD_STATUSES) {
+  statusInput.add(new Option(status, status));
+}
+
+function selectedCard() {
+  const { document, selection } = editor.getState();
+  const node = document.scene.nodes.find(item => item.id === selection.primaryId);
+  if (node?.type !== "html") return null;
+  const card = readFlowCard(node);
+  return card && { node, card };
+}
+
+let displayedCard: string | undefined;
+function refreshCardForm() {
+  const selected = selectedCard();
+  form.hidden = !selected;
+  const key = selected && JSON.stringify([selected.node.id, selected.node.html]);
+  if (selected && key !== displayedCard) {
+    titleInput.value = selected.card.title;
+    statusInput.value = selected.card.status;
+  }
+  displayedCard = key ?? undefined;
+}
+
+form.addEventListener("submit", async event => {
+  event.preventDefault();
+  const selected = selectedCard();
+  const status = FLOW_CARD_STATUSES.find(value => value === statusInput.value);
+  const title = titleInput.value.trim();
+  if (!selected || !status || !title) return;
+  const html = encodeFlowCard({ ...selected.card, title, status });
+  if (html === selected.node.html) return;
+  try {
+    await editor.dispatch({
+      type: "node.update", nodeMode: "2d", nodeType: "html",
+      nodeId: selected.node.id, patch: { html }
+    });
+  } catch (error) {
+    if (statusOutput) statusOutput.textContent = String(error);
+  }
+});
 
 type FlowShowcaseProbe = {
   iframeCount: number;
@@ -114,6 +182,7 @@ function publishProbe(): FlowShowcaseProbe {
 }
 
 editor.subscribe(() => {
+  refreshCardForm();
   publishProbe();
 });
 
@@ -173,6 +242,14 @@ requireButton("show-labels").addEventListener("click", () => {
       }
       publishProbe();
     });
+});
+requireButton("save-board").addEventListener("click", () => {
+  try {
+    localStorage.setItem(boardStorageKey, JSON.stringify(editor.getState().document));
+    storageNotice.textContent = "Saved in this browser.";
+  } catch {
+    storageNotice.textContent = "Could not save in this browser.";
+  }
 });
 requireButton("undo").addEventListener("click", () => {
   void editor.undo().then(() => {

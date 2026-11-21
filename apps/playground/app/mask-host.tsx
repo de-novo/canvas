@@ -121,22 +121,18 @@ export function MaskHost({ className }: { className: string }) {
       window as Window & { __playgroundMask?: typeof result }
     ).__playgroundMask = result;
     setHostReady(true);
-    (
-      window as Window & {
-        __playgroundMaskHideRect?: () => Promise<void>;
-      }
-    ).__playgroundMaskHideRect = () =>
-      editor
-        .apply([
-          setNodeVisible({
-            nodeId: "mask-rect",
-            visible: false
-          })
-        ])
-        .then(() => {
-          setDocumentModel(editor.getState().document);
-        });
-  }, [editor, listed, mask, rectHidden]);
+  }, [listed, mask, rectHidden]);
+
+  const [editError, setEditError] = useState("");
+  async function edit(action: () => Promise<unknown>) {
+    try {
+      await action();
+      setDocumentModel(editor.getState().document);
+      setEditError("");
+    } catch (error) {
+      setEditError(String(error));
+    }
+  }
 
   return (
     <div
@@ -163,26 +159,17 @@ export function MaskHost({ className }: { className: string }) {
           data-denovo-hide-rect="true"
           type="button"
           variant="outline"
-          onClick={() => {
-            void editor
-              .apply([
-                setNodeVisible({
-                  nodeId: "mask-rect",
-                  visible: !rectHidden
-                })
-              ])
-              .then(() => {
-                setDocumentModel(editor.getState().document);
-              })
-              .catch((error: unknown) => {
-                (
-                  window as Window & { __playgroundMaskError?: string }
-                ).__playgroundMaskError = String(error);
-              });
-          }}
+          onClick={() => void edit(() => editor.apply([
+            setNodeVisible({ nodeId: "mask-rect", visible: rectHidden })
+          ]))}
         >
           {rectHidden ? "Show rect mask" : "Hide rect mask"}
         </Button>
+        <Button type="button" variant="outline" disabled={!editor.canUndo()}
+          onClick={() => void edit(() => editor.undo())}>Undo</Button>
+        <Button type="button" variant="outline" disabled={!editor.canRedo()}
+          onClick={() => void edit(() => editor.redo())}>Redo</Button>
+        {editError && <p role="alert">{editError}</p>}
         <p className="m-0 text-xs text-muted-foreground">
           Host mask pixels {mask.pixelCount}. Canvas ships the region
           document; this playground rasterizes JSON here.

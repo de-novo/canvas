@@ -283,6 +283,7 @@ try {
   });
   await check("playground-host-region-mask-mobile", async () => {
     await verifyPlaygroundMask({
+      touch: true,
       viewport: devices["iPhone 14"].viewport
     });
   });
@@ -314,13 +315,14 @@ function countDiskPixels(centerX, centerY, radius, width, height) {
 /**
  * @param {{
  *   screenshotPath?: string,
+ *   touch?: boolean,
  *   viewport: { height: number, width: number }
  * }} options
  */
 async function verifyPlaygroundMask(options) {
   const browser = await launchPixelChromium();
   try {
-    const page = await browser.newPage({ viewport: options.viewport });
+    const page = await browser.newPage({ viewport: options.viewport, hasTouch: options.touch ?? false, isMobile: options.touch ?? false });
     const consoleErrors = [];
     page.on("pageerror", (error) => consoleErrors.push(String(error)));
     page.on("console", (message) => {
@@ -351,26 +353,13 @@ async function verifyPlaygroundMask(options) {
       before.maskPixels > 20_000,
       `playground host mask must cover rect+circle, got ${before.maskPixels}`
     );
-    await page.evaluate(async () => {
-      const hide = window.__playgroundMaskHideRect;
-      if (typeof hide !== "function") {
-        throw new Error("playground hide helper was not installed");
-      }
-      await hide();
-    });
-    try {
-      await page.waitForSelector('[data-denovo-rect-sample="0"]', {
-        timeout: 15_000
-      });
-    } catch (error) {
-      const afterClick = await page.evaluate(() => ({
-        error: window.__playgroundMaskError,
-        mask: window.__playgroundMask
-      }));
-      throw new Error(
-        `${error}\napply=${afterClick.error ?? "none"}\nmask=${JSON.stringify(afterClick.mask)}`
-      );
+    async function press(name) {
+      const button = page.getByRole("button", { name, exact: true });
+      if (options.touch) await button.tap();
+      else await button.click();
     }
+    await press("Hide rect mask");
+    await page.waitForSelector('[data-denovo-rect-sample="0"]');
     const after = await page.evaluate(() => window.__playgroundMask);
     assert.equal(after.rectSample, 0);
     assert.equal(after.circleSample, 255);
@@ -382,6 +371,14 @@ async function verifyPlaygroundMask(options) {
     if (options.screenshotPath) {
       mkdirSync(path.dirname(options.screenshotPath), { recursive: true });
       await page.screenshot({ path: options.screenshotPath, fullPage: true });
+    }
+    for (const [name, sample] of [["Undo", 255], ["Redo", 0], ["Show rect mask", 255]]) {
+      await press(name);
+      await page.waitForSelector(`[data-denovo-rect-sample="${sample}"]`);
+      const preview = page.getByLabel("Host-rasterized mask preview");
+      assert.equal(await preview.evaluate(canvas =>
+        canvas.getContext("2d").getImageData(80, 80, 1, 1).data[3]
+      ), sample);
     }
     assert.deepEqual(
       consoleErrors.filter((message) => !/Download the React DevTools/i.test(message)),

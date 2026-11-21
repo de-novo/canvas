@@ -1,19 +1,57 @@
 # Denovo Canvas
 
-Framework-agnostic canvas libraries for the web, covering 2D drawing,
-high-performance 3D, optional framework adapters, and future BIM extensions.
+Denovo Canvas is a TypeScript framework for building web editors for 2D and
+3D documents. The editor owns document changes, selection and undo history.
+The runtime draws the document. Your app supplies the controls and decides
+when and where to save. Use the same editor from vanilla JavaScript, React,
+Vue, Svelte or Solid.
 
-The goal is to make common 2D/3D view and edit workflows easier than wiring
-Three.js, React Three Fiber, Canvas2D, xeokit, or web-ifc directly.
+## Your first edit
 
-Denovo can depend on those libraries. Its job is to make them easier to install,
-configure, style, edit with, save from, and extend. The product restates that
-impressiveness as our documents. It must not become those catalogs. See
-[Product Identity](./docs/product-identity.md).
+Give the page a stage with a height and a button:
 
-The product shape is inspired by Better Auth: one high-level setup API with
-adapters, plugins, storage integrations, framework helpers, and eventually CLI
-generation/migration support.
+```html
+<div id="stage" style="height: 320px"></div>
+<button id="hide">Hide rectangle</button>
+<button id="undo">Undo</button>
+```
+
+Create one document, connect its editor to the stage, and wire the controls:
+
+```ts
+import {
+  connectEditorToCanvas, createCanvas, createEditor, defineDocument, setNodeVisible
+} from "@denovo/canvas";
+import "@denovo/canvas/styles.css";
+
+const documentModel = defineDocument({
+  id: "drawing",
+  scene: {
+    id: "page", mode: "2d",
+    layers: [{ id: "shapes", name: "Shapes" }],
+    nodes: [{
+      id: "rect", type: "rect", layerId: "shapes",
+      position: [40, 40], size: [120, 80], fill: "#22c55e"
+    }]
+  }
+});
+const editor = createEditor({ document: documentModel });
+const canvas = createCanvas("#stage", { document: documentModel });
+await canvas.ready;
+const disconnect = connectEditorToCanvas(editor, canvas);
+
+document.querySelector("#hide")!.addEventListener("click", () =>
+  editor.apply([setNodeVisible({ nodeId: "rect", visible: false })])
+);
+document.querySelector("#undo")!.addEventListener("click", () => editor.undo());
+
+// When the stage unmounts, call disconnect() and canvas.destroy().
+```
+
+For pointer-driven selection, moving and drawing, see the
+[vanilla editor](./apps/vanilla/src/main.ts). The
+[Next.js mask editor](./apps/playground/app/mask-host.tsx) uses the same
+operations to drive a React view and a separate mask preview.
 
 ## Architecture
 
@@ -113,36 +151,6 @@ flowchart TD
 
 This follows the TanStack-style split: keep the core portable, keep the web
 runtime framework-agnostic, then publish small adapters for each ecosystem.
-
-## Quick Start
-
-```ts
-import { createCanvas } from "@denovo/canvas";
-import "@denovo/canvas/styles.css";
-
-const runtime = createCanvas("#stage", {
-  scene: {
-    id: "demo",
-    layers: [
-      {
-        id: "default",
-        name: "Default"
-      }
-    ],
-    nodes: [
-      {
-        id: "box",
-        layerId: "default",
-        type: "box",
-        color: "#22c55e",
-        position: [0, 0, 0]
-      }
-    ]
-  }
-});
-
-runtime.start();
-```
 
 ## License And Governance
 

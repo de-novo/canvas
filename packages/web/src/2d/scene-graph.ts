@@ -18,6 +18,7 @@ export type Canvas2DShapeNode = Extract<
 export type Canvas2DGroupNode = Extract<Canvas2DNode, { type: "group" }>;
 export type Canvas2DTransformNode =
   | Canvas2DShapeNode
+  | Extract<Canvas2DNode, { type: "html" }>
   | Canvas2DGroupNode
   | Canvas2DPluginNode;
 export type Canvas2DMeasurementNode = Extract<
