@@ -34,5 +34,17 @@
     "@denovo/canvas": "workspace:*",
     "@denovo/canvas-core": "workspace:*",
     "solid-js": "^1.9.3"
+  },
+  "homepage": "https://github.com/de-novo/canvas#readme",
+  "bugs": {
+    "url": "https://github.com/de-novo/canvas/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/de-novo/canvas.git",
+    "directory": "packages/solid-canvas"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

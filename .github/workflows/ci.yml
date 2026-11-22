@@ -48,6 +48,9 @@ jobs:
       - name: Verify public API contract and consumer fixtures
         run: pnpm verify:public-api
 
+      - name: Verify publishable package tarballs (pnpm pack smoke)
+        run: pnpm verify:pack-smoke
+
       - name: Verify document schema
         run: pnpm verify:document-schema
 

@@ -47,5 +47,17 @@
   },
   "devDependencies": {
     "@types/three": "^0.185.0"
+  },
+  "homepage": "https://github.com/de-novo/canvas#readme",
+  "bugs": {
+    "url": "https://github.com/de-novo/canvas/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/de-novo/canvas.git",
+    "directory": "packages/web"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

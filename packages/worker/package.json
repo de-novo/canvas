@@ -22,5 +22,17 @@
     "build": "tsup src/index.ts --format esm,cjs --clean && tsc --emitDeclarationOnly",
     "clean": "rm -rf dist .turbo",
     "typecheck": "tsc --noEmit"
+  },
+  "homepage": "https://github.com/de-novo/canvas#readme",
+  "bugs": {
+    "url": "https://github.com/de-novo/canvas/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/de-novo/canvas.git",
+    "directory": "packages/worker"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

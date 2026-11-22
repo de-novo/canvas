@@ -32,5 +32,17 @@
     "effect": "3.21.4",
     "zod": "^4.4.3",
     "zustand": "^5.0.14"
+  },
+  "homepage": "https://github.com/de-novo/canvas#readme",
+  "bugs": {
+    "url": "https://github.com/de-novo/canvas/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/de-novo/canvas.git",
+    "directory": "packages/core"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

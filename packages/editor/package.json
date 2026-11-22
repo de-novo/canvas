@@ -26,5 +26,17 @@
   "dependencies": {
     "@denovo/canvas-core": "workspace:*",
     "effect": "3.21.4"
+  },
+  "homepage": "https://github.com/de-novo/canvas#readme",
+  "bugs": {
+    "url": "https://github.com/de-novo/canvas/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/de-novo/canvas.git",
+    "directory": "packages/editor"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

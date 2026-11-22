@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: 2026-11-21.
+Last updated: 2026-11-23.
 
 This is the canonical project status index. Keep milestone definitions in
 [Vision and Milestones](./vision-and-milestones.md); keep chronological evidence
@@ -485,6 +485,8 @@ product-level extension seam, `CanvasPlugin` is a host bundle, and
 - None.
 
 ## Evidence
+
+- 2026-11-23: Open-source release prep landed for Issue #11: standardized `repository`/`homepage`/`bugs`/`publishConfig` across all 12 publishable `packages/*/package.json` manifests, added `pnpm verify:pack-smoke` (12/12 tarball export & zero-`workspace:` checks + external unpacked ESM smoke) wired into `.github/workflows/ci.yml`, and updated `README.md` with current 2D/3D capabilities, `@denovo/canvas/2d` and `@denovo/canvas/react/2d` quickstarts, framework selectors, and verified benchmarks. See [open-source pack smoke and README](./history/2026-11-23-open-source-pack-and-readme.md).
 
 - 2026-11-21: GitHub Actions CI workflow (`.github/workflows/ci.yml`) and `--canvas2d-only` Linux CI mode for `verify:2d-performance` landed for Issue #10, running parallel `static-and-unit` and `browser-gates` jobs on `main` pushes and PRs. Local `verify:2d-performance` (both `--canvas2d-only` and full), `verify:document-schema`, `verify:server`, `verify:worker-tasks`, `verify:m4-performance`, `verify:docs`, and YAML syntax checks passed. See [GitHub Actions CI workflow](./history/2026-11-21-github-actions-ci.md).
 

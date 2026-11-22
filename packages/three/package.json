@@ -34,5 +34,17 @@
     "@types/three": "^0.185.0",
     "three": "^0.185.1",
     "three-mesh-bvh": "^0.9.10"
+  },
+  "homepage": "https://github.com/de-novo/canvas#readme",
+  "bugs": {
+    "url": "https://github.com/de-novo/canvas/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/de-novo/canvas.git",
+    "directory": "packages/three"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

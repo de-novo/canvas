@@ -53,5 +53,17 @@
     "@denovo/canvas-core": "workspace:*",
     "@denovo/canvas-worker": "workspace:*",
     "web-ifc": "^0.0.77"
+  },
+  "homepage": "https://github.com/de-novo/canvas#readme",
+  "bugs": {
+    "url": "https://github.com/de-novo/canvas/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/de-novo/canvas.git",
+    "directory": "packages/bim"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
