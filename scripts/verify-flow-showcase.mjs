@@ -240,36 +240,9 @@ async function pickEdge(page, id) {
 
 async function verifySavedEdits(page, touch, onRestored, consoleErrors = []) {
   const card = page.locator('[data-flow-card="build"]');
-  let lastPressDiag = null;
+  let nextTouchId = 41;
   const press = async name => {
     const button = page.getByRole("button", { name, exact: true });
-    if (touch) {
-      await button.evaluate(el => {
-        el.scrollIntoView({ block: "center", inline: "nearest" });
-      });
-      await page.evaluate(
-        () => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
-      );
-      await button.evaluate(el => {
-        const counts = { click: 0, pointerdown: 0, pointerup: 0, touchend: 0, touchstart: 0 };
-        for (const type of Object.keys(counts)) {
-          el.addEventListener(type, () => { counts[type] += 1; }, { once: true });
-        }
-        window.__lastPressCounts = counts;
-      });
-      await button.tap();
-      lastPressDiag = await button.evaluate(el => {
-        const rect = el.getBoundingClientRect();
-        return {
-          counts: window.__lastPressCounts,
-          disabled: el.disabled,
-          name: el.textContent?.trim(),
-          rect: { height: rect.height, left: rect.left, top: rect.top, width: rect.width },
-          scrollY: window.scrollY
-        };
-      });
-      return;
-    }
     await button.click();
   };
   const waitForAddedCard = async step => {
@@ -287,7 +260,7 @@ async function verifySavedEdits(page, touch, onRestored, consoleErrors = []) {
         };
       });
       throw new Error(
-        `${step}: ${error}\ndiag=${JSON.stringify({ ...diag, consoleErrors, lastPressDiag })}`
+        `${step}: ${error}\ndiag=${JSON.stringify({ ...diag, consoleErrors })}`
       );
     }
   };
@@ -312,18 +285,19 @@ async function verifySavedEdits(page, touch, onRestored, consoleErrors = []) {
   }
   async function drag(from, to) {
     if (touch) {
+      const touchId = nextTouchId++;
       const session = await page.context().newCDPSession(page);
       try {
         await session.send("Input.dispatchTouchEvent", {
           type: "touchStart",
-          touchPoints: [{ id: 0, x: Math.round(from.x), y: Math.round(from.y) }]
+          touchPoints: [{ id: touchId, x: Math.round(from.x), y: Math.round(from.y) }]
         });
         for (let step = 1; step <= 10; step++) {
           const x = Math.round(from.x + (to.x - from.x) * step / 10);
           const y = Math.round(from.y + (to.y - from.y) * step / 10);
           await session.send("Input.dispatchTouchEvent", {
             type: "touchMove",
-            touchPoints: [{ id: 0, x, y }]
+            touchPoints: [{ id: touchId, x, y }]
           });
         }
         await session.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
@@ -339,12 +313,14 @@ async function verifySavedEdits(page, touch, onRestored, consoleErrors = []) {
   }
   const original = await cardOffsetY("build");
   await press("Move");
+  assert.equal(await page.evaluate(() => window.__denovoEditor.getActiveTool()?.id), "flow.move");
   const grip = await pickCard(page, "build");
   await drag(grip, { x: grip.x, y: grip.y + 65 });
   await page.waitForFunction(() => window.__flowShowcase.undoDepth === 2, undefined, { timeout: 10_000 }).catch(() => { throw new Error("Card move did not commit"); });
   const moved = await cardOffsetY("build");
   assert.ok(moved > original + 20);
   await press("Connect");
+  assert.equal(await page.evaluate(() => window.__denovoEditor.getActiveTool()?.id), "flow.connect");
   await drag(await pickCard(page, "intake"), await pickCard(page, "build"));
   await page.waitForFunction(() => window.__flowShowcase.undoDepth === 3, undefined, { timeout: 10_000 }).catch(() => { throw new Error("Connector did not commit"); });
 

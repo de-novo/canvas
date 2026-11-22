@@ -24,7 +24,8 @@ card retained its edited title, status and position. The web package build,
 flow typecheck, flow showcase (2/2), and hit-testing suite passed.
 
 The mobile check now runs the same save/reload scenario in Chromium with the
-iPhone 14 profile. It taps controls and uses browser touch events for dragging.
+iPhone 14 profile. It clicks panel controls and uses browser touch events for
+canvas taps and dragging.
 The single-column grid uses a zero minimum track size so the canvas cannot
 expand the page width during editing. Both showcase cases passed and the
 restored mobile screenshot is stored at
