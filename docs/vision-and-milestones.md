@@ -391,3 +391,43 @@ Acceptance criteria:
   can be built on the SDK without forking the editor or renderer;
 - edges re-route / stay attached when endpoints are dragged;
 - the layer is opt-in and does not regress the M0–M3.1 verified 2D baseline.
+
+## Future Roadmap (Post-v0.1 Optional Extensions)
+
+The verified `M0–M8` core stays lean and focused on framework-agnostic 2D/3D
+rendering, editing, persistence, and TanStack-style performance primitives.
+Longer-term 3D asset and Blender-inspired mesh-authoring ambitions live strictly
+behind opt-in extension packages so 2D and standard scene consumers pay `0 B`
+extra bundle cost:
+
+### Near-Term Optional Extensions
+
+- **glTF / GLB Asset Importer (`@denovo/canvas-gltf`, optional)**: parse
+  Blender-exported `.glb`/`.gltf` assets off the main thread via
+  `@denovo/canvas/worker` into canonical `mesh` + `geometryAssetId` + PBR
+  material/texture references, enabling instanced rendering and BVH picking of
+  rich industrial and organic models (e.g., custom racks, forklifts, botanical
+  or product models).
+- **3D WebGPU Draw-Call Batching**: bring explicit 3D WebGPU `render.batch`
+  instancing to `drawCalls = 1` parity with the verified WebGL2 `InstancedMesh`
+  path.
+- **Richer PBR Materials & Lighting Presets**: optional albedo/normal/roughness
+  texture references, environment lighting, and shadows behind explicit
+  renderer-independent schema contracts.
+
+### Long-Term Horizon: Optional Mesh-Editing / DCC Layer (Blender-Inspired)
+
+- **Separate Opt-In Package (`@denovo/canvas-mesh-edit`)**: layered strictly on
+  top of `CanvasGeometryStore`, canonical undoable commands, and the tool
+  registry without expanding `@denovo/canvas-core` or `@denovo/canvas/2d`:
+  - **Sub-object editing**: BVH-accelerated `vertex`, `edge`, and `face`
+    selection and transient gizmo previews.
+  - **Direct mesh operations**: `extrude`, `bevel`, `inset`, `loop-cut`, and
+    organic sculpting strokes compiled into atomic, undoable geometry-asset
+    commands.
+  - **Parametric / procedural modifiers**: non-destructive modifier stacks
+    (subdivision surface, mirror, array, lathe/loft/organic surface generators)
+    that bake deterministically to `mesh` geometry buffers.
+- **Guardrail**: none of these features may enter `packages/core` or bloat the
+  default/2D entrypoints; each requires its own contract, schema migration
+  decision (if persisted), consumer type fixtures, and browser verification.
