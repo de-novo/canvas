@@ -28,8 +28,10 @@ and published packages follow [Semantic Versioning](https://semver.org/spec/v2.0
 - **3D performance & stability**: opt-in box and sphere instancing batching
   (`render.batch: true`), BVH raycasting, distance-based sphere LOD, and
   per-runtime Three.js GPU resource caching with safe context disposal.
-- **Open-source CI & packaging gates**: GitHub Actions CI
+- **Open-source CI, demo hub & packaging gates**: GitHub Actions CI
   (`.github/workflows/ci.yml`), external tarball smoke verification
   (`pnpm verify:pack-smoke`), Apache-2.0 `LICENSE` & `NOTICE` distribution in
-  every package tarball, GitHub issue templates, and npm provenance release
-  workflow (`.github/workflows/release.yml`).
+  every package tarball, GitHub issue templates, multilingual open-source docs
+  (EN / KO / ZH-CN), GitHub Pages interactive demo & 10k 2D live benchmark hub
+  (`pnpm build:pages`, `pnpm verify:pages`, `.github/workflows/pages.yml`), and
+  npm provenance release workflow (`.github/workflows/release.yml`).

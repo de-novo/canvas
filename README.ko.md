@@ -228,13 +228,16 @@ const canvas = createCanvas("#stage", {
 });
 ```
 
-### 동작 예제
+### 동작 예제 및 라이브 데모 허브
 
+- [10k 2D 라이브 벤치마크 & 스마트 스냅 (`@denovo/canvas/2d`, Three.js 0B)](./apps/playground-flow/src/bench-2d.ts)
 - [Release Board (2D 카드·커넥터·저장/초기화, `@denovo/canvas/2d`)](./apps/playground-flow/src/main.ts)
 - [Service Map (2D 그래프 레이아웃, `@denovo/canvas/2d`)](./apps/playground-network/src/main.ts)
 - [Next.js 마스크 에디터 (React `Canvas2DView` + `useCanvasSelector` + shadcn/Tailwind v4)](./apps/playground/app/mask-host.tsx)
 - [Vanilla 2D/3D 저작 워크벤치](./apps/vanilla/src/main.ts)
 - [3D Warp Field 쇼케이스](./apps/playground-field/src/main.ts)
+
+정적 GitHub Pages 데모 허브는 `pnpm build:pages`와 `pnpm verify:pages`로 로컬에서 바로 빌드·검증할 수 있습니다.
 
 ## 실측 성능 및 번들 절감
 

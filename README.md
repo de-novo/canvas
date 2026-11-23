@@ -244,13 +244,17 @@ const canvas = createCanvas("#stage", {
 });
 ```
 
-### Working Examples
+### Working Examples & Live Demo Hub
 
+- [10k 2D Live Benchmark & Smart Snap (`@denovo/canvas/2d`, Three.js 0B)](./apps/playground-flow/src/bench-2d.ts)
 - [Release board (2D cards, connectors, save/reset on `@denovo/canvas/2d`)](./apps/playground-flow/src/main.ts)
 - [Service map (2D graph layouts on `@denovo/canvas/2d`)](./apps/playground-network/src/main.ts)
 - [Next.js mask editor (React `Canvas2DView` + `useCanvasSelector` + shadcn/Tailwind v4)](./apps/playground/app/mask-host.tsx)
 - [Vanilla 2D/3D authoring workbench](./apps/vanilla/src/main.ts)
 - [3D Warp Field hero showcase](./apps/playground-field/src/main.ts)
+
+Build and verify the self-contained static GitHub Pages hub locally with
+`pnpm build:pages` and `pnpm verify:pages`.
 
 ## Measured Performance And Bundle Impact
 

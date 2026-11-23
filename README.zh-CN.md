@@ -224,13 +224,16 @@ const canvas = createCanvas("#stage", {
 });
 ```
 
-### 示例应用
+### 示例应用与在线演示站
 
+- [10k 2D 实时基准测试与智能吸附（`@denovo/canvas/2d`，零 Three.js）](./apps/playground-flow/src/bench-2d.ts)
 - [Release Board（2D 卡片、连线、保存/重置，`@denovo/canvas/2d`）](./apps/playground-flow/src/main.ts)
 - [Service Map（2D 图布局，`@denovo/canvas/2d`）](./apps/playground-network/src/main.ts)
 - [Next.js 遮罩编辑器（React `Canvas2DView` + `useCanvasSelector` + shadcn/Tailwind v4）](./apps/playground/app/mask-host.tsx)
 - [Vanilla 2D/3D 编辑工作台](./apps/vanilla/src/main.ts)
 - [3D Warp Field 示例](./apps/playground-field/src/main.ts)
+
+使用 `pnpm build:pages` 和 `pnpm verify:pages` 可在本地构建并验证静态 GitHub Pages 演示站。
 
 ## 实测性能与包体积数据
 

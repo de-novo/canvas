@@ -180,3 +180,4 @@ Each entry should include:
 - [2026-11-23 Incremental 2D spatial-index updates and O(visible) smart snap guides](./2026-11-23-incremental-spatial-index-and-snap.md)
 - [2026-11-23 Multilingual open-source documentation (English, Korean, Simplified Chinese)](./2026-11-23-multilingual-open-source-docs.md)
 - [2026-11-23 2D alignNodes & distributeNodes Named Operations and snap guide overlay rendering](./2026-11-23-align-distribute-and-snap-overlay.md)
+- [2026-11-23 GitHub Pages open-source demo hub and 10k 2D live benchmark](./2026-11-23-github-pages-demo-hub.md)

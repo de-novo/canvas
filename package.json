@@ -7,6 +7,7 @@
   "packageManager": "pnpm@11.10.0",
   "scripts": {
     "build": "turbo run build",
+    "build:pages": "node scripts/build-pages-site.mjs",
     "clean": "turbo run clean",
     "dev": "turbo run dev --parallel",
     "typecheck": "turbo run typecheck",
@@ -30,6 +31,7 @@
     "verify:m4-performance": "node scripts/verify-m4-performance.mjs",
     "verify:mesh-surface": "node scripts/verify-mesh-surface.mjs",
     "verify:public-api": "node scripts/verify-public-api.mjs",
+    "verify:pages": "node scripts/verify-pages-site.mjs",
     "verify:pack-smoke": "node scripts/verify-pack-smoke.mjs",
     "verify:region-mask": "node scripts/verify-region-mask.mjs",
     "verify:webgpu": "node scripts/verify-webgpu.mjs",
