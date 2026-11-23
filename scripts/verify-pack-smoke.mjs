@@ -128,6 +128,26 @@ try {
           `${pkgName}: declared export target "${target}" missing from tarball`
         );
       }
+
+      // Apache-2.0 §4(a)/(d): every distributed package tarball must include
+      // exact copies of root LICENSE and NOTICE.
+      for (const legalFile of ["LICENSE", "NOTICE"]) {
+        assert.ok(
+          entrySet.has(legalFile),
+          `${pkgName}: tarball missing required ${legalFile}`
+        );
+        const packedLegal = execFileSync(
+          "tar",
+          ["-xOzf", tgzPath, `package/${legalFile}`],
+          { encoding: "utf8" }
+        );
+        const rootLegal = readFileSync(path.join(root, legalFile), "utf8");
+        assert.equal(
+          packedLegal,
+          rootLegal,
+          `${pkgName}: tarball ${legalFile} drifted from repository root ${legalFile}`
+        );
+      }
     });
   }
 

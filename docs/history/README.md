@@ -175,3 +175,4 @@ Each entry should include:
 - [2026-11-21 Three.js-free @denovo/react-canvas/2d and @denovo/canvas/react/2d entrypoints](./2026-11-21-react-2d-entrypoint.md)
 - [2026-11-21 GitHub Actions CI workflow](./2026-11-21-github-actions-ci.md)
 - [2026-11-23 Open-source release prep: pack smoke verifier, package metadata, and README](./2026-11-23-open-source-pack-and-readme.md)
+- [2026-11-23 Open-source distribution compliance: LICENSE/NOTICE tarballs, issue templates, changelog, and release workflow](./2026-11-23-open-source-distribution-compliance.md)

@@ -381,6 +381,7 @@ pnpm dev --filter @denovo/canvas-next-playground
 Denovo Canvas is licensed under the [Apache License 2.0](./LICENSE).
 See [NOTICE](./NOTICE) for copyright and third-party notes.
 
+- [Changelog](./CHANGELOG.md)
 - [Contributing](./CONTRIBUTING.md)
 - [Code of Conduct](./CODE_OF_CONDUCT.md)
 - [Security policy](./SECURITY.md)

@@ -1,0 +1,26 @@
+name: Feature request
+description: Propose a new optimization primitive, adapter helper, or authoring capability.
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case
+      description: What canvas application bottleneck or workflow are you solving?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed API or behavior
+      description: Sketch the preferred facade or adapter API and any bundle/performance constraints.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Existing workarounds or libraries you evaluated.
+    validations:
+      required: false

@@ -52,7 +52,9 @@
   },
   "files": [
     "dist",
-    "src/styles.css"
+    "src/styles.css",
+    "LICENSE",
+    "NOTICE"
   ],
   "sideEffects": [
     "src/styles.css"
@@ -95,5 +97,14 @@
   },
   "publishConfig": {
     "access": "public"
-  }
+  },
+  "keywords": [
+    "canvas",
+    "2d",
+    "3d",
+    "editor",
+    "typescript",
+    "webgpu",
+    "denovo"
+  ]
 }

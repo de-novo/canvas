@@ -1,0 +1,41 @@
+name: Bug report
+description: Report a rendering, editor, selector, or public API bug in Denovo Canvas.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: Describe the expected behavior and what happened instead.
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Affected package / surface
+      options:
+        - "@denovo/canvas (root facade)"
+        - "@denovo/canvas/2d (lightweight 2D)"
+        - "@denovo/canvas/react/2d or @denovo/react-canvas"
+        - "@denovo/vue-canvas / @denovo/svelte-canvas / @denovo/solid-canvas"
+        - "@denovo/canvas-core / @denovo/canvas-editor"
+        - "@denovo/canvas-web / @denovo/canvas-three"
+        - "@denovo/canvas-server / @denovo/canvas-worker / @denovo/canvas-bim"
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, browser/Node version, rendering backend (Canvas2D / WebGL2 / WebGPU), and viewport.
+      placeholder: "macOS 15, Chrome 131, WebGPU, 1440x900"
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: Steps, document JSON, or snippet that reproduces the issue.
+    validations:
+      required: true

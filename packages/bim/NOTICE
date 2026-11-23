@@ -1,0 +1,14 @@
+Denovo Canvas
+Copyright 2026 Denovo
+
+This product is licensed under the Apache License, Version 2.0.
+See the LICENSE file.
+
+Third-party notes that are not part of the Apache-licensed Work:
+
+- `apps/playground-bim/public/sample.ifc` and the copied `web-ifc` WASM
+  binaries are licensed under MPL-2.0 by their upstream authors. See
+  `apps/playground-bim/LICENSE.note.md`.
+- Optional peer dependencies such as Three.js (MIT), web-ifc (MPL-2.0),
+  and framework runtimes keep their own licenses. They are not re-licensed
+  by this NOTICE.

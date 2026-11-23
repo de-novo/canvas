@@ -1,0 +1,80 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Run full build, public API, and pack smoke checks without publishing to npm"
+        required: true
+        type: boolean
+        default: true
+      npm_tag:
+        description: "npm dist-tag (e.g. latest, next)"
+        required: true
+        type: string
+        default: "latest"
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify-and-publish:
+    name: Verify Tarballs & Publish Packages
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.10.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Bootstrap optional React peer declarations for clean checkout
+        run: pnpm --filter @denovo/react-canvas build
+
+      - name: Build all packages and apps
+        run: pnpm build
+
+      - name: Typecheck all packages and apps
+        run: pnpm typecheck
+
+      - name: Verify documentation and governance links
+        run: pnpm verify:docs
+
+      - name: Verify public API contract and consumer fixtures
+        run: pnpm verify:public-api
+
+      - name: Verify publishable package tarballs (pnpm pack smoke)
+        run: pnpm verify:pack-smoke
+
+      - name: Publish packages to npm with provenance
+        if: ${{ github.event_name == 'push' || inputs.dry_run == false }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
+            echo "NPM_TOKEN secret is required to publish packages." >&2
+            exit 1
+          fi
+          TAG="${{ inputs.npm_tag || 'latest' }}"
+          pnpm -r --filter "./packages/*" publish --access public --provenance --tag "$TAG" --no-git-checks
