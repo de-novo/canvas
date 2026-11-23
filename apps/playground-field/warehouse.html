@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Denovo Canvas — Warehouse Digital Twin (5,020 Pallets · 2D/3D)</title>
+    <title>Denovo Canvas — Industrial Warehouse Digital Twin (2D/3D)</title>
     <style>
       :root {
         color-scheme: dark;
@@ -12,7 +12,7 @@
       * { box-sizing: border-box; }
       body {
         margin: 0;
-        background: #070d1a;
+        background: #090e1a;
         color: #e2e8f0;
         display: grid;
         grid-template-rows: auto 1fr;
@@ -26,7 +26,7 @@
         justify-content: space-between;
         gap: 10px;
         padding: 10px 14px;
-        background: #0f172a;
+        background: rgba(15, 23, 42, 0.96);
         border-bottom: 1px solid #1e293b;
       }
       .title {
@@ -40,9 +40,9 @@
       .title a:hover { color: #f8fafc; }
       .badge {
         font-size: 11px;
-        padding: 2px 8px;
+        padding: 2px 9px;
         border-radius: 999px;
-        background: #172554;
+        background: linear-gradient(135deg, #172554, #1e1b4b);
         color: #7dd3fc;
         border: 1px solid #1d4ed8;
       }
@@ -60,6 +60,7 @@
         padding: 5px 10px;
         font-size: 12px;
         cursor: pointer;
+        transition: border-color 120ms ease, background 120ms ease;
       }
       button:hover { border-color: #38bdf8; }
       button.active {
@@ -74,7 +75,7 @@
         position: relative;
         min-height: 0;
         display: grid;
-        grid-template-columns: 1fr 270px;
+        grid-template-columns: 1fr 274px;
       }
       #stage {
         width: 100%;
@@ -93,9 +94,9 @@
       }
       aside h3 {
         margin: 0 0 6px;
-        font-size: 12px;
+        font-size: 11px;
         text-transform: uppercase;
-        letter-spacing: 0.06em;
+        letter-spacing: 0.08em;
         color: #94a3b8;
       }
       .stat-grid {
@@ -104,10 +105,10 @@
         gap: 8px;
       }
       .stat {
-        background: #1e293b;
-        border: 1px solid #334155;
+        background: #162033;
+        border: 1px solid #26344a;
         border-radius: 8px;
-        padding: 8px;
+        padding: 8px 10px;
       }
       .stat .v {
         font-size: 16px;
@@ -138,7 +139,7 @@
         flex: none;
       }
       .inspector {
-        background: #111827;
+        background: #0b1220;
         border: 1px solid #1e293b;
         border-radius: 8px;
         padding: 10px;
@@ -158,15 +159,15 @@
     <header>
       <div class="title">
         <a href="../">← Hub</a>
-        <span>Warehouse Digital Twin</span>
-        <span class="badge">5,000 Pallets + 20 AGVs · 6 Colors · 1 drawCall</span>
+        <span>Industrial Warehouse Digital Twin</span>
+        <span class="badge">Steel Racks · Wood Pallets · 12 AGVs · Batched Instancing</span>
       </div>
       <div class="controls">
         <button id="btn-mode-3d" type="button" class="active">3D Rack View</button>
         <button id="btn-mode-2d" type="button">2D Floorplan</button>
         <button id="btn-telemetry" type="button">Live Telemetry: OFF</button>
         <button id="btn-tick-once" type="button">Step Telemetry</button>
-        <button id="btn-orbit-tour" type="button">Camera Sweep</button>
+        <button id="btn-orbit-tour" type="button">Aisle Flythrough</button>
       </div>
     </header>
     <main>
@@ -175,26 +176,29 @@
         <div>
           <h3>Live Runtime Telemetry</h3>
           <div class="stat-grid">
-            <div class="stat"><div class="v" id="stat-nodes">5,020</div><div class="l">Nodes</div></div>
+            <div class="stat"><div class="v" id="stat-nodes">-</div><div class="l">3D/2D Parts</div></div>
             <div class="stat"><div class="v" id="stat-draws">-</div><div class="l">drawCalls</div></div>
             <div class="stat"><div class="v" id="stat-mode">3D</div><div class="l">View Mode</div></div>
             <div class="stat"><div class="v" id="stat-tick">-</div><div class="l">Tick Update</div></div>
           </div>
         </div>
         <div>
-          <h3>Status Palette</h3>
+          <h3>Rack &amp; Inventory Legend</h3>
           <div class="legend">
-            <div class="legend-item"><span class="dot" style="background:#22c55e"></span>Available</div>
-            <div class="legend-item"><span class="dot" style="background:#38bdf8"></span>Occupied</div>
-            <div class="legend-item"><span class="dot" style="background:#f59e0b"></span>Picking</div>
-            <div class="legend-item"><span class="dot" style="background:#ef4444"></span>Alert</div>
-            <div class="legend-item"><span class="dot" style="background:#64748b"></span>Empty</div>
-            <div class="legend-item"><span class="dot" style="background:#a855f7"></span>AGV Bot</div>
+            <div class="legend-item"><span class="dot" style="background:#1d4ed8"></span>Steel Uprights</div>
+            <div class="legend-item"><span class="dot" style="background:#f97316"></span>Load Beams</div>
+            <div class="legend-item"><span class="dot" style="background:#b45309"></span>Wood Pallets</div>
+            <div class="legend-item"><span class="dot" style="background:#eab308"></span>Aisle Safety</div>
+            <div class="legend-item"><span class="dot" style="background:#22c55e"></span>Available SKU</div>
+            <div class="legend-item"><span class="dot" style="background:#38bdf8"></span>Occupied SKU</div>
+            <div class="legend-item"><span class="dot" style="background:#f59e0b"></span>Picking Active</div>
+            <div class="legend-item"><span class="dot" style="background:#ef4444"></span>Alert / Hold</div>
+            <div class="legend-item"><span class="dot" style="background:#a855f7"></span>AGV Fleet</div>
           </div>
         </div>
         <div>
-          <h3>Selected Bin / Pallet</h3>
-          <div id="inspector" class="inspector">Click any pallet or AGV on the canvas to inspect SKU &amp; location.</div>
+          <h3>Selected Cargo / Bin</h3>
+          <div id="inspector" class="inspector">Click any cargo box or AGV on the canvas to inspect SKU &amp; rack bay.</div>
           <div class="status-actions">
             <button id="btn-mark-alert" type="button" class="alert">Flag Alert</button>
             <button id="btn-mark-picking" type="button">Mark Picking</button>
