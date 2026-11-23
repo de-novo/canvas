@@ -2,6 +2,7 @@
   import { onDestroy, onMount } from "svelte";
   import {
     createCanvas,
+    type CanvasEditor,
     type DenovoCanvasCommonConfig,
     type DenovoCanvasRuntime
   } from "@denovo/canvas";
@@ -10,7 +11,9 @@
   /**
    * Scene document to render. Reactive: changing it calls `runtime.update`.
    */
-  export let scene: CanvasSceneInput;
+  export let scene: CanvasSceneInput | undefined = undefined;
+  /** Optional editor to auto-connect on ready and disconnect on unmount. */
+  export let editor: CanvasEditor | undefined = undefined;
   /** Options forwarded to `createCanvas`. Only read on mount. */
   export let options: DenovoCanvasCommonConfig | undefined = undefined;
   /** Class binding for the host element. */
@@ -22,10 +25,16 @@
   let runtime: DenovoCanvasRuntime | null = null;
 
   onMount(() => {
-    runtime = createCanvas(hostElement, {
-      scene,
-      ...(options ?? {})
-    });
+    runtime =
+      editor !== undefined
+        ? createCanvas(hostElement, {
+            editor,
+            ...(options ?? {})
+          })
+        : createCanvas(hostElement, {
+            ...(scene === undefined ? {} : { scene }),
+            ...(options ?? {})
+          });
   });
 
   onDestroy(() => {
@@ -34,7 +43,7 @@
   });
 
   // Keep the runtime scene in sync when the `scene` prop changes.
-  $: if (runtime && scene) {
+  $: if (runtime && editor === undefined && scene) {
     runtime.update(scene);
   }
 

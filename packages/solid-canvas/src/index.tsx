@@ -21,12 +21,7 @@ import {
 } from "@denovo/canvas";
 import type { CanvasSceneInput } from "@denovo/canvas-core";
 
-/**
- * Props for the {@link DenovoCanvas} Solid component.
- */
-export type DenovoCanvasProps = {
-  /** Scene document to render. Reactive: changing it calls `runtime.update`. */
-  scene: CanvasSceneInput;
+type DenovoCanvasBaseProps = {
   /** Options forwarded to `createCanvas`. Only read on mount. */
   options?: DenovoCanvasCommonConfig;
   /** Class binding for the host element. */
@@ -36,6 +31,15 @@ export type DenovoCanvasProps = {
   /** Called with the runtime after mount and with `null` before unmount. */
   onRuntimeChange?: (runtime: DenovoCanvasRuntime | null) => void;
 };
+
+/**
+ * Props for the {@link DenovoCanvas} Solid component.
+ */
+export type DenovoCanvasProps = DenovoCanvasBaseProps &
+  (
+    | { editor?: never; scene: CanvasSceneInput }
+    | { editor: CanvasEditor; scene?: never }
+  );
 
 /**
  * Solid adapter for Denovo Canvas. Mounts a {@link createCanvas} runtime on a
@@ -61,10 +65,16 @@ export const DenovoCanvas: Component<DenovoCanvasProps> = (props) => {
       return;
     }
 
-    runtime = createCanvas(hostElement, {
-      scene: props.scene,
-      ...(props.options ?? {})
-    });
+    runtime =
+      props.editor !== undefined
+        ? createCanvas(hostElement, {
+            editor: props.editor,
+            ...(props.options ?? {})
+          })
+        : createCanvas(hostElement, {
+            scene: props.scene!,
+            ...(props.options ?? {})
+          });
     props.onRuntimeChange?.(runtime);
   });
 
@@ -79,6 +89,9 @@ export const DenovoCanvas: Component<DenovoCanvasProps> = (props) => {
     on(
       () => props.scene,
       (next) => {
+        if (props.editor !== undefined || next === undefined) {
+          return;
+        }
         runtime?.update(next);
       },
       { defer: true }

@@ -185,3 +185,4 @@ Each entry should include:
 - [2026-11-23 Multi-color single-drawCall 3D InstancedMesh (instanceColor) and one-line editor mounting DX](./2026-11-23-multicolor-3d-batching-and-editor-dx.md)
 - [2026-11-23 Interactive Warehouse Digital Twin demo (2D floorplan + 3D 5,020 pallets & AGVs)](./2026-11-23-warehouse-digital-twin-demo.md)
 - [2026-11-23 Future roadmap recorded: glTF importer, 3D WebGPU batching, and long-term optional mesh-editing layer](./2026-11-23-future-roadmap-3d-authoring.md)
+- [2026-11-23 One-line editor prop parity across React CanvasView and Vue, Svelte, and Solid adapters](./2026-11-23-framework-editor-prop-parity.md)

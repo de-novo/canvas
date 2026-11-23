@@ -54,13 +54,18 @@ import {
   type PerspectiveCamera
 } from "three";
 
-export type CanvasViewProps = {
+type CanvasViewBaseProps = {
   className?: string;
   options?: DenovoCanvasCommonConfig;
-  scene: CanvasSceneInput;
   style?: CSSProperties;
   onRuntime?: (runtime: DenovoCanvasRuntime | null) => void;
 };
+
+export type CanvasViewProps = CanvasViewBaseProps &
+  (
+    | { editor?: never; scene: CanvasSceneInput }
+    | { editor: CanvasEditor; scene?: never }
+  );
 
 export type CanvasStage3DProps = {
   cameraControls?: boolean;
@@ -73,6 +78,7 @@ export type CanvasStage3DProps = {
 
 export function CanvasView({
   className,
+  editor,
   options,
   scene,
   style,
@@ -86,10 +92,16 @@ export function CanvasView({
       return;
     }
 
-    const runtime = createCanvas(hostRef.current, {
-      scene,
-      ...(options ?? {})
-    });
+    const runtime =
+      editor !== undefined
+        ? createCanvas(hostRef.current, {
+            editor,
+            ...(options ?? {})
+          })
+        : createCanvas(hostRef.current, {
+            scene: scene!,
+            ...(options ?? {})
+          });
     runtimeRef.current = runtime;
     onRuntime?.(runtime);
 
@@ -98,11 +110,14 @@ export function CanvasView({
       runtimeRef.current = null;
       onRuntime?.(null);
     };
-  }, []);
+  }, [editor]);
 
   useEffect(() => {
+    if (editor !== undefined || scene === undefined) {
+      return;
+    }
     runtimeRef.current?.update(scene);
-  }, [scene]);
+  }, [editor, scene]);
 
   return (
     <div

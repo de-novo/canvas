@@ -34,7 +34,12 @@ export const DenovoCanvas2D = defineComponent({
     /** 2D scene document to render. Reactive: changing it calls `runtime.update`. */
     scene: {
       type: Object as PropType<Canvas2DSceneInput>,
-      required: true
+      default: undefined
+    },
+    /** Optional 2D editor to auto-connect on ready and disconnect on unmount. */
+    editor: {
+      type: Object as PropType<CanvasEditor>,
+      default: undefined
     },
     /** 2D options forwarded to `createCanvas`. Only read on mount. */
     options: {
@@ -70,10 +75,16 @@ export const DenovoCanvas2D = defineComponent({
         return;
       }
 
-      const created = createCanvas(hostElement.value, {
-        scene: props.scene,
-        ...(props.options ?? {})
-      });
+      const created =
+        props.editor !== undefined
+          ? createCanvas(hostElement.value, {
+              editor: props.editor,
+              ...(props.options ?? {})
+            })
+          : createCanvas(hostElement.value, {
+              ...(props.scene === undefined ? {} : { scene: props.scene }),
+              ...(props.options ?? {})
+            });
       runtime.value = created;
       emit("runtimeChange", created);
     });
@@ -87,6 +98,9 @@ export const DenovoCanvas2D = defineComponent({
     watch(
       () => props.scene,
       (next) => {
+        if (props.editor !== undefined || next === undefined) {
+          return;
+        }
         runtime.value?.update(next);
       }
     );

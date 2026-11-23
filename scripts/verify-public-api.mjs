@@ -4161,10 +4161,14 @@ void SvelteCanvas2D;
 const validSolid2DProps: SolidCanvas2DProps = {
   scene: { id: "s2d", mode: "2d", layers: [{ id: "default", name: "Default" }], nodes: [] }
 };
+const validSolid2DEditorProps: SolidCanvas2DProps = {
+  editor
+};
 const badSolid2DProps: SolidCanvas2DProps = {
   // @ts-expect-error Solid DenovoCanvas2D rejects 3D scenes at compile time.
   scene: { id: "s3d", mode: "3d", layers: [{ id: "default", name: "Default" }], nodes: [] }
 };
+void validSolid2DEditorProps;
 const solid2dUndo: boolean = useSolid2DSelector(editor, (s) => s.history.canUndo)();
 // @ts-expect-error mismatched Solid 2D selector equality comparator.
 useSolid2DSelector(editor, (s) => s.history.canUndo, (a: number, b: number) => a === b);

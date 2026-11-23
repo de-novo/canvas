@@ -21,12 +21,7 @@ import {
   type DenovoCanvas2DRuntime
 } from "@denovo/canvas/2d";
 
-/**
- * Props for the lightweight 2D-only {@link DenovoCanvas2D} Solid component.
- */
-export type DenovoCanvas2DProps = {
-  /** 2D scene document to render. Reactive: changing it calls `runtime.update`. */
-  scene: Canvas2DSceneInput;
+type DenovoCanvas2DBaseProps = {
   /** 2D options forwarded to `createCanvas`. Only read on mount. */
   options?: DenovoCanvas2DCommonConfig;
   /** Class binding for the host element. */
@@ -36,6 +31,15 @@ export type DenovoCanvas2DProps = {
   /** Called with the 2D runtime after mount and with `null` before unmount. */
   onRuntimeChange?: (runtime: DenovoCanvas2DRuntime | null) => void;
 };
+
+/**
+ * Props for the lightweight 2D-only {@link DenovoCanvas2D} Solid component.
+ */
+export type DenovoCanvas2DProps = DenovoCanvas2DBaseProps &
+  (
+    | { editor?: never; scene: Canvas2DSceneInput }
+    | { editor: CanvasEditor; scene?: never }
+  );
 
 /**
  * Lightweight 2D-only Solid canvas component backed by `@denovo/canvas/2d`.
@@ -50,10 +54,16 @@ export const DenovoCanvas2D: Component<DenovoCanvas2DProps> = (props) => {
       return;
     }
 
-    runtime = createCanvas(hostElement, {
-      scene: props.scene,
-      ...(props.options ?? {})
-    });
+    runtime =
+      props.editor !== undefined
+        ? createCanvas(hostElement, {
+            editor: props.editor,
+            ...(props.options ?? {})
+          })
+        : createCanvas(hostElement, {
+            scene: props.scene!,
+            ...(props.options ?? {})
+          });
     props.onRuntimeChange?.(runtime);
   });
 
@@ -67,6 +77,9 @@ export const DenovoCanvas2D: Component<DenovoCanvas2DProps> = (props) => {
     on(
       () => props.scene,
       (next) => {
+        if (props.editor !== undefined || next === undefined) {
+          return;
+        }
         runtime?.update(next);
       },
       { defer: true }

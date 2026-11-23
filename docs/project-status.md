@@ -486,6 +486,8 @@ product-level extension seam, `CanvasPlugin` is a host bundle, and
 
 ## Evidence
 
+- 2026-11-23: One-line `editor` prop parity landed across React `<CanvasView>`, Vue `DenovoCanvas`/`DenovoCanvas2D`, Svelte `DenovoCanvas`/`DenovoCanvas2D`, and Solid `DenovoCanvas`/`DenovoCanvas2D` for Issue #21. Verified by `pnpm build`, `pnpm typecheck`, `pnpm verify:public-api`, `pnpm verify:selectors`, `pnpm verify:pack-smoke`, and `pnpm verify:docs`. See [framework editor prop parity](./history/2026-11-23-framework-editor-prop-parity.md).
+
 - 2026-11-23: Interactive Warehouse Digital Twin demo (`apps/playground-field/warehouse.html`, 20 aisles × 5 tiers × 50 stacked pallets + 20 AGVs = 5,020 multi-color boxes in 1 drawCall, live telemetry, click-to-inspect SKU, 3D ↔ 2D floorplan switch) landed for Issue #20 and verified in `pnpm verify:pages` (5/5). See [Warehouse Digital Twin demo](./history/2026-11-23-warehouse-digital-twin-demo.md).
 
 - 2026-11-23: Multi-color single-drawCall 3D `InstancedMesh` (`instanceColor` + in-place `setColorAt`/`setMatrixAt` updates) and one-line `editor` mounting DX (`createCanvas("#stage", { editor })`, `<Canvas2DView editor={editor} />`) landed for Issue #19, benchmarked on a 5,020-object 6-color 3D Warehouse Digital Twin (`drawCalls=1` before & after live 50-pallet status flips + 20 moving AGVs). See [multi-color 3D batching and editor DX](./history/2026-11-23-multicolor-3d-batching-and-editor-dx.md).
