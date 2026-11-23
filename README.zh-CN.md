@@ -243,7 +243,7 @@ const canvas = createCanvas("#stage", {
 | 场景 / 负载 | 优化机制 | 实测结果 |
 | --- | --- | --- |
 | 2D `10k-2d-rects`（Canvas2D + 小地图） | 空间索引 + 视口裁剪 + O(1) 小地图缓存 | `drawCalls` 10,001 → **28**，平移 p50 3.70 ms → **0.00 ms**，200 次拾取 118.5 ms → **0.5 ms** |
-| 2D `10k-2d-rects` 单节点移动 / 智能吸附 | O(k) 增量空间索引 + O(visible) 吸附 | 单节点移动仅重索引 **1 个节点**（`kind=incremental`），吸附仅扫描 **28 / 10,001**（**0.50 ms**） |
+| 2D `10k` 单节点编辑 / 智能吸附 / `100k` 对比 | 增量 Zod 校验 + O(k) 空间/对象更新 + O(visible) 吸附 | 10k `editor.apply` 79.3 ms → **4.05 ms**，10k `update()` 51.8 ms → **5.6–7.9 ms**，100k 200 次拾取 51.8 ms → **0.30 ms**（**172×**），100k 平移 **0.00 ms**（`28` drawCalls） |
 | 2D `10k-2d-webgpu`（显式 2D WebGPU） | GPU 常驻顶点/图集/绑定组缓存 + 空间裁剪 | 平移 p50 6.90 ms → **0.00 ms**，p95 14.40 ms → **0.10–0.20 ms**，三角形 20,002 → **210** |
 | 2D `1k-2d-overlays`（HTML 卡片） | O(visible) DOM 虚拟化 + diff `rebuildObjects` | 平移 p50 0.80 ms → **0.10 ms**，单卡编辑仅调用 `renderNode` **1 次**（非 1,001 次） |
 | 2D 高频滚轮突发（20 次 / tick） | rAF 帧合并 | 20 次事件 → **1 次 Canvas2D 渲染**（完整保留累计位移） |

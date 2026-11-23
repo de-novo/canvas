@@ -4,6 +4,7 @@ import {
   CanvasDocumentSchema,
   CanvasLayerIdSchema,
   CanvasLayerSchema,
+  defineDocument,
   DENOVO_FIELD_NODE_TYPE,
   DENOVO_SHADE_NODE_TYPE,
   DENOVO_SPARKLINE_NODE_TYPE,
@@ -3093,7 +3094,7 @@ function parseNodeBooleanInput<TField extends "visible" | "locked">(
 
 function parseNamedOperationDocument(document: CanvasDocument): CanvasDocument {
   try {
-    return freezeValue(CanvasDocumentSchema.parse(document));
+    return freezeValue(defineDocument(document));
   } catch (cause) {
     throw new CanvasEditorError(
       "invalid-document",

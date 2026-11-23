@@ -8,6 +8,7 @@
   "scripts": {
     "build": "turbo run build",
     "build:pages": "node scripts/build-pages-site.mjs",
+    "bench:compare": "node scripts/bench-compare.mjs",
     "clean": "turbo run clean",
     "dev": "turbo run dev --parallel",
     "typecheck": "turbo run typecheck",

@@ -11,6 +11,7 @@ import {
   CanvasCommandSchema,
   CanvasDocumentSchema,
   CanvasHitResultSchema,
+  defineDocument,
   CanvasLayerIdSchema,
   CanvasLayerPatchSchema,
   CanvasMeasurementUnitSchema,
@@ -1318,7 +1319,7 @@ function parseNodeId(input: NodeId): NodeId {
 
 function parseAuthoringDocument(document: CanvasDocument): CanvasDocument {
   try {
-    return CanvasDocumentSchema.parse(document);
+    return defineDocument(document);
   } catch (cause) {
     throw new CanvasEditorError(
       "invalid-document",

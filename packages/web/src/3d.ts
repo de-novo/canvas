@@ -372,7 +372,7 @@ export function createCanvas3D(
       resourceCache,
       options.geometryStore
     );
-    store.getState().setScene(nextScene);
+    store.setState({ scene: nextScene });
     currentScene = nextScene;
 
     if (wasRunning && currentScene.render.loop === "demand" && frameId !== null) {
@@ -2082,6 +2082,89 @@ function applyScene(
   resolveCanvas3DNodeStates(sceneData, nextNodeStates);
 
   const batchedNodeIds = new Set<string>();
+  const existingBatchesByName = new Map<string, InstancedMesh>();
+  for (const child of content.children) {
+    if (
+      (child as InstancedMesh).isInstancedMesh &&
+      (child.name.startsWith("denovo-batch:") ||
+        child.name.startsWith("denovo-batch-sphere:"))
+    ) {
+      existingBatchesByName.set(child.name, child as InstancedMesh);
+    }
+  }
+
+  function resolveOrReuseBatchedMesh(
+    batchName: string,
+    geometry: BufferGeometry,
+    material: MeshStandardMaterial,
+    entries: readonly BatchedPrimitiveEntry[]
+  ): InstancedMesh {
+    const existing = existingBatchesByName.get(batchName);
+    const existingIds = existing?.userData[INSTANCE_NODE_IDS_USER_DATA_KEY] as
+      | readonly string[]
+      | undefined;
+    if (
+      existing &&
+      existing.count === entries.length &&
+      existingIds &&
+      existingIds.length === entries.length
+    ) {
+      let sameOrder = true;
+      for (let i = 0; i < entries.length; i += 1) {
+        if (existingIds[i] !== entries[i]!.id) {
+          sameOrder = false;
+          break;
+        }
+      }
+      if (sameOrder) {
+        existingBatchesByName.delete(batchName);
+        content.remove(existing);
+        const transform = new Object3D();
+        const matrix = new Matrix4();
+        let matrixDirty = false;
+        for (let i = 0; i < entries.length; i += 1) {
+          const entry = entries[i]!;
+          const prevNode = prevNodesById.get(entry.id);
+          // Fast-path: check previous node transform against entry.
+          if (
+            prevNode &&
+            (prevNode.type === "box" || prevNode.type === "sphere") &&
+            prevNode.position[0] === entry.position[0] &&
+            prevNode.position[1] === entry.position[1] &&
+            prevNode.position[2] === entry.position[2] &&
+            prevNode.rotation[0] === entry.rotation[0] &&
+            prevNode.rotation[1] === entry.rotation[1] &&
+            prevNode.rotation[2] === entry.rotation[2] &&
+            (prevNode.type === "box"
+              ? prevNode.scale[0] === entry.scale[0] &&
+                prevNode.scale[1] === entry.scale[1] &&
+                prevNode.scale[2] === entry.scale[2]
+              : prevNode.scale[0] * prevNode.radius === entry.scale[0] &&
+                prevNode.scale[1] * prevNode.radius === entry.scale[1] &&
+                prevNode.scale[2] * prevNode.radius === entry.scale[2])
+          ) {
+            continue;
+          }
+          transform.position.set(entry.position[0], entry.position[1], entry.position[2]);
+          transform.rotation.set(entry.rotation[0], entry.rotation[1], entry.rotation[2]);
+          transform.scale.set(entry.scale[0], entry.scale[1], entry.scale[2]);
+          transform.updateMatrix();
+          matrix.copy(transform.matrix);
+          existing.setMatrixAt(i, matrix);
+          matrixDirty = true;
+        }
+        if (matrixDirty) {
+          existing.instanceMatrix.needsUpdate = true;
+          existing.computeBoundingSphere();
+        }
+        return existing;
+      }
+    }
+
+    const mesh = createBatchedPrimitiveMesh(geometry, material, entries);
+    mesh.name = batchName;
+    return mesh;
+  }
 
   // Optional draw-call batching: collapse same-color top-level box and sphere
   // nodes into one InstancedMesh per primitive+color. Only visible top-level
@@ -2124,12 +2207,12 @@ function applyScene(
         continue;
       }
 
-      const mesh = createBatchedPrimitiveMesh(
+      const mesh = resolveOrReuseBatchedMesh(
+        `denovo-batch:${entries[0]!.color}`,
         resourceCache.getUnitBoxGeometry(),
         resourceCache.getSurfaceMaterial(entries[0]!.color),
         entries
       );
-      mesh.name = `denovo-batch:${entries[0]!.color}`;
       mesh.visible = true;
       nextContent.add(mesh);
       nextHitTestObjects.push(mesh);
@@ -2144,12 +2227,12 @@ function applyScene(
         continue;
       }
 
-      const mesh = createBatchedPrimitiveMesh(
+      const mesh = resolveOrReuseBatchedMesh(
+        `denovo-batch-sphere:${entries[0]!.color}`,
         resourceCache.getUnitSphereGeometry(),
         resourceCache.getSurfaceMaterial(entries[0]!.color),
         entries
       );
-      mesh.name = `denovo-batch-sphere:${entries[0]!.color}`;
       mesh.visible = true;
       nextContent.add(mesh);
       nextHitTestObjects.push(mesh);

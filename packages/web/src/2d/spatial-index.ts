@@ -65,6 +65,7 @@ export type Canvas2DSpatialIndex = {
   readonly entryIndexByNodeId: ReadonlyMap<string, number>;
   readonly groups: readonly Canvas2DSpatialGroupEntry[];
   readonly htmlEntryCount: number;
+  readonly getLastChangedNodeIds: () => readonly string[];
   readonly getStats: () => Canvas2DSpatialIndexStats;
   readonly syncIncremental: (
     previousScene: Canvas2DScene,
@@ -438,6 +439,7 @@ export function createCanvas2DSpatialIndex(
   const entryCells: Array<number[] | null> = new Array(entries.length);
   let lastSyncKind: Canvas2DSpatialSyncKind = "full";
   let lastSyncedNodeCount = entries.length;
+  let lastChangedNodeIds: readonly string[] = [];
 
   function insertEntryCells(index: number, bounds: Canvas2DRectBounds): void {
     if (
@@ -716,6 +718,7 @@ export function createCanvas2DSpatialIndex(
     if (changedNodes.length === 0) {
       lastSyncKind = "noop";
       lastSyncedNodeCount = 0;
+      lastChangedNodeIds = [];
       return true;
     }
 
@@ -801,6 +804,7 @@ export function createCanvas2DSpatialIndex(
 
     lastSyncKind = "incremental";
     lastSyncedNodeCount = affectedDrawableIds.size;
+    lastChangedNodeIds = [...affectedDrawableIds];
     return true;
   }
 
@@ -810,6 +814,9 @@ export function createCanvas2DSpatialIndex(
     entryIndexByNodeId,
     groups,
     htmlEntryCount,
+    getLastChangedNodeIds() {
+      return lastChangedNodeIds;
+    },
     getStats() {
       return {
         cellSize,

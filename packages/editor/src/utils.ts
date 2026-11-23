@@ -29,8 +29,17 @@ export function freezeValue<Value>(value: Value): Value {
     return value;
   }
 
-  for (const child of Object.values(value)) {
-    freezeValue(child);
+  if (Array.isArray(value)) {
+    for (let i = 0; i < value.length; i += 1) {
+      freezeValue(value[i]);
+    }
+    return Object.freeze(value);
+  }
+
+  for (const key in value) {
+    if (Object.prototype.hasOwnProperty.call(value, key)) {
+      freezeValue(value[key]);
+    }
   }
 
   return Object.freeze(value);

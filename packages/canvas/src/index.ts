@@ -3,6 +3,7 @@ import {
   CanvasNodeTransformKindSchema,
   CanvasSceneSchema,
   defineDocument,
+  defineScene,
   parseDocument,
   parseDocumentJson,
   type Canvas2DSceneInput,
@@ -823,14 +824,14 @@ export function createCanvas(
       : {};
 
   function updateRuntimeScene(nextSceneInput: CanvasSceneInput): CanvasScene {
-    const nextScene = CanvasSceneSchema.parse(nextSceneInput);
+    const nextScene = defineScene(nextSceneInput);
     const nextRenderer = resolveRenderer(config.renderer, nextScene);
 
     if (customAdapter) {
       assertAdapterSupportsMode(customAdapter, nextScene.mode);
     }
 
-    const updatedScene = CanvasSceneSchema.parse(runtime.update(nextScene));
+    const updatedScene = defineScene(runtime.update(nextScene));
 
     if (updatedScene.mode !== nextScene.mode) {
       throw new Error(
@@ -1043,7 +1044,7 @@ function createCustomRendererRuntime(
   const runtime = adapter.createRuntime(target, scene, options);
   assertCanvasFacadeRendererRuntime(runtime, adapter.name);
 
-  const runtimeScene = CanvasSceneSchema.parse(runtime.getScene());
+  const runtimeScene = defineScene(runtime.getScene());
 
   if (runtimeScene.mode !== scene.mode) {
     throw new Error(
@@ -1314,7 +1315,7 @@ function resolveTarget(targetInput: CanvasTargetInput): CanvasTarget {
 
 function resolveScene(config: DenovoCanvasConfig): CanvasScene {
   if (isSceneConfig(config)) {
-    return CanvasSceneSchema.parse(config.scene);
+    return defineScene(config.scene);
   }
 
   if (isDocumentConfig(config)) {

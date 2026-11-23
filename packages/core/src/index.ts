@@ -681,27 +681,29 @@ export const CanvasSceneSchema = z
         }
       }
 
-      const ancestorIds = new Set<string>([node.id]);
-      let ancestorId = node.parentId;
+      if (node.parentId !== null) {
+        const ancestorIds = new Set<string>([node.id]);
+        let ancestorId: string | null = node.parentId;
 
-      while (ancestorId !== null) {
-        if (ancestorIds.has(ancestorId)) {
-          context.addIssue({
-            code: "custom",
-            message: `Parent cycle detected for node: ${node.id}`,
-            path: ["nodes", nodeIndex, "parentId"]
-          });
-          break;
+        while (ancestorId !== null) {
+          if (ancestorIds.has(ancestorId)) {
+            context.addIssue({
+              code: "custom",
+              message: `Parent cycle detected for node: ${node.id}`,
+              path: ["nodes", nodeIndex, "parentId"]
+            });
+            break;
+          }
+
+          ancestorIds.add(ancestorId);
+          const ancestor = nodesById.get(ancestorId);
+
+          if (ancestor === undefined) {
+            break;
+          }
+
+          ancestorId = ancestor.parentId;
         }
-
-        ancestorIds.add(ancestorId);
-        const ancestor = nodesById.get(ancestorId);
-
-        if (ancestor === undefined) {
-          break;
-        }
-
-        ancestorId = ancestor.parentId;
       }
     }
   });
@@ -748,10 +750,10 @@ export const CanvasDocumentSchema = z
   })
   .strict()
   .superRefine((document, context) => {
-    const seenAssetIds = new Set<string>();
+    const assetsById = new Map<string, (typeof document.assets)[number]>();
 
     for (const asset of document.assets) {
-      if (seenAssetIds.has(asset.id)) {
+      if (assetsById.has(asset.id)) {
         context.addIssue({
           code: "custom",
           message: `Duplicate asset id: ${asset.id}`,
@@ -759,7 +761,7 @@ export const CanvasDocumentSchema = z
         });
       }
 
-      seenAssetIds.add(asset.id);
+      assetsById.set(asset.id, asset);
     }
 
     if (document.scene.mode === "3d") {
@@ -768,9 +770,7 @@ export const CanvasDocumentSchema = z
           continue;
         }
 
-        const asset = document.assets.find(
-          (candidate) => candidate.id === node.geometryAssetId
-        );
+        const asset = assetsById.get(node.geometryAssetId);
 
         if (asset === undefined) {
           context.addIssue({
@@ -2708,8 +2708,224 @@ export type CanvasPlugin = {
   tools?: readonly CanvasPluginToolDefinition[];
 };
 
+const validatedScenes = new WeakSet<object>();
+const validatedDocuments = new WeakSet<object>();
+const validated2DNodes = new WeakSet<object>();
+const validated3DNodes = new WeakSet<object>();
+
+const CanvasDocumentEnvelopeSchema = z
+  .object({
+    id: NodeIdSchema,
+    schemaVersion: z
+      .literal(CANVAS_DOCUMENT_SCHEMA_VERSION)
+      .default(CANVAS_DOCUMENT_SCHEMA_VERSION),
+    revision: z.number().int().nonnegative().default(0),
+    title: z.string().min(1).optional(),
+    createdAt: z.string().min(1).optional(),
+    updatedAt: z.string().min(1).optional(),
+    assets: z.array(AssetRefSchema).default([]),
+    metadata: CanvasMetadataSchema,
+    pluginState: z.record(z.string(), JsonValueSchema).default({})
+  })
+  .strict();
+
+function recordValidatedScene(scene: CanvasScene): CanvasScene {
+  validatedScenes.add(scene);
+  const nodeSet = scene.mode === "2d" ? validated2DNodes : validated3DNodes;
+  for (let i = 0; i < scene.nodes.length; i += 1) {
+    nodeSet.add(scene.nodes[i]!);
+  }
+  return scene;
+}
+
+function recordValidatedDocument(document: CanvasDocument): CanvasDocument {
+  validatedDocuments.add(document);
+  recordValidatedScene(document.scene);
+  return document;
+}
+
+function checkSceneGraphInvariantsFast(scene: CanvasScene): boolean {
+  const seenLayerIds = new Set<string>();
+  for (let i = 0; i < scene.layers.length; i += 1) {
+    const layerId = scene.layers[i]!.id;
+    if (seenLayerIds.has(layerId)) {
+      return false;
+    }
+    seenLayerIds.add(layerId);
+  }
+
+  const nodesById = new Map<string, CanvasNode>();
+  for (let i = 0; i < scene.nodes.length; i += 1) {
+    const node = scene.nodes[i]!;
+    if (nodesById.has(node.id) || !seenLayerIds.has(node.layerId)) {
+      return false;
+    }
+    nodesById.set(node.id, node);
+  }
+
+  for (let i = 0; i < scene.nodes.length; i += 1) {
+    const node = scene.nodes[i]!;
+    if (node.parentId !== null) {
+      if (node.parentId === node.id) {
+        return false;
+      }
+      const parent = nodesById.get(node.parentId);
+      if (!parent || parent.type !== "group" || parent.layerId !== node.layerId) {
+        return false;
+      }
+      const ancestorIds = new Set<string>([node.id]);
+      let ancestorId: string | null = node.parentId;
+      while (ancestorId !== null) {
+        if (ancestorIds.has(ancestorId)) {
+          return false;
+        }
+        ancestorIds.add(ancestorId);
+        const ancestor = nodesById.get(ancestorId);
+        if (!ancestor) {
+          break;
+        }
+        ancestorId = ancestor.parentId;
+      }
+    }
+
+    if (node.type === "annotation" && node.targetId !== null) {
+      if (!nodesById.has(node.targetId)) {
+        return false;
+      }
+    }
+
+    if (node.type === "edge") {
+      const sourceNode = nodesById.get(node.sourceId);
+      const targetNode = nodesById.get(node.targetId);
+      if (
+        !sourceNode ||
+        sourceNode.layerId !== node.layerId ||
+        !targetNode ||
+        targetNode.layerId !== node.layerId
+      ) {
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
+function tryDefineSceneIncremental(input: unknown): CanvasScene | null {
+  if (typeof input !== "object" || input === null || Array.isArray(input)) {
+    return null;
+  }
+  const raw = input as Record<string, unknown>;
+  const rawMode = raw.mode === undefined ? "3d" : raw.mode;
+  if (rawMode !== "2d" && rawMode !== "3d") {
+    return null;
+  }
+  const rawNodes = raw.nodes;
+  if (!Array.isArray(rawNodes) || rawNodes.length === 0) {
+    return null;
+  }
+
+  const nodeSet = rawMode === "2d" ? validated2DNodes : validated3DNodes;
+  let hasValidatedFrozenNode = false;
+  for (let i = 0; i < rawNodes.length; i += 1) {
+    const candidate = rawNodes[i];
+    if (
+      typeof candidate === "object" &&
+      candidate !== null &&
+      Object.isFrozen(candidate) &&
+      nodeSet.has(candidate)
+    ) {
+      hasValidatedFrozenNode = true;
+      break;
+    }
+  }
+  if (!hasValidatedFrozenNode) {
+    return null;
+  }
+
+  // Validate top-level scene shell strictly without touching nodes.
+  const { mode: _m, nodes: _n, ...baseFields } = raw;
+  const parsedBase = CanvasSceneBaseSchema.safeParse(baseFields);
+  if (!parsedBase.success) {
+    return null;
+  }
+
+  const parsedNodes = new Array(rawNodes.length);
+  if (rawMode === "2d") {
+    for (let i = 0; i < rawNodes.length; i += 1) {
+      const candidate = rawNodes[i];
+      if (
+        typeof candidate === "object" &&
+        candidate !== null &&
+        Object.isFrozen(candidate) &&
+        validated2DNodes.has(candidate)
+      ) {
+        parsedNodes[i] = candidate;
+      } else {
+        const res = Canvas2DNodeSchema.safeParse(candidate);
+        if (!res.success) {
+          return null;
+        }
+        validated2DNodes.add(res.data);
+        parsedNodes[i] = res.data;
+      }
+    }
+    const assembled: Canvas2DScene = {
+      ...parsedBase.data,
+      mode: "2d",
+      nodes: parsedNodes as Canvas2DNode[]
+    };
+    if (!checkSceneGraphInvariantsFast(assembled)) {
+      return null;
+    }
+    validatedScenes.add(assembled);
+    return assembled;
+  }
+
+  for (let i = 0; i < rawNodes.length; i += 1) {
+    const candidate = rawNodes[i];
+    if (
+      typeof candidate === "object" &&
+      candidate !== null &&
+      Object.isFrozen(candidate) &&
+      validated3DNodes.has(candidate)
+    ) {
+      parsedNodes[i] = candidate;
+    } else {
+      const res = Canvas3DNodeSchema.safeParse(candidate);
+      if (!res.success) {
+        return null;
+      }
+      validated3DNodes.add(res.data);
+      parsedNodes[i] = res.data;
+    }
+  }
+  const assembled: Canvas3DScene = {
+    ...parsedBase.data,
+    mode: "3d",
+    nodes: parsedNodes as Canvas3DNode[]
+  };
+  if (!checkSceneGraphInvariantsFast(assembled)) {
+    return null;
+  }
+  validatedScenes.add(assembled);
+  return assembled;
+}
+
 export function defineScene(scene: CanvasSceneInput): CanvasScene {
-  return CanvasSceneSchema.parse(scene);
+  if (
+    typeof scene === "object" &&
+    scene !== null &&
+    Object.isFrozen(scene) &&
+    validatedScenes.has(scene)
+  ) {
+    return scene as CanvasScene;
+  }
+  const incremental = tryDefineSceneIncremental(scene);
+  if (incremental !== null) {
+    return incremental;
+  }
+  return recordValidatedScene(CanvasSceneSchema.parse(scene));
 }
 
 /**
@@ -2775,8 +2991,81 @@ export function safeDefineScene(scene: unknown) {
   return CanvasSceneSchema.safeParse(scene);
 }
 
+function tryDefineDocumentIncremental(input: unknown): CanvasDocument | null {
+  if (typeof input !== "object" || input === null || Array.isArray(input)) {
+    return null;
+  }
+  const raw = input as Record<string, unknown>;
+  if (typeof raw.scene !== "object" || raw.scene === null) {
+    return null;
+  }
+  const sceneFast =
+    Object.isFrozen(raw.scene) && validatedScenes.has(raw.scene)
+      ? (raw.scene as CanvasScene)
+      : tryDefineSceneIncremental(raw.scene);
+  if (sceneFast === null) {
+    return null;
+  }
+
+  const { scene: _s, ...envelopeFields } = raw;
+  const parsedEnvelope = CanvasDocumentEnvelopeSchema.safeParse(envelopeFields);
+  if (!parsedEnvelope.success) {
+    return null;
+  }
+
+  const assetsById = new Map<string, (typeof parsedEnvelope.data.assets)[number]>();
+  for (let i = 0; i < parsedEnvelope.data.assets.length; i += 1) {
+    const asset = parsedEnvelope.data.assets[i]!;
+    if (assetsById.has(asset.id)) {
+      return null;
+    }
+    assetsById.set(asset.id, asset);
+  }
+
+  if (sceneFast.mode === "3d") {
+    for (let i = 0; i < sceneFast.nodes.length; i += 1) {
+      const node = sceneFast.nodes[i]!;
+      if (node.type !== "mesh" || node.geometryAssetId === undefined) {
+        continue;
+      }
+      const asset = assetsById.get(node.geometryAssetId);
+      if (!asset || asset.type !== "geometry") {
+        return null;
+      }
+    }
+  }
+
+  const env = parsedEnvelope.data;
+  const assembled: CanvasDocument = {
+    id: env.id,
+    schemaVersion: env.schemaVersion,
+    revision: env.revision,
+    ...(env.title === undefined ? {} : { title: env.title }),
+    ...(env.createdAt === undefined ? {} : { createdAt: env.createdAt }),
+    ...(env.updatedAt === undefined ? {} : { updatedAt: env.updatedAt }),
+    scene: sceneFast,
+    assets: env.assets,
+    metadata: env.metadata,
+    pluginState: env.pluginState
+  };
+  validatedDocuments.add(assembled);
+  return assembled;
+}
+
 export function defineDocument(document: CanvasDocumentInput): CanvasDocument {
-  return CanvasDocumentSchema.parse(document);
+  if (
+    typeof document === "object" &&
+    document !== null &&
+    Object.isFrozen(document) &&
+    validatedDocuments.has(document)
+  ) {
+    return document as CanvasDocument;
+  }
+  const incremental = tryDefineDocumentIncremental(document);
+  if (incremental !== null) {
+    return incremental;
+  }
+  return recordValidatedDocument(CanvasDocumentSchema.parse(document));
 }
 
 export class CanvasDocumentParseError extends Error {

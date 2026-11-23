@@ -264,6 +264,7 @@ Verified by deterministic repository scripts (`pnpm verify:2d-performance`,
 | Surface / Workload | Optimization | Measured Result |
 | --- | --- | --- |
 | 2D `10k-2d-rects` (Canvas2D + minimap) | Spatial index + viewport culling + O(1) minimap cache | `drawCalls` 10,001 → **28**, pan p50 3.70 ms → **0.00 ms**, 200 hit-tests 118.5 ms → **0.5 ms** |
+| 2D `10k` / `100k` live single-node edit & `100k` pan/hit | Frozen-validated incremental Zod + O(k) spatial/object update | 10k `editor.apply` 79.3 ms → **4.05 ms**, 10k `update()` 51.8 ms → **5.6–7.9 ms**, 100k 200 hit-tests 51.8 ms → **0.30 ms** (`172×`), 100k pan **0.00 ms** (`28` drawCalls) |
 | 2D `10k-2d-webgpu` (explicit 2D WebGPU) | GPU-resident vertex/atlas/bindGroup cache + spatial culling | pan p50 6.90 ms → **0.00 ms**, p95 14.40 ms → **0.10 ms**, triangles 20,002 → **210** |
 | 2D `1k-2d-overlays` (HTML cards) | O(visible) DOM virtualization + diffed `rebuildObjects` | pan p50 0.80 ms → **0.10 ms**, 1-card edit calls `renderNode` **1×** (not 1,001×) |
 | 2D rapid wheel burst (20 events / tick) | rAF frame coalescing | 20 events → **1 Canvas2D render** with full accumulated pan delta |

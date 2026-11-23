@@ -33,13 +33,31 @@ export function isNodeEffectivelyVisible(
   return resolveEffectiveNodeState(document, nodeId).visible;
 }
 
+const nodeByIdByNodesArray = new WeakMap<
+  readonly CanvasDocument["scene"]["nodes"][number][],
+  Map<string, CanvasDocument["scene"]["nodes"][number]>
+>();
+
+function getNodeByIdMap(
+  nodes: CanvasDocument["scene"]["nodes"]
+): Map<string, CanvasDocument["scene"]["nodes"][number]> {
+  let map = nodeByIdByNodesArray.get(nodes);
+  if (!map) {
+    map = new Map();
+    for (let i = 0; i < nodes.length; i += 1) {
+      const node = nodes[i]!;
+      map.set(node.id, node);
+    }
+    nodeByIdByNodesArray.set(nodes, map);
+  }
+  return map;
+}
+
 export function resolveEffectiveNodeState(
   document: CanvasDocument,
   nodeId: NodeId
 ): ResolvedEffectiveNodeState {
-  const nodeById = new Map(
-    document.scene.nodes.map((node) => [node.id, node] as const)
-  );
+  const nodeById = getNodeByIdMap(document.scene.nodes);
   const node = nodeById.get(nodeId);
 
   if (!node) {

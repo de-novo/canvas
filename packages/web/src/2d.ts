@@ -272,7 +272,7 @@ export function createCanvas2D(
     transformPreview = null;
     authoringPreviews = [];
     const previousScene = currentScene;
-    store.getState().setScene(nextScene);
+    store.setState({ scene: nextScene });
     currentScene = nextScene;
     sceneGraph = createCanvas2DSceneGraph(nextScene);
     spatialIndex = syncCanvas2DSpatialIndex(
@@ -281,12 +281,44 @@ export function createCanvas2D(
       nextScene,
       sceneGraph
     );
-    rebuildObjects(currentScene, sceneGraph, objects, contentColors, overlayElements, prevHtmlNodesById, activeOverlayIds, renderNode, {
-      sceneToCanvas: (point) => sceneToCanvasPoint(viewState, point),
+    const syncStats = spatialIndex.getStats();
+    const overlayRenderContext = {
+      sceneToCanvas: (point: readonly [number, number]) =>
+        sceneToCanvasPoint(viewState, point),
       viewState,
       viewportSize: { width: resizeState.width, height: resizeState.height }
-    }, resolved.overlay);
-    runtime.resize();
+    };
+    if (syncStats.lastSyncKind === "incremental") {
+      rebuildObjectsIncremental(
+        spatialIndex.getLastChangedNodeIds(),
+        currentScene,
+        sceneGraph,
+        objects,
+        contentColors,
+        overlayElements,
+        prevHtmlNodesById,
+        activeOverlayIds,
+        renderNode,
+        overlayRenderContext,
+        resolved.overlay
+      );
+    } else if (syncStats.lastSyncKind === "full") {
+      rebuildObjects(
+        currentScene,
+        sceneGraph,
+        objects,
+        contentColors,
+        overlayElements,
+        prevHtmlNodesById,
+        activeOverlayIds,
+        renderNode,
+        overlayRenderContext,
+        resolved.overlay
+      );
+    }
+    if (resizeState.width === 0 || resizeState.height === 0) {
+      runtime.resize();
+    }
     runtime.render();
     return currentScene;
   }
@@ -1837,6 +1869,114 @@ function htmlNodeEqual(
     a.scale[1] === b.scale[1] &&
     jsonValuesEqual(a.metadata, b.metadata)
   );
+}
+
+function updateSingleCanvas2DObject(
+  node: Exclude<Canvas2DNode, { type: "group" }>,
+  scene: Canvas2DScene,
+  sceneGraph: Canvas2DSceneGraph,
+  objects: Map<string, Canvas2DObject>,
+  colors: Canvas2DContentColors,
+  overlayElements: Map<string, HTMLElement>,
+  prevHtmlNodesById: Map<string, Extract<Canvas2DNode, { type: "html" }>>,
+  activeOverlayIds: Set<string>,
+  renderNode: CreateCanvasOptions["renderNode"],
+  renderContext: Canvas2DRenderNodeContext,
+  overlayParent: HTMLElement
+) {
+  const parentWorldTransform = resolveParentWorldTransform(node, sceneGraph);
+  objects.set(node.id, {
+    id: node.id,
+    render(context) {
+      if (!isNodeEffectivelyVisible(scene, sceneGraph, node)) {
+        return;
+      }
+
+      context.save();
+      if (node.type !== "edge") {
+        applyCanvas2DMatrix(context, parentWorldTransform);
+      }
+      renderCanvas2DDrawableNode(
+        context,
+        node,
+        parentWorldTransform,
+        null,
+        colors,
+        scene,
+        sceneGraph
+      );
+      context.restore();
+    }
+  });
+
+  if (node.type === "html" && renderNode) {
+    let element = overlayElements.get(node.id);
+    const prevNode = prevHtmlNodesById.get(node.id);
+    if (element && prevNode && htmlNodeEqual(prevNode, node)) {
+      prevHtmlNodesById.set(node.id, node);
+      return;
+    }
+
+    const rendered = renderNode(node, renderContext);
+
+    if (typeof rendered === "string") {
+      if (!element) {
+        element = document.createElement("div");
+        element.style.position = "absolute";
+        element.style.display = "none";
+        overlayElements.set(node.id, element);
+        overlayParent.appendChild(element);
+        activeOverlayIds.delete(node.id);
+      }
+      element.textContent = rendered;
+    } else if (element !== rendered) {
+      rendered.style.position = "absolute";
+      rendered.style.display = "none";
+      if (element) {
+        element.replaceWith(rendered);
+      } else {
+        overlayParent.appendChild(rendered);
+      }
+      overlayElements.set(node.id, rendered);
+      activeOverlayIds.delete(node.id);
+    }
+
+    prevHtmlNodesById.set(node.id, node);
+  }
+}
+
+function rebuildObjectsIncremental(
+  changedNodeIds: readonly string[],
+  scene: Canvas2DScene,
+  sceneGraph: Canvas2DSceneGraph,
+  objects: Map<string, Canvas2DObject>,
+  colors: Canvas2DContentColors,
+  overlayElements: Map<string, HTMLElement>,
+  prevHtmlNodesById: Map<string, Extract<Canvas2DNode, { type: "html" }>>,
+  activeOverlayIds: Set<string>,
+  renderNode: CreateCanvasOptions["renderNode"],
+  renderContext: Canvas2DRenderNodeContext,
+  overlayParent: HTMLElement
+) {
+  for (let i = 0; i < changedNodeIds.length; i += 1) {
+    const node = sceneGraph.nodesById.get(changedNodeIds[i]!);
+    if (!node || node.type === "group") {
+      continue;
+    }
+    updateSingleCanvas2DObject(
+      node,
+      scene,
+      sceneGraph,
+      objects,
+      colors,
+      overlayElements,
+      prevHtmlNodesById,
+      activeOverlayIds,
+      renderNode,
+      renderContext,
+      overlayParent
+    );
+  }
 }
 
 function rebuildObjects(

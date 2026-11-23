@@ -247,7 +247,7 @@ const canvas = createCanvas("#stage", {
 | 대상 / 워크로드 | 적용된 최적화 | 실측 결과 |
 | --- | --- | --- |
 | 2D `10k-2d-rects` (Canvas2D + 미니맵) | 공간 인덱스 + 뷰포트 컬링 + O(1) 미니맵 캐시 | `drawCalls` 10,001 → **28**, 팬 p50 3.70 ms → **0.00 ms**, 200회 히트테스트 118.5 ms → **0.5 ms** |
-| 2D `10k-2d-rects` 단일 노드 이동 / 스마트 스냅 | O(k) 증분 공간 인덱스 + O(visible) 스냅 | 단일 이동 재색인 **1개** (`kind=incremental`), 스냅 탐색 **28 / 10,001개** (**0.50 ms**) |
+| 2D `10k-2d-rects` 단일 노드 이동 / 스마트 스냅 / `100k` 비교 | 증분 Zod 검증 + O(k) 공간/오브젝트 갱신 + O(visible) 스냅 | 10k `editor.apply` 79.3 ms → **4.05 ms**, 10k `update()` 51.8 ms → **5.6–7.9 ms**, 100k 200회 히트 51.8 ms → **0.30 ms** (`172배`), 100k 팬 **0.00 ms** (`28` drawCalls) |
 | 2D `10k-2d-webgpu` (명시적 2D WebGPU) | GPU 상주 버텍스·아틀라스·바인드그룹 캐시 + 공간 컬링 | 팬 p50 6.90 ms → **0.00 ms**, p95 14.40 ms → **0.10–0.20 ms**, 삼각형 20,002 → **210** |
 | 2D `1k-2d-overlays` (HTML 카드) | O(visible) DOM 가상화 + diff 기반 `rebuildObjects` | 팬 p50 0.80 ms → **0.10 ms**, 카드 1개 수정 시 `renderNode` **1회** 호출 (1,001회 아님) |
 | 2D 고속 휠 입력 버스트 (20회 / 틱) | rAF 프레임 병합(코얼레싱) | 20회 이벤트 → **Canvas2D 렌더 1회** (누적 이동량 100% 보존) |

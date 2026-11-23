@@ -1,6 +1,7 @@
 import {
   CanvasDocumentSchema,
   CanvasHitResultSchema,
+  defineDocument,
   CanvasSelectionModeSchema,
   SelectionStateSchema,
   type CanvasDocument,
@@ -154,7 +155,7 @@ export function parseDocumentEffect(
   commandType?: string
 ): EditorEffect<CanvasDocument> {
   return Effect.try({
-    try: () => freezeValue(CanvasDocumentSchema.parse(input)),
+    try: () => freezeValue(defineDocument(input as Parameters<typeof defineDocument>[0])),
     catch: (cause) =>
       new CanvasEditorError(code, "Canvas document validation failed.", {
         cause,
