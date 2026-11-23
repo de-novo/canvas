@@ -2,7 +2,7 @@
 
 ## Supported Versions
 
-This repository is pre-release (`0.0.0`). Security fixes land on `main`.
+This repository is currently on `0.1.x`. Security fixes land on `main`.
 There is no long-term support branch yet.
 
 ## Reporting a Vulnerability

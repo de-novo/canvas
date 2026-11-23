@@ -87,7 +87,7 @@ seven literal-ID-preserving tool factories, exclusive facade configs, and
 React 2D/3D scene inputs.
 
 The configured external documentation-governance scripts were unavailable at
-`/Users/novo/.agents/skills/doc-governance/scripts/`; that condition is not
+`~/.agents/skills/doc-governance/scripts/`; that condition is not
 reported as a pass. Both exact commands exited `2` with `No such file or
 directory`. On 2026-07-15, a repository-local Markdown link audit read 42
 Markdown files and checked 150 local targets with zero missing targets.
