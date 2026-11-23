@@ -2121,12 +2121,22 @@ function applyScene(
         content.remove(existing);
         const transform = new Object3D();
         const matrix = new Matrix4();
+        const color = new Color();
         let matrixDirty = false;
+        let colorDirty = false;
         for (let i = 0; i < entries.length; i += 1) {
           const entry = entries[i]!;
           const prevNode = prevNodesById.get(entry.id);
-          // Fast-path: check previous node transform against entry.
-          if (
+          const sameColor =
+            prevNode &&
+            (prevNode.type === "box" || prevNode.type === "sphere") &&
+            prevNode.color === entry.color;
+          if (!sameColor) {
+            color.set(entry.color);
+            existing.setColorAt(i, color);
+            colorDirty = true;
+          }
+          const sameTransform =
             prevNode &&
             (prevNode.type === "box" || prevNode.type === "sphere") &&
             prevNode.position[0] === entry.position[0] &&
@@ -2141,21 +2151,23 @@ function applyScene(
                 prevNode.scale[2] === entry.scale[2]
               : prevNode.scale[0] * prevNode.radius === entry.scale[0] &&
                 prevNode.scale[1] * prevNode.radius === entry.scale[1] &&
-                prevNode.scale[2] * prevNode.radius === entry.scale[2])
-          ) {
-            continue;
+                prevNode.scale[2] * prevNode.radius === entry.scale[2]);
+          if (!sameTransform) {
+            transform.position.set(entry.position[0], entry.position[1], entry.position[2]);
+            transform.rotation.set(entry.rotation[0], entry.rotation[1], entry.rotation[2]);
+            transform.scale.set(entry.scale[0], entry.scale[1], entry.scale[2]);
+            transform.updateMatrix();
+            matrix.copy(transform.matrix);
+            existing.setMatrixAt(i, matrix);
+            matrixDirty = true;
           }
-          transform.position.set(entry.position[0], entry.position[1], entry.position[2]);
-          transform.rotation.set(entry.rotation[0], entry.rotation[1], entry.rotation[2]);
-          transform.scale.set(entry.scale[0], entry.scale[1], entry.scale[2]);
-          transform.updateMatrix();
-          matrix.copy(transform.matrix);
-          existing.setMatrixAt(i, matrix);
-          matrixDirty = true;
         }
         if (matrixDirty) {
           existing.instanceMatrix.needsUpdate = true;
           existing.computeBoundingSphere();
+        }
+        if (colorDirty && existing.instanceColor) {
+          existing.instanceColor.needsUpdate = true;
         }
         return existing;
       }
@@ -2166,14 +2178,14 @@ function applyScene(
     return mesh;
   }
 
-  // Optional draw-call batching: collapse same-color top-level box and sphere
-  // nodes into one InstancedMesh per primitive+color. Only visible top-level
-  // (parentId === null) nodes are batched so hierarchy and per-node transforms
-  // on nested nodes are unaffected (spheres stay on THREE.LOD when LOD is on).
-  // Hit testing resolves back to nodes via INSTANCE_NODE_IDS.
+  // Optional draw-call batching: collapse all visible top-level box and sphere
+  // nodes into ONE InstancedMesh per primitive kind using per-instance colors
+  // (`instanceColor`), so multi-color scenes (e.g. warehouses, status heatmaps)
+  // render in 1 draw call and color/transform edits update in place without
+  // reallocating GPU buffers. Hit testing resolves back via INSTANCE_NODE_IDS.
   if (sceneData.render.batch) {
-    const boxesByColor = new Map<string, BatchedPrimitiveEntry[]>();
-    const spheresByColor = new Map<string, BatchedPrimitiveEntry[]>();
+    const batchedBoxes: BatchedPrimitiveEntry[] = [];
+    const batchedSpheres: BatchedPrimitiveEntry[] = [];
 
     for (const node of sceneData.nodes) {
       if (node.parentId !== null) {
@@ -2184,60 +2196,40 @@ function applyScene(
       }
 
       if (node.type === "box") {
-        const entry = boxEntryFromNode(node);
-        const entries = boxesByColor.get(entry.color);
-        if (entries) {
-          entries.push(entry);
-        } else {
-          boxesByColor.set(entry.color, [entry]);
-        }
+        batchedBoxes.push(boxEntryFromNode(node));
       } else if (node.type === "sphere" && !lod?.enabled) {
-        const entry = sphereEntryFromNode(node);
-        const entries = spheresByColor.get(entry.color);
-        if (entries) {
-          entries.push(entry);
-        } else {
-          spheresByColor.set(entry.color, [entry]);
-        }
+        batchedSpheres.push(sphereEntryFromNode(node));
       }
     }
 
-    for (const entries of boxesByColor.values()) {
-      if (entries.length < 2) {
-        continue;
-      }
-
+    if (batchedBoxes.length >= 2) {
       const mesh = resolveOrReuseBatchedMesh(
-        `denovo-batch:${entries[0]!.color}`,
+        "denovo-batch:box",
         resourceCache.getUnitBoxGeometry(),
-        resourceCache.getSurfaceMaterial(entries[0]!.color),
-        entries
+        resourceCache.getSurfaceMaterial("#ffffff"),
+        batchedBoxes
       );
       mesh.visible = true;
       nextContent.add(mesh);
       nextHitTestObjects.push(mesh);
 
-      for (const entry of entries) {
+      for (const entry of batchedBoxes) {
         batchedNodeIds.add(entry.id);
       }
     }
 
-    for (const entries of spheresByColor.values()) {
-      if (entries.length < 2) {
-        continue;
-      }
-
+    if (batchedSpheres.length >= 2) {
       const mesh = resolveOrReuseBatchedMesh(
-        `denovo-batch-sphere:${entries[0]!.color}`,
+        "denovo-batch-sphere:sphere",
         resourceCache.getUnitSphereGeometry(),
-        resourceCache.getSurfaceMaterial(entries[0]!.color),
-        entries
+        resourceCache.getSurfaceMaterial("#ffffff"),
+        batchedSpheres
       );
       mesh.visible = true;
       nextContent.add(mesh);
       nextHitTestObjects.push(mesh);
 
-      for (const entry of entries) {
+      for (const entry of batchedSpheres) {
         batchedNodeIds.add(entry.id);
       }
     }
@@ -3280,6 +3272,7 @@ function createBatchedPrimitiveMesh(
   const mesh = new InstancedMesh(geometry, material, entries.length);
   const transform = new Object3D();
   const matrix = new Matrix4();
+  const color = new Color();
   const nodeIds: string[] = [];
 
   mesh.instanceMatrix.setUsage(DynamicDrawUsage);
@@ -3291,10 +3284,16 @@ function createBatchedPrimitiveMesh(
     transform.updateMatrix();
     matrix.copy(transform.matrix);
     mesh.setMatrixAt(index, matrix);
+    color.set(entry.color);
+    mesh.setColorAt(index, color);
     nodeIds.push(entry.id);
   });
 
   mesh.instanceMatrix.needsUpdate = true;
+  if (mesh.instanceColor) {
+    mesh.instanceColor.setUsage(DynamicDrawUsage);
+    mesh.instanceColor.needsUpdate = true;
+  }
   mesh.frustumCulled = false;
   mesh.userData[INSTANCE_NODE_IDS_USER_DATA_KEY] = nodeIds;
 

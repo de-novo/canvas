@@ -94,16 +94,14 @@ const documentModel = defineDocument({
 });
 
 const editor = createEditor({ document: documentModel });
-const canvas = createCanvas("#stage", { document: documentModel, editable: true });
-await canvas.ready;
-const disconnect = connectEditorToCanvas(editor, canvas);
+const canvas = createCanvas("#stage", { editor });
 
 document.querySelector("#hide")!.addEventListener("click", () =>
   editor.apply([setNodeVisible({ nodeId: "rect", visible: false })])
 );
 document.querySelector("#undo")!.addEventListener("click", () => editor.undo());
 
-// 卸载时调用：disconnect(); canvas.destroy();
+// 卸载时调用：canvas.destroy()（会自动断开编辑器连接）
 ```
 
 ### 2. React / Next.js 2D 视图与细粒度选择器
@@ -151,7 +149,6 @@ export function Board() {
     []
   );
 
-  const documentModel = useCanvasSelector(editor, (s) => s.document);
   const { canUndo, canRedo } = useCanvasSelector(
     editor,
     (s) => ({ canRedo: s.history.canRedo, canUndo: s.history.canUndo }),
@@ -160,14 +157,7 @@ export function Board() {
 
   return (
     <div>
-      <Canvas2DView
-        scene={documentModel.scene}
-        onRuntime={(runtime) => {
-          if (runtime) {
-            void runtime.ready.then(() => connectEditorToCanvas(editor, runtime));
-          }
-        }}
-      />
+      <Canvas2DView editor={editor} />
       <button disabled={!canUndo} onClick={() => void editor.undo()}>
         Undo
       </button>

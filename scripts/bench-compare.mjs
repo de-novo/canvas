@@ -333,12 +333,103 @@ writeFileSync(
       };
     }
 
+    async function benchWarehouse3D() {
+      host.innerHTML = "";
+      // Realistic Warehouse Digital Twin:
+      // 20 aisles x 5 rack tiers x 50 slots = 5,000 stacked multi-color pallets
+      // + 20 moving AGVs = 5,020 boxes across 5 live status colors.
+      const palette = ["#22c55e", "#38bdf8", "#f59e0b", "#ef4444", "#64748b"];
+      const nodes = [];
+      let idx = 0;
+      for (let aisle = 0; aisle < 20; aisle += 1) {
+        for (let slot = 0; slot < 50; slot += 1) {
+          for (let tier = 0; tier < 5; tier += 1) {
+            nodes.push({
+              id: "pallet-" + idx,
+              layerId: "default",
+              type: "box",
+              position: [aisle * 4.2, tier * 1.6 + 0.6, slot * 1.5],
+              scale: [1.2, 1.1, 1.2],
+              color: palette[idx % palette.length]
+            });
+            idx += 1;
+          }
+        }
+      }
+      for (let a = 0; a < 20; a += 1) {
+        nodes.push({
+          id: "agv-" + a,
+          layerId: "default",
+          type: "box",
+          position: [a * 4.2 + 2.1, 0.35, 10 + a],
+          scale: [1.0, 0.5, 1.4],
+          color: "#a855f7"
+        });
+      }
+      const doc = defineDocument({
+        id: "warehouse-3d",
+        scene: {
+          id: "warehouse-3d-scene",
+          mode: "3d",
+          background: "#0b1220",
+          render: { batch: true },
+          camera: { position: [42, 26, 95], target: [42, 4, 37], fov: 50 },
+          layers: [{ id: "default", name: "Default" }],
+          nodes
+        }
+      });
+      const editor = createEditor({ document: doc });
+      // One-line editor mounting DX!
+      const runtime = createCanvas(host, { editor, renderer: { backend: "webgl2" } });
+      await runtime.ready;
+      const frozenScene = editor.getState().document.scene;
+
+      const renderSamples = [];
+      for (let i = 0; i < 15; i += 1) {
+        const t0 = performance.now();
+        runtime.render();
+        renderSamples.push(performance.now() - t0);
+      }
+      const stats = runtime.getRenderStats();
+
+      // Simulate live warehouse telemetry tick: 50 pallets change status color + 20 AGVs move.
+      const telemetrySamples = [];
+      for (let tick = 0; tick < 8; tick += 1) {
+        const nextNodes = frozenScene.nodes.slice();
+        for (let p = 0; p < 50; p += 1) {
+          const targetIdx = (tick * 50 + p) % 5000;
+          const prev = frozenScene.nodes[targetIdx];
+          nextNodes[targetIdx] = { ...prev, color: palette[(tick + p + 1) % palette.length] };
+        }
+        for (let a = 0; a < 20; a += 1) {
+          const agvIdx = 5000 + a;
+          const prev = frozenScene.nodes[agvIdx];
+          nextNodes[agvIdx] = { ...prev, position: [prev.position[0], 0.35, (prev.position[2] + tick * 0.8) % 70] };
+        }
+        const t0 = performance.now();
+        runtime.update({ ...frozenScene, nodes: nextNodes });
+        telemetrySamples.push(performance.now() - t0);
+      }
+      const postStats = runtime.getRenderStats();
+      runtime.destroy();
+      return {
+        totalPalletsAndAgvs: nodes.length,
+        distinctColors: 6,
+        drawCalls: stats?.drawCalls ?? null,
+        postTelemetryDrawCalls: postStats?.drawCalls ?? null,
+        geometries: stats?.geometries ?? null,
+        renderP50Ms: p50(renderSamples),
+        telemetry50ColorsPlus20AgvsP50Ms: p50(telemetrySamples)
+      };
+    }
+
     const r2d10k = await benchDenovo2D(10_000);
     const r2d100k = await benchDenovo2D(100_000);
     const r3dUnbatched = await bench3D(1_000, false);
     const r3dBatched1k = await bench3D(1_000, true);
     const r3dBatched10k = await bench3D(10_000, true);
-    window.__benchCompare = { r2d10k, r2d100k, r3dUnbatched, r3dBatched1k, r3dBatched10k };
+    const warehouse3d5k = await benchWarehouse3D();
+    window.__benchCompare = { r2d10k, r2d100k, r3dUnbatched, r3dBatched1k, r3dBatched10k, warehouse3d5k };
   </script>
 </body>
 </html>`

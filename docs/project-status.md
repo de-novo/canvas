@@ -486,6 +486,8 @@ product-level extension seam, `CanvasPlugin` is a host bundle, and
 
 ## Evidence
 
+- 2026-11-23: Multi-color single-drawCall 3D `InstancedMesh` (`instanceColor` + in-place `setColorAt`/`setMatrixAt` updates) and one-line `editor` mounting DX (`createCanvas("#stage", { editor })`, `<Canvas2DView editor={editor} />`) landed for Issue #19, benchmarked on a 5,020-object 6-color 3D Warehouse Digital Twin (`drawCalls=1` before & after live 50-pallet status flips + 20 moving AGVs). See [multi-color 3D batching and editor DX](./history/2026-11-23-multicolor-3d-batching-and-editor-dx.md).
+
 - 2026-11-23: Eliminated redundant O(N) Zod re-validation (`WeakSet` frozen-validated cache + incremental per-node validation), made 2D `rebuildObjects` and 3D batched `InstancedMesh` updates incremental O(k), optimized `freezeValue` & `resolveEffectiveNodeState`, and added `pnpm bench:compare` for Issue #18. Measured: 2D 10k `editor.apply` `79.3 ms -> 4.05 ms`, 2D 10k `runtime.update()` `51.8 ms -> 5.6–7.9 ms`, 2D 100k hit-tests `51.8 ms -> 0.30 ms` (`172x`), 3D 10k batched `runtime.update()` `15.0 ms` (`drawCalls=1`). See [incremental validation and 100k benchmarks](./history/2026-11-23-incremental-validation-and-100k-benchmarks.md).
 
 - 2026-11-23: GitHub Pages open-source demo hub & Three.js-free 10k 2D live benchmark landed for Issue #17 (`pnpm build:pages`, `pnpm verify:pages`, `.github/workflows/pages.yml`, EN/KO/ZH-CN hub + `bench-2d/`, `flow/`, `network/`, `field/`). Verified in headless Chromium (`4/4` checks passed with zero console/page errors and zero Three.js in `bench-2d`). See [GitHub Pages demo hub](./history/2026-11-23-github-pages-demo-hub.md).

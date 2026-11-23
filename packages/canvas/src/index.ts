@@ -388,6 +388,18 @@ export type DenovoCanvasCommonConfig = Omit<CreateCanvasOptions, "onFrame"> & {
 type DenovoCanvasDocumentConfig = {
   background?: never;
   document: CanvasDocumentSource;
+  editor?: never;
+  id?: never;
+  layers?: never;
+  mode?: never;
+  nodes?: never;
+  scene?: never;
+};
+
+type DenovoCanvasEditorConfig = {
+  background?: never;
+  document?: never;
+  editor: CanvasEditor;
   id?: never;
   layers?: never;
   mode?: never;
@@ -398,6 +410,7 @@ type DenovoCanvasDocumentConfig = {
 type DenovoCanvasSceneConfig = {
   background?: never;
   document?: never;
+  editor?: never;
   id?: never;
   layers?: never;
   mode?: never;
@@ -408,6 +421,7 @@ type DenovoCanvasSceneConfig = {
 type DenovoCanvasInlineSceneBase = {
   background?: string;
   document?: never;
+  editor?: never;
   id?: string;
   layers?: CanvasSceneInput["layers"];
   scene?: never;
@@ -431,6 +445,7 @@ type DenovoCanvasInferredInlineConfig = DenovoCanvasInlineSceneBase & {
 export type DenovoCanvasConfig = DenovoCanvasCommonConfig &
   (
     | DenovoCanvasDocumentConfig
+    | DenovoCanvasEditorConfig
     | DenovoCanvasSceneConfig
     | DenovoCanvasInline2DConfig
     | DenovoCanvasInline3DConfig
@@ -698,9 +713,14 @@ export function createCanvas(
 ): DenovoCanvasRuntime {
   assertValidCanvasConfig(config);
   const target = resolveTarget(targetInput);
-  let currentDocument = isDocumentConfig(config)
-    ? resolveDocumentSource(config.document)
-    : null;
+  const attachedEditor = isEditorConfig(config) ? config.editor : null;
+  let currentDocument = attachedEditor
+    ? attachedEditor.getState().document
+    : isDocumentConfig(config)
+      ? resolveDocumentSource(config.document)
+      : null;
+  let destroyed = false;
+  let disconnectAttachedEditor: (() => void) | null = null;
   const scene = currentDocument?.scene ?? resolveScene(config);
   const theme = resolveTheme(config.theme);
   let renderer = resolveRenderer(config.renderer, scene);
@@ -774,7 +794,7 @@ export function createCanvas(
     return runtime.resolveSurfacePoint(request);
   }
   const resolvedConfig: ResolvedDenovoCanvasConfig = {
-    editable: config.editable ?? false,
+    editable: config.editable ?? (attachedEditor !== null),
     pluginNames: config.plugins?.map((plugin) => plugin.name) ?? [],
     renderer,
     theme: typeof config.theme === "string" ? config.theme : theme.name
@@ -878,6 +898,9 @@ export function createCanvas(
       return runtime.store;
     },
     destroy() {
+      destroyed = true;
+      disconnectAttachedEditor?.();
+      disconnectAttachedEditor = null;
       registryController.destroy();
       runtime.destroy();
       host.removeAttribute("data-denovo-backend");
@@ -975,6 +998,15 @@ export function createCanvas(
   facadeRegistryControllers.set(facadeRuntime, registryController);
   void facadeRuntime.ready.then(
     () => {
+      if (destroyed) {
+        return;
+      }
+      if (attachedEditor !== null) {
+        disconnectAttachedEditor = connectEditorToCanvas(
+          attachedEditor,
+          facadeRuntime
+        );
+      }
       const gpuBackend = readRuntimeGpuBackend(runtime);
 
       if (
@@ -1343,6 +1375,12 @@ function isDocumentConfig(
   return hasOwn(config, "document");
 }
 
+function isEditorConfig(
+  config: DenovoCanvasConfig
+): config is DenovoCanvasCommonConfig & DenovoCanvasEditorConfig {
+  return hasOwn(config, "editor");
+}
+
 function isSceneConfig(
   config: DenovoCanvasConfig
 ): config is DenovoCanvasCommonConfig & DenovoCanvasSceneConfig {
@@ -1366,6 +1404,7 @@ function assertValidCanvasConfig(
 
   const config = input as Record<PropertyKey, unknown>;
   const hasDocument = hasOwn(config, "document");
+  const hasEditor = hasOwn(config, "editor");
   const hasScene = hasOwn(config, "scene");
   const inlineKeys = inlineSceneKeys.filter((key) => hasOwn(config, key));
 
@@ -1373,23 +1412,29 @@ function assertValidCanvasConfig(
     throw new TypeError("Canvas config document must be defined when provided.");
   }
 
+  if (hasEditor && config.editor === undefined) {
+    throw new TypeError("Canvas config editor must be defined when provided.");
+  }
+
   if (hasScene && config.scene === undefined) {
     throw new TypeError("Canvas config scene must be defined when provided.");
   }
 
-  if (hasDocument && hasScene) {
+  const sourceCount = Number(hasDocument) + Number(hasEditor) + Number(hasScene);
+  if (sourceCount > 1) {
     throw new TypeError(
-      "Canvas config accepts exactly one scene source: document, scene, or inline scene fields."
+      "Canvas config accepts exactly one scene source: document, editor, scene, or inline scene fields."
     );
   }
 
-  if ((hasDocument || hasScene) && inlineKeys.length > 0) {
+  if (sourceCount > 0 && inlineKeys.length > 0) {
+    const label = hasDocument ? "document" : hasEditor ? "editor" : "scene";
     throw new TypeError(
-      `Canvas config ${hasDocument ? "document" : "scene"} cannot be combined with inline scene fields: ${inlineKeys.join(", ")}.`
+      `Canvas config ${label} cannot be combined with inline scene fields: ${inlineKeys.join(", ")}.`
     );
   }
 
-  if (!hasDocument && !hasScene) {
+  if (sourceCount === 0) {
     const hasMode = hasOwn(config, "mode");
     const hasNodes = hasOwn(config, "nodes");
 

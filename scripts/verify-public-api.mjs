@@ -4121,10 +4121,18 @@ runtime.update({
 const validReact2DProps: Canvas2DViewProps = {
   scene: { id: "r2d", mode: "2d", layers: [{ id: "default", name: "Default" }], nodes: [] }
 };
+const validReact2DEditorProps: Canvas2DViewProps = {
+  editor
+};
+const runtimeFromEditor: DenovoCanvas2DRuntime = createCanvas("#stage", {
+  editor
+});
 const badReact2DProps: Canvas2DViewProps = {
   // @ts-expect-error Canvas2DView rejects 3D scenes at compile time.
   scene: { id: "r3d", mode: "3d", layers: [{ id: "default", name: "Default" }], nodes: [] }
 };
+void validReact2DEditorProps;
+void runtimeFromEditor;
 function React2DSmoke() {
   const canUndo: boolean = useReact2DSelector(editor, (s) => s.history.canUndo);
   // @ts-expect-error mismatched React 2D selector equality comparator.

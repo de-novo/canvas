@@ -109,16 +109,14 @@ const documentModel = defineDocument({
 });
 
 const editor = createEditor({ document: documentModel });
-const canvas = createCanvas("#stage", { document: documentModel, editable: true });
-await canvas.ready;
-const disconnect = connectEditorToCanvas(editor, canvas);
+const canvas = createCanvas("#stage", { editor });
 
 document.querySelector("#hide")!.addEventListener("click", () =>
   editor.apply([setNodeVisible({ nodeId: "rect", visible: false })])
 );
 document.querySelector("#undo")!.addEventListener("click", () => editor.undo());
 
-// On unmount: disconnect(); canvas.destroy();
+// On unmount: canvas.destroy() (automatically disconnects editor too).
 ```
 
 ### 2. React / Next.js 2D view with fine-grained selectors
@@ -166,9 +164,8 @@ export function Board() {
     []
   );
 
-  // Re-renders only when document or undo/redo booleans actually change —
+  // Re-renders only when undo/redo booleans actually change —
   // 0 re-renders across pointermove hover churn.
-  const documentModel = useCanvasSelector(editor, (s) => s.document);
   const { canUndo, canRedo } = useCanvasSelector(
     editor,
     (s) => ({ canRedo: s.history.canRedo, canUndo: s.history.canUndo }),
@@ -177,14 +174,7 @@ export function Board() {
 
   return (
     <div>
-      <Canvas2DView
-        scene={documentModel.scene}
-        onRuntime={(runtime) => {
-          if (runtime) {
-            void runtime.ready.then(() => connectEditorToCanvas(editor, runtime));
-          }
-        }}
-      />
+      <Canvas2DView editor={editor} />
       <button disabled={!canUndo} onClick={() => void editor.undo()}>
         Undo
       </button>

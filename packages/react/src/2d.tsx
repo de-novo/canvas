@@ -15,20 +15,29 @@ import { useEffect, useRef, type CSSProperties } from "react";
 
 import { useCanvasSelector } from "./selector";
 
-export type Canvas2DViewProps = {
+type Canvas2DViewBaseProps = {
   readonly className?: string;
   readonly options?: DenovoCanvas2DCommonConfig;
-  readonly scene: Canvas2DSceneInput;
   readonly style?: CSSProperties;
   readonly onRuntime?: (runtime: DenovoCanvas2DRuntime | null) => void;
 };
 
+export type Canvas2DViewProps = Canvas2DViewBaseProps &
+  (
+    | { readonly editor?: never; readonly scene: Canvas2DSceneInput }
+    | { readonly editor: CanvasEditor; readonly scene?: never }
+  );
+
 /**
  * Lightweight 2D-only React canvas view backed by `@denovo/canvas/2d`.
  * Imports zero Three.js, `@react-three/fiber`, or `@react-three/drei` code.
+ *
+ * Pass either `scene` (stateless/controlled view) or `editor` (auto-connects
+ * to the editor on ready and cleans up automatically on unmount).
  */
 export function Canvas2DView({
   className,
+  editor,
   options,
   scene,
   style,
@@ -42,10 +51,16 @@ export function Canvas2DView({
       return;
     }
 
-    const runtime = createCanvas(hostRef.current, {
-      scene,
-      ...(options ?? {})
-    });
+    const runtime =
+      editor !== undefined
+        ? createCanvas(hostRef.current, {
+            editor,
+            ...(options ?? {})
+          })
+        : createCanvas(hostRef.current, {
+            scene: scene!,
+            ...(options ?? {})
+          });
     runtimeRef.current = runtime;
     onRuntime?.(runtime);
 
@@ -54,11 +69,14 @@ export function Canvas2DView({
       runtimeRef.current = null;
       onRuntime?.(null);
     };
-  }, []);
+  }, [editor]);
 
   useEffect(() => {
+    if (editor !== undefined || scene === undefined) {
+      return;
+    }
     runtimeRef.current?.update(scene);
-  }, [scene]);
+  }, [editor, scene]);
 
   return (
     <div

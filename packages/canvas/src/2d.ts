@@ -256,6 +256,18 @@ export type DenovoCanvas2DCommonConfig = {
 type DenovoCanvas2DDocumentConfig = {
   readonly background?: never;
   readonly document: Canvas2DDocumentSource;
+  readonly editor?: never;
+  readonly id?: never;
+  readonly layers?: never;
+  readonly mode?: never;
+  readonly nodes?: never;
+  readonly scene?: never;
+};
+
+type DenovoCanvas2DEditorConfig = {
+  readonly background?: never;
+  readonly document?: never;
+  readonly editor: CanvasEditor;
   readonly id?: never;
   readonly layers?: never;
   readonly mode?: never;
@@ -266,6 +278,7 @@ type DenovoCanvas2DDocumentConfig = {
 type DenovoCanvas2DSceneConfig = {
   readonly background?: never;
   readonly document?: never;
+  readonly editor?: never;
   readonly id?: never;
   readonly layers?: never;
   readonly mode?: never;
@@ -276,6 +289,7 @@ type DenovoCanvas2DSceneConfig = {
 type DenovoCanvas2DInlineConfig = {
   readonly background?: string;
   readonly document?: never;
+  readonly editor?: never;
   readonly id?: string;
   readonly layers?: Canvas2DSceneInput["layers"];
   readonly mode?: "2d";
@@ -286,6 +300,7 @@ type DenovoCanvas2DInlineConfig = {
 export type DenovoCanvas2DConfig = DenovoCanvas2DCommonConfig &
   (
     | DenovoCanvas2DDocumentConfig
+    | DenovoCanvas2DEditorConfig
     | DenovoCanvas2DSceneConfig
     | DenovoCanvas2DInlineConfig
   );
@@ -491,10 +506,19 @@ export function createCanvas(
   config: DenovoCanvas2DConfig = {}
 ): DenovoCanvas2DRuntime {
   const target = resolveTarget(targetInput);
+  const attachedEditor =
+    "editor" in config && config.editor !== undefined ? config.editor : null;
   let currentDocument =
-    "document" in config && config.document !== undefined
-      ? resolveDocumentSource(config.document)
-      : null;
+    attachedEditor !== null
+      ? attachedEditor.getState().document
+      : "document" in config && config.document !== undefined
+        ? resolveDocumentSource(config.document)
+        : null;
+  if (attachedEditor !== null && currentDocument?.scene.mode !== "2d") {
+    throw new TypeError(
+      `@denovo/canvas/2d requires a 2D editor document; received mode "${currentDocument?.scene.mode ?? "unknown"}".`
+    );
+  }
   const initialScene: Canvas2DScene =
     currentDocument?.scene.mode === "2d"
       ? currentDocument.scene
@@ -519,9 +543,11 @@ export function createCanvas(
   const runtime = createCanvas2D(target, initialScene, webOptions);
   const listeners = new Set<CanvasRuntimeChangeListener>();
   let generation = 0;
+  let destroyed = false;
+  let disconnectAttachedEditor: (() => void) | null = null;
 
   const resolvedConfig: ResolvedDenovoCanvas2DConfig = {
-    editable: config.editable ?? false,
+    editable: config.editable ?? (attachedEditor !== null),
     renderer,
     theme
   };
@@ -554,6 +580,9 @@ export function createCanvas(
     ready: runtime.ready,
     store: runtime.store,
     destroy() {
+      destroyed = true;
+      disconnectAttachedEditor?.();
+      disconnectAttachedEditor = null;
       generation += 1;
       const event: CanvasRuntimeChange = {
         generation,
@@ -645,6 +674,15 @@ export function createCanvas(
     },
     update: updateScene
   };
+
+  if (attachedEditor !== null) {
+    void runtime.ready.then(() => {
+      if (destroyed) {
+        return;
+      }
+      disconnectAttachedEditor = connectEditorToCanvas(attachedEditor, facade);
+    });
+  }
 
   return facade;
 }

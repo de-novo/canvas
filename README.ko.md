@@ -98,16 +98,14 @@ const documentModel = defineDocument({
 });
 
 const editor = createEditor({ document: documentModel });
-const canvas = createCanvas("#stage", { document: documentModel, editable: true });
-await canvas.ready;
-const disconnect = connectEditorToCanvas(editor, canvas);
+const canvas = createCanvas("#stage", { editor });
 
 document.querySelector("#hide")!.addEventListener("click", () =>
   editor.apply([setNodeVisible({ nodeId: "rect", visible: false })])
 );
 document.querySelector("#undo")!.addEventListener("click", () => editor.undo());
 
-// 언마운트 시: disconnect(); canvas.destroy();
+// 언마운트 시: canvas.destroy() (에디터 연결도 자동 해제됨)
 ```
 
 ### 2. React / Next.js 2D 뷰 + 세분화 셀렉터
@@ -155,7 +153,6 @@ export function Board() {
     []
   );
 
-  const documentModel = useCanvasSelector(editor, (s) => s.document);
   const { canUndo, canRedo } = useCanvasSelector(
     editor,
     (s) => ({ canRedo: s.history.canRedo, canUndo: s.history.canUndo }),
@@ -164,14 +161,7 @@ export function Board() {
 
   return (
     <div>
-      <Canvas2DView
-        scene={documentModel.scene}
-        onRuntime={(runtime) => {
-          if (runtime) {
-            void runtime.ready.then(() => connectEditorToCanvas(editor, runtime));
-          }
-        }}
-      />
+      <Canvas2DView editor={editor} />
       <button disabled={!canUndo} onClick={() => void editor.undo()}>
         Undo
       </button>
