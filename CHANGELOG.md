@@ -13,11 +13,13 @@ and published packages follow [Semantic Versioning](https://semver.org/spec/v2.0
   `@denovo/canvas/2d`, `@denovo/canvas/react/2d`, `@denovo/react-canvas/2d`,
   `@denovo/vue-canvas/2d`, `@denovo/svelte-canvas/2d`, and
   `@denovo/solid-canvas/2d`, cutting 2D application bundles by ~81%.
-- **2D scale optimizations**: uniform-grid `Canvas2DSpatialIndex` with viewport
-  culling for rendering, hit-testing, and marquee queries; O(visible) HTML
-  overlay virtualization with diffed `renderNode` updates; O(1) cached minimap
-  rendering; rAF input burst coalescing; and 2D WebGPU GPU-resident vertex /
-  atlas / bind-group caching with spatial culling.
+- **2D scale optimizations**: uniform-grid `Canvas2DSpatialIndex` with O(k)
+  incremental edit updates, viewport culling for rendering, hit-testing, and
+  marquee queries, O(visible) smart snap guides (`computeCanvas2DSnapGuides` /
+  `runtime.current.computeSnapGuides`), O(visible) HTML overlay virtualization
+  with diffed `renderNode` updates, O(1) cached minimap rendering, rAF input
+  burst coalescing, and 2D WebGPU GPU-resident vertex / atlas / bind-group
+  caching with spatial culling.
 - **TanStack-style fine-grained selectors**: headless `subscribeCanvasSelector`
   and `shallowEqual`, plus React `useCanvasSelector`, Vue `useCanvasSelector`,
   Svelte `createCanvasSelectorStore`, and Solid `useCanvasSelector`.

@@ -166,7 +166,40 @@ if (!MEASURE_ONLY) {
   console.log(
     `[perf-2d] rAF burst coalescing passed: 20 wheel events -> ${tenK.burstCoalesceRenders} render(s)`
   );
-  console.log("[perf-2d] all 2D culling, spatial-index, WebGPU caching, rAF coalescing, and correctness gates passed");
+
+  // Incremental spatial-index sync gate on 10k nodes: moving 1 node must reuse
+  // the grid incrementally (1 node re-indexed, not 10,001) and update queries.
+  assert.equal(
+    tenK.incrementalSyncKind,
+    "incremental",
+    `expected incremental spatial sync on 1-node move in 10k scene, got ${tenK.incrementalSyncKind}`
+  );
+  assert.equal(
+    tenK.incrementalSyncedNodeCount,
+    1,
+    `expected 1 re-indexed node on 1-node move, got ${tenK.incrementalSyncedNodeCount}`
+  );
+  assert.equal(
+    tenK.incrementalQueryParityOk,
+    true,
+    "expected moved node to appear at new bounds and disappear from old bounds"
+  );
+  console.log(
+    `[perf-2d] incremental spatial-index sync passed: kind=${tenK.incrementalSyncKind} updated=${tenK.incrementalSyncedNodeCount}`
+  );
+
+  // O(visible) smart snap gate on 10k nodes: snapping queries only visible neighbors.
+  assert.equal(tenK.snapOk, true, "expected O(visible) 2D snap dx/dy and guides to match");
+  assert.ok(
+    typeof tenK.snapCandidateCount === "number" &&
+      tenK.snapCandidateCount > 0 &&
+      tenK.snapCandidateCount < 150,
+    `expected O(visible) snap candidateCount in (0, 150) out of 10k nodes, got ${tenK.snapCandidateCount}`
+  );
+  console.log(
+    `[perf-2d] O(visible) smart snap passed: candidates=${tenK.snapCandidateCount}/10001 elapsed=${tenK.snapMs.toFixed(2)}ms`
+  );
+  console.log("[perf-2d] all 2D culling, spatial-index, incremental sync, smart snap, WebGPU caching, rAF coalescing, and correctness gates passed");
 }
 
 /**
@@ -447,6 +480,60 @@ function perf2DBenchHtml() {
       }
     }
 
+    // For 10k rects on Canvas2D, verify O(1) incremental spatial-index sync on
+    // a single-node move and O(visible) smart snap guides against visible neighbors.
+    let incrementalSyncKind = null;
+    let incrementalSyncedNodeCount = null;
+    let incrementalQueryParityOk = null;
+    let snapOk = null;
+    let snapCandidateCount = null;
+    let snapMs = null;
+    if (kind === "rects" && backend === "canvas2d" && count >= 10_000) {
+      current.setViewState({ offset: [40, 40], zoom: 1 });
+      const snapStart = performance.now();
+      const snap = current.computeSnapGuides(
+        { minX: 183, minY: 184, maxX: 303, maxY: 264 },
+        { excludeNodeIds: ["rect-1"], threshold: 6 }
+      );
+      snapMs = performance.now() - snapStart;
+      snapCandidateCount = snap.candidateCount;
+      snapOk =
+        snap.dx === -3 &&
+        snap.dy === -4 &&
+        snap.snappedBounds.minX === 180 &&
+        snap.snappedBounds.minY === 180 &&
+        snap.guides.some((g) => g.axis === "x" && g.position === 180) &&
+        snap.guides.some((g) => g.axis === "y" && g.position === 180);
+
+      const movedNodes = nodes.map((node, index) =>
+        index === 0 ? { ...node, position: [4200, 2600] } : node
+      );
+      runtime.update({
+        id: "perf-2d",
+        mode: "2d",
+        background: "#0b1220",
+        layers: [{ id: "default", name: "Default" }],
+        nodes: movedNodes
+      });
+      const stats = current.getSpatialIndexStats();
+      incrementalSyncKind = stats.lastSyncKind;
+      incrementalSyncedNodeCount = stats.lastSyncedNodeCount;
+      const atNewPos = current.getNodesInBounds({
+        minX: 4195,
+        minY: 2595,
+        maxX: 4325,
+        maxY: 2685
+      });
+      const atOldPos = current.getNodesInBounds({
+        minX: -5,
+        minY: -5,
+        maxX: 15,
+        maxY: 15
+      });
+      incrementalQueryParityOk =
+        atNewPos.includes("rect-0") && !atOldPos.includes("rect-0");
+    }
+
     // For HTML overlays, verify editing 1 card out of 1,001 only invokes renderNode once.
     let singleCardEditRenderNodeCalls = null;
     if (kind === "html") {
@@ -475,6 +562,9 @@ function perf2DBenchHtml() {
         p95: percentile(hitSamples, 0.95)
       },
       hitTestTotalMs,
+      incrementalQueryParityOk,
+      incrementalSyncKind,
+      incrementalSyncedNodeCount,
       marqueeMs: {
         p50: percentile(marqueeSamples, 0.5),
         p95: percentile(marqueeSamples, 0.95)
@@ -486,6 +576,9 @@ function perf2DBenchHtml() {
         p95: percentile(panSamples, 0.95)
       },
       singleCardEditRenderNodeCalls,
+      snapCandidateCount,
+      snapMs,
+      snapOk,
       topmostHitOk,
       triangles
     };

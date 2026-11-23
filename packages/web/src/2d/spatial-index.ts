@@ -50,12 +50,27 @@ export type Canvas2DSpatialGroupEntry = {
   readonly node: Canvas2DGroupNode;
 };
 
+export type Canvas2DSpatialSyncKind = "full" | "incremental" | "noop";
+
+export type Canvas2DSpatialIndexStats = {
+  readonly cellSize: number;
+  readonly entryCount: number;
+  readonly lastSyncKind: Canvas2DSpatialSyncKind;
+  readonly lastSyncedNodeCount: number;
+};
+
 export type Canvas2DSpatialIndex = {
   readonly cellSize: number;
   readonly entries: readonly Canvas2DSpatialDrawableEntry[];
   readonly entryIndexByNodeId: ReadonlyMap<string, number>;
   readonly groups: readonly Canvas2DSpatialGroupEntry[];
   readonly htmlEntryCount: number;
+  readonly getStats: () => Canvas2DSpatialIndexStats;
+  readonly syncIncremental: (
+    previousScene: Canvas2DScene,
+    nextScene: Canvas2DScene,
+    nextSceneGraph: Canvas2DSceneGraph
+  ) => boolean;
   queryPoint: (
     point: readonly [number, number],
     preview: CanvasNodeTransformPreview | null,
@@ -420,9 +435,11 @@ export function createCanvas2DSpatialIndex(
   const invCellSize = 1 / cellSize;
   const cells = new Map<number, number[]>();
   const overflow: number[] = [];
+  const entryCells: Array<number[] | null> = new Array(entries.length);
+  let lastSyncKind: Canvas2DSpatialSyncKind = "full";
+  let lastSyncedNodeCount = entries.length;
 
-  for (let index = 0; index < entries.length; index += 1) {
-    const { bounds } = entries[index]!;
+  function insertEntryCells(index: number, bounds: Canvas2DRectBounds): void {
     if (
       !Number.isFinite(bounds.minX) ||
       !Number.isFinite(bounds.minY) ||
@@ -430,7 +447,8 @@ export function createCanvas2DSpatialIndex(
       !Number.isFinite(bounds.maxY)
     ) {
       overflow.push(index);
-      continue;
+      entryCells[index] = null;
+      return;
     }
 
     const minCx = Math.floor(bounds.minX * invCellSize);
@@ -447,15 +465,18 @@ export function createCanvas2DSpatialIndex(
       maxCy > MAX_CELL_COORD
     ) {
       overflow.push(index);
-      continue;
+      entryCells[index] = null;
+      return;
     }
 
+    const keys: number[] = [];
     for (let cy = minCy; cy <= maxCy; cy += 1) {
       for (let cx = minCx; cx <= maxCx; cx += 1) {
         const key = encodeCellKey(cx, cy);
         if (key === null) {
           continue;
         }
+        keys.push(key);
         const bucket = cells.get(key);
         if (bucket) {
           bucket.push(index);
@@ -464,6 +485,45 @@ export function createCanvas2DSpatialIndex(
         }
       }
     }
+    entryCells[index] = keys;
+  }
+
+  function removeEntryCells(index: number): void {
+    const keys = entryCells[index];
+    if (keys === null) {
+      const pos = overflow.indexOf(index);
+      if (pos !== -1) {
+        const last = overflow.pop()!;
+        if (pos < overflow.length) {
+          overflow[pos] = last;
+        }
+      }
+      return;
+    }
+    if (!keys) {
+      return;
+    }
+    for (let i = 0; i < keys.length; i += 1) {
+      const key = keys[i]!;
+      const bucket = cells.get(key);
+      if (!bucket) {
+        continue;
+      }
+      const pos = bucket.indexOf(index);
+      if (pos !== -1) {
+        const last = bucket.pop()!;
+        if (pos < bucket.length) {
+          bucket[pos] = last;
+        }
+      }
+      if (bucket.length === 0) {
+        cells.delete(key);
+      }
+    }
+  }
+
+  for (let index = 0; index < entries.length; index += 1) {
+    insertEntryCells(index, entries[index]!.bounds);
   }
 
   const seenStamp = new Uint32Array(entries.length);
@@ -583,12 +643,182 @@ export function createCanvas2DSpatialIndex(
     return indices;
   }
 
+  function resolveWorldParentTransformForNode(
+    node: Canvas2DDrawableNode,
+    sceneGraphRef: Canvas2DSceneGraph
+  ): Canvas2DMatrix {
+    if (node.type === "edge" || node.parentId === null) {
+      return CANVAS_2D_IDENTITY_MATRIX;
+    }
+    const ancestors = getCanvas2DAncestors(node, sceneGraphRef);
+    let world = CANVAS_2D_IDENTITY_MATRIX;
+    for (let i = ancestors.length - 1; i >= 0; i -= 1) {
+      const ancestor = ancestors[i]!;
+      world = multiplyCanvas2DMatrices(
+        world,
+        createCanvas2DTransformMatrix({
+          position: ancestor.position,
+          rotation: ancestor.rotation,
+          scale: ancestor.scale
+        })
+      );
+    }
+    return world;
+  }
+
+  function syncIncremental(
+    previousScene: Canvas2DScene,
+    nextScene: Canvas2DScene,
+    nextSceneGraph: Canvas2DSceneGraph
+  ): boolean {
+    if (previousScene.layers.length !== nextScene.layers.length) {
+      return false;
+    }
+    for (let i = 0; i < nextScene.layers.length; i += 1) {
+      const prevLayer = previousScene.layers[i]!;
+      const nextLayer = nextScene.layers[i]!;
+      if (
+        prevLayer.id !== nextLayer.id ||
+        prevLayer.visible !== nextLayer.visible
+      ) {
+        return false;
+      }
+    }
+    if (previousScene.nodes.length !== nextScene.nodes.length) {
+      return false;
+    }
+
+    const maxIncrementalChanges = Math.max(64, Math.floor(entries.length * 0.15));
+    const changedNodes: Canvas2DNode[] = [];
+    for (let i = 0; i < nextScene.nodes.length; i += 1) {
+      const prevNode = previousScene.nodes[i]!;
+      const nextNode = nextScene.nodes[i]!;
+      if (prevNode === nextNode) {
+        continue;
+      }
+      if (
+        prevNode.id !== nextNode.id ||
+        prevNode.type !== nextNode.type ||
+        prevNode.layerId !== nextNode.layerId ||
+        prevNode.parentId !== nextNode.parentId ||
+        prevNode.visible !== nextNode.visible
+      ) {
+        return false;
+      }
+      if (!isSameCanvas2DNodeValue(prevNode, nextNode)) {
+        changedNodes.push(nextNode);
+        if (changedNodes.length > maxIncrementalChanges) {
+          return false;
+        }
+      }
+    }
+
+    if (changedNodes.length === 0) {
+      lastSyncKind = "noop";
+      lastSyncedNodeCount = 0;
+      return true;
+    }
+
+    const affectedDrawableIds = new Set<string>();
+    const affectedGroupIds = new Set<string>();
+    const stack: Canvas2DNode[] = [...changedNodes];
+
+    while (stack.length > 0) {
+      const node = stack.pop()!;
+      if (node.type === "group") {
+        affectedGroupIds.add(node.id);
+        const children = nextSceneGraph.childrenByGroupId.get(node.id);
+        if (children) {
+          for (let i = 0; i < children.length; i += 1) {
+            stack.push(children[i]!);
+          }
+        }
+      } else {
+        affectedDrawableIds.add(node.id);
+      }
+      const incidentEdges = nextSceneGraph.edgesByEndpointId.get(node.id);
+      if (incidentEdges) {
+        for (let i = 0; i < incidentEdges.length; i += 1) {
+          affectedDrawableIds.add(incidentEdges[i]!.id);
+        }
+      }
+    }
+
+    if (affectedDrawableIds.size > maxIncrementalChanges) {
+      return false;
+    }
+
+    for (const id of affectedDrawableIds) {
+      const entryIndex = entryIndexByNodeId.get(id);
+      if (entryIndex === undefined) {
+        continue;
+      }
+      const nextNode = nextSceneGraph.nodesById.get(id);
+      if (!nextNode || nextNode.type === "group") {
+        return false;
+      }
+      const effectiveParent = resolveWorldParentTransformForNode(
+        nextNode,
+        nextSceneGraph
+      );
+      const nextBounds = computeConservativeDrawableBounds(
+        nextNode,
+        effectiveParent,
+        nextSceneGraph
+      );
+      const prevBounds = entries[entryIndex]!.bounds;
+      const boundsChanged =
+        prevBounds.minX !== nextBounds.minX ||
+        prevBounds.minY !== nextBounds.minY ||
+        prevBounds.maxX !== nextBounds.maxX ||
+        prevBounds.maxY !== nextBounds.maxY;
+      if (boundsChanged) {
+        removeEntryCells(entryIndex);
+        insertEntryCells(entryIndex, nextBounds);
+      }
+      entries[entryIndex] = {
+        bounds: nextBounds,
+        isIdentityParent: isIdentityMatrix(effectiveParent),
+        node: nextNode,
+        order: entryIndex,
+        parentWorldTransform: effectiveParent
+      };
+    }
+
+    if (groups.length > 0 && (affectedGroupIds.size > 0 || affectedDrawableIds.size > 0)) {
+      for (let i = 0; i < groups.length; i += 1) {
+        const groupId = groups[i]!.node.id;
+        const nextGroup = nextSceneGraph.nodesById.get(groupId);
+        if (!nextGroup || nextGroup.type !== "group") {
+          return false;
+        }
+        groups[i] = {
+          bounds: resolveCanvas2DNodeWorldBounds(nextGroup, nextSceneGraph),
+          node: nextGroup
+        };
+      }
+    }
+
+    lastSyncKind = "incremental";
+    lastSyncedNodeCount = affectedDrawableIds.size;
+    return true;
+  }
+
   return {
     cellSize,
     entries,
     entryIndexByNodeId,
     groups,
     htmlEntryCount,
+    getStats() {
+      return {
+        cellSize,
+        entryCount: entries.length,
+        lastSyncKind,
+        lastSyncedNodeCount
+      };
+    },
+    syncIncremental,
     queryPoint(point, preview, sceneGraphRef) {
       const [px, py] = point;
       const stamp = nextStamp();
@@ -681,4 +911,135 @@ export function createCanvas2DSpatialIndex(
       return ids;
     }
   };
+}
+
+function sameVec2(
+  a: readonly [number, number],
+  b: readonly [number, number]
+): boolean {
+  return a[0] === b[0] && a[1] === b[1];
+}
+
+function sameOptionalRecord(
+  a: Readonly<Record<string, unknown>> | undefined,
+  b: Readonly<Record<string, unknown>> | undefined
+): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  const aKeys = Object.keys(a);
+  const bKeys = Object.keys(b);
+  if (aKeys.length !== bKeys.length) return false;
+  for (let i = 0; i < aKeys.length; i += 1) {
+    const key = aKeys[i]!;
+    if (!Object.prototype.hasOwnProperty.call(b, key) || !Object.is(a[key], b[key])) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function isSameCanvas2DNodeValue(a: Canvas2DNode, b: Canvas2DNode): boolean {
+  if (a.locked !== b.locked || !sameOptionalRecord(a.metadata, b.metadata)) {
+    return false;
+  }
+  switch (a.type) {
+    case "rect":
+      return (
+        b.type === "rect" &&
+        sameVec2(a.position, b.position) &&
+        sameVec2(a.size, b.size) &&
+        a.rotation === b.rotation &&
+        sameVec2(a.scale, b.scale) &&
+        a.fill === b.fill
+      );
+    case "circle":
+      return (
+        b.type === "circle" &&
+        sameVec2(a.position, b.position) &&
+        a.radius === b.radius &&
+        a.rotation === b.rotation &&
+        sameVec2(a.scale, b.scale) &&
+        a.fill === b.fill
+      );
+    case "group":
+      return (
+        b.type === "group" &&
+        sameVec2(a.position, b.position) &&
+        a.rotation === b.rotation &&
+        sameVec2(a.scale, b.scale)
+      );
+    case "html":
+      return (
+        b.type === "html" &&
+        sameVec2(a.position, b.position) &&
+        a.width === b.width &&
+        a.height === b.height &&
+        a.rotation === b.rotation &&
+        sameVec2(a.scale, b.scale) &&
+        a.html === b.html
+      );
+    case "text":
+      return (
+        b.type === "text" &&
+        sameVec2(a.position, b.position) &&
+        a.text === b.text &&
+        a.fontSize === b.fontSize &&
+        a.fontFamily === b.fontFamily &&
+        a.fontWeight === b.fontWeight &&
+        a.fill === b.fill &&
+        a.align === b.align &&
+        a.width === b.width &&
+        a.rotation === b.rotation &&
+        sameVec2(a.scale, b.scale)
+      );
+    case "measurement":
+      return (
+        b.type === "measurement" &&
+        sameVec2(a.start, b.start) &&
+        sameVec2(a.end, b.end) &&
+        a.precision === b.precision &&
+        a.unit.name === b.unit.name &&
+        a.unit.symbol === b.unit.symbol &&
+        a.unit.metersPerUnit === b.unit.metersPerUnit
+      );
+    case "annotation":
+      return (
+        b.type === "annotation" &&
+        sameVec2(a.anchor, b.anchor) &&
+        a.text === b.text &&
+        a.targetId === b.targetId
+      );
+    case "edge":
+      return (
+        b.type === "edge" &&
+        a.sourceId === b.sourceId &&
+        a.targetId === b.targetId &&
+        a.sourcePort === b.sourcePort &&
+        a.targetPort === b.targetPort &&
+        sameVec2(a.sourceAnchor, b.sourceAnchor) &&
+        sameVec2(a.targetAnchor, b.targetAnchor) &&
+        a.curve === b.curve &&
+        a.routing === b.routing &&
+        a.curveOffset === b.curveOffset &&
+        a.lineStyle === b.lineStyle &&
+        a.stroke === b.stroke &&
+        a.strokeWidth === b.strokeWidth &&
+        a.sourceArrow === b.sourceArrow &&
+        a.targetArrow === b.targetArrow
+      );
+    default:
+      return false;
+  }
+}
+
+export function syncCanvas2DSpatialIndex(
+  previousIndex: Canvas2DSpatialIndex,
+  previousScene: Canvas2DScene,
+  nextScene: Canvas2DScene,
+  nextSceneGraph: Canvas2DSceneGraph
+): Canvas2DSpatialIndex {
+  if (previousIndex.syncIncremental(previousScene, nextScene, nextSceneGraph)) {
+    return previousIndex;
+  }
+  return createCanvas2DSpatialIndex(nextScene, nextSceneGraph);
 }

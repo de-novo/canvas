@@ -19,8 +19,10 @@ Vue, Svelte, or Solid.
     orthogonal port routing with arrowheads), `text`, `html` (host-rendered
     DOM cards with zoom scaling and off-screen culling), `group`, `measurement`,
     `annotation`, and custom `plugin.<org>.<kind>` drawers.
-  - Automatic uniform-grid spatial indexing and viewport culling for rendering,
-    hit-testing, and marquee selection (`getNodesInBounds`), O(visible) HTML
+  - Automatic uniform-grid spatial indexing with O(k) incremental edit updates,
+    viewport culling for rendering, hit-testing, marquee selection
+    (`getNodesInBounds`), and O(visible) alignment snap guides
+    (`computeSnapGuides` / `computeCanvas2DSnapGuides`), O(visible) HTML
     overlay DOM virtualization + diffed `renderNode` updates, O(1) cached
     minimap rendering, rAF input burst coalescing, and optional 2D WebGPU with
     GPU-resident vertex/atlas caching.

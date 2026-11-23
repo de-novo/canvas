@@ -186,6 +186,7 @@ export type {
 } from "@denovo/canvas-editor";
 export {
   canvasToScenePoint,
+  computeCanvas2DSnapGuides,
   connectCanvasSelection,
   connectCanvasToolInput,
   createCanvas2D,
@@ -212,6 +213,14 @@ export type {
   Canvas2DViewStateInput,
   Canvas2DOptions,
   Canvas2DRuntime,
+  Canvas2DSnapCandidate,
+  Canvas2DSnapEdge,
+  Canvas2DSnapGuide,
+  Canvas2DSnapGuideAxis,
+  Canvas2DSnapOptions,
+  Canvas2DSnapResult,
+  Canvas2DSpatialIndexStats,
+  Canvas2DSpatialSyncKind,
   Canvas2DViewportRuntime,
   Canvas3DSectionPlaneInput,
   CanvasCameraControlsInput,

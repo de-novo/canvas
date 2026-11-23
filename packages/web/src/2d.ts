@@ -90,8 +90,21 @@ import {
 } from "./2d/render";
 import {
   createCanvas2DSpatialIndex,
-  type Canvas2DSpatialIndex
+  syncCanvas2DSpatialIndex,
+  type Canvas2DSpatialIndex,
+  type Canvas2DSpatialIndexStats,
+  type Canvas2DSpatialSyncKind
 } from "./2d/spatial-index";
+import {
+  computeCanvas2DSnapGuides,
+  computeCanvas2DSnapGuidesFromIndex,
+  type Canvas2DSnapCandidate,
+  type Canvas2DSnapEdge,
+  type Canvas2DSnapGuide,
+  type Canvas2DSnapGuideAxis,
+  type Canvas2DSnapOptions,
+  type Canvas2DSnapResult
+} from "./2d/snap";
 import { createCanvas2DWebGpuPresenter, type Canvas2DWebGpuPresenter } from "./2d/webgpu";
 import type { Canvas2DRenderNodeContext } from "./types";
 import type {
@@ -143,6 +156,11 @@ export type Canvas2DRuntime = Omit<CanvasHitTestRuntime<"2d">, "mode"> &
   readonly context: CanvasRenderingContext2D;
   readonly gpuBackend?: "webgpu";
   readonly objects: ReadonlyMap<string, Canvas2DObject>;
+  computeSnapGuides: (
+    targetBounds: Canvas2DRectBounds,
+    options?: Canvas2DSnapOptions
+  ) => Canvas2DSnapResult;
+  getSpatialIndexStats: () => Canvas2DSpatialIndexStats;
   readPixels: () => Promise<ImageData>;
 };
 
@@ -250,10 +268,16 @@ export function createCanvas2D(
 
     transformPreview = null;
     authoringPreviews = [];
+    const previousScene = currentScene;
     store.getState().setScene(nextScene);
     currentScene = nextScene;
     sceneGraph = createCanvas2DSceneGraph(nextScene);
-    spatialIndex = createCanvas2DSpatialIndex(nextScene, sceneGraph);
+    spatialIndex = syncCanvas2DSpatialIndex(
+      spatialIndex,
+      previousScene,
+      nextScene,
+      sceneGraph
+    );
     rebuildObjects(currentScene, sceneGraph, objects, contentColors, overlayElements, prevHtmlNodesById, activeOverlayIds, renderNode, {
       sceneToCanvas: (point) => sceneToCanvasPoint(viewState, point),
       viewState,
@@ -1067,6 +1091,21 @@ export function createCanvas2D(
     },
     getNodesInBounds(bounds) {
       return spatialIndex.queryRectIds(bounds, sceneGraph);
+    },
+    computeSnapGuides(targetBounds, snapOptions) {
+      return computeCanvas2DSnapGuidesFromIndex(
+        targetBounds,
+        spatialIndex,
+        sceneGraph,
+        getCanvas2DVisibleBounds(viewState, {
+          width: resizeState.width,
+          height: resizeState.height
+        }),
+        snapOptions
+      );
+    },
+    getSpatialIndexStats() {
+      return spatialIndex.getStats();
     },
     ...(renderNode === undefined ? {} : { renderOverlayNode: renderNode }),
     setConnectionHandlesVisible,
@@ -2103,6 +2142,17 @@ export {
   type Canvas2DViewState,
   type Canvas2DViewStateInput
 } from "./view2d";
+export {
+  computeCanvas2DSnapGuides,
+  type Canvas2DSnapCandidate,
+  type Canvas2DSnapEdge,
+  type Canvas2DSnapGuide,
+  type Canvas2DSnapGuideAxis,
+  type Canvas2DSnapOptions,
+  type Canvas2DSnapResult,
+  type Canvas2DSpatialIndexStats,
+  type Canvas2DSpatialSyncKind
+};
 export {
   CanvasReadPixelsUnsupportedError,
   type Canvas2DMinimapOptions,

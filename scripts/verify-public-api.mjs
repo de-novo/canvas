@@ -4001,12 +4001,15 @@ void depthValue;
 writeFileSync(
   path.join(tmpDir, "facade-2d-smoke.ts"),
   `import {
+  computeCanvas2DSnapGuides,
   connectEditorToCanvas,
   createCanvas,
   createEditor,
   defineDocument,
   shallowEqual,
   subscribeCanvasSelector,
+  type Canvas2DSnapResult,
+  type Canvas2DSpatialIndexStats,
   type DenovoCanvas2DRuntime
 } from "${facadeName}/2d";
 
@@ -4059,6 +4062,21 @@ const runtime: DenovoCanvas2DRuntime = createCanvas("#stage", {
 });
 const mode: "2d" = runtime.mode;
 void mode;
+const snapPure: Canvas2DSnapResult = computeCanvas2DSnapGuides(
+  { minX: 103, minY: 20, maxX: 203, maxY: 80 },
+  [{ id: "r1", bounds: { minX: 100, minY: 120, maxX: 200, maxY: 180 } }],
+  { threshold: 6 }
+);
+const snapRuntime: Canvas2DSnapResult = runtime.current.computeSnapGuides(
+  { minX: 103, minY: 20, maxX: 203, maxY: 80 },
+  { excludeNodeIds: ["r1"], threshold: 6 }
+);
+const spatialStats: Canvas2DSpatialIndexStats = runtime.current.getSpatialIndexStats();
+// @ts-expect-error computeCanvas2DSnapGuides threshold must be a number.
+computeCanvas2DSnapGuides({ minX: 0, minY: 0, maxX: 10, maxY: 10 }, [], { threshold: "6px" });
+void snapPure;
+void snapRuntime;
+void spatialStats;
 const disconnect = connectEditorToCanvas(editor, runtime);
 const unsub = subscribeCanvasSelector(
   editor,

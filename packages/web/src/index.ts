@@ -327,7 +327,7 @@ function createRuntime(
     : createCanvas3D(target, scene, options);
 }
 
-export { createCanvas2D } from "./2d";
+export { computeCanvas2DSnapGuides, createCanvas2D } from "./2d";
 export { createCanvas3D, createCanvas3DPluginNodeObject } from "./3d";
 export { hitTestSceneGraph } from "./2d/hit-test";
 export { renderCanvas2DScene } from "./2d/render";
@@ -381,7 +381,18 @@ export {
   zoomCanvas2DViewAt
 } from "./view2d";
 export { connectCanvasSelection, connectCanvasToolInput } from "./selection";
-export type { Canvas2DObject, Canvas2DRuntime } from "./2d";
+export type {
+  Canvas2DObject,
+  Canvas2DRuntime,
+  Canvas2DSnapCandidate,
+  Canvas2DSnapEdge,
+  Canvas2DSnapGuide,
+  Canvas2DSnapGuideAxis,
+  Canvas2DSnapOptions,
+  Canvas2DSnapResult,
+  Canvas2DSpatialIndexStats,
+  Canvas2DSpatialSyncKind
+} from "./2d";
 export type { Canvas2DRectBounds, Canvas2DViewportSize, Canvas2DViewState, Canvas2DViewStateInput } from "./view2d";
 export type { Canvas2DRenderNode, Canvas2DRenderNodeContext } from "./types";
 export type { Canvas3DSectionPlaneInput } from "./types";
