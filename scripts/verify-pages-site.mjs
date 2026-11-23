@@ -65,7 +65,8 @@ await check("build-pages-static-bundle", () => {
     "flow/index.html",
     "network/index.html",
     "field/index.html",
-    "warehouse/index.html"
+    "warehouse/index.html",
+    "flower/index.html"
   ]) {
     assert.ok(existsSync(path.join(distDir, rel)), `missing dist-pages/${rel}`);
   }
@@ -174,6 +175,28 @@ try {
       { timeout: 10_000 }
     );
     assert.deepEqual(errors, [], `warehouse had errors: ${errors.join("; ")}`);
+    await page.close();
+  });
+
+  await check("pages-flower-parametric-3d-lotus", async () => {
+    const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+    const errors = [];
+    page.on("pageerror", (e) => errors.push(String(e)));
+    page.on("console", (m) => {
+      if (m.type() === "error") errors.push(m.text());
+    });
+    await page.goto(`${url}/flower/`, { waitUntil: "networkidle" });
+    await page.waitForFunction(
+      () => Boolean(window.__flowerDemo && window.__flowerDemo.getState().triangles > 50_000),
+      undefined,
+      { timeout: 15_000 }
+    );
+    await page.selectOption("#palette-select", "sakura");
+    await page.click("#btn-wireframe");
+    const st = await page.evaluate(() => window.__flowerDemo.getState());
+    assert.equal(st.palette, "sakura");
+    assert.equal(st.wireframe, true);
+    assert.deepEqual(errors, [], `flower had errors: ${errors.join("; ")}`);
     await page.close();
   });
 

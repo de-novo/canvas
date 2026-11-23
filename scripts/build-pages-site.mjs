@@ -112,6 +112,36 @@ renameSync(
   path.join(outRoot, "warehouse", "index.html")
 );
 
+// 6. 3D Parametric Blooming Lotus (curved parametric meshes + batched Fibonacci pollen)
+const flowerConfigPath = path.join(outRoot, ".flower-vite.config.mjs");
+writeFileSync(
+  flowerConfigPath,
+  `import { resolve } from "node:path";
+export default {
+  root: ${JSON.stringify(path.join(root, "apps/playground-field"))},
+  base: "./",
+  build: {
+    outDir: ${JSON.stringify(path.join(outRoot, "flower"))},
+    emptyOutDir: true,
+    rollupOptions: {
+      input: resolve(${JSON.stringify(path.join(root, "apps/playground-field"))}, "flower.html")
+    }
+  }
+};
+`
+);
+console.log("[build:pages] building 3D Parametric Lotus -> dist-pages/flower");
+execFileSync(
+  "pnpm",
+  ["--filter", "@denovo/canvas-field-example", "exec", "vite", "build", "--config", flowerConfigPath],
+  { cwd: root, stdio: "inherit" }
+);
+rmSync(flowerConfigPath, { force: true });
+renameSync(
+  path.join(outRoot, "flower", "flower.html"),
+  path.join(outRoot, "flower", "index.html")
+);
+
 // 5. Root multilingual open-source landing hub (EN / KO / ZH-CN)
 writeFileSync(path.join(outRoot, ".nojekyll"), "");
 writeFileSync(
@@ -295,6 +325,14 @@ writeFileSync(
           </div>
           <span class="cta" id="c5-cta"></span>
         </a>
+        <a class="card" href="./flower/">
+          <div>
+            <span class="tag">@denovo/canvas · Parametric 3D Mesh</span>
+            <h2 id="c6-t"></h2>
+            <p id="c6-p"></p>
+          </div>
+          <span class="cta" id="c6-cta"></span>
+        </a>
         <a class="card" href="./field/">
           <div>
             <span class="tag">@denovo/canvas · 3D WebGPU/WebGL2</span>
@@ -331,6 +369,8 @@ writeFileSync(
           c4p: "Official plugin.denovo.field 3D showcase with WebGPU/WebGL2 auto backend resolution.",
           c5t: "Warehouse Digital Twin (2D ↔ 3D)",
           c5p: "5,000 stacked 3D pallets across 20 aisles + 20 moving AGVs across 6 live status colors in 1 single drawCall, with instant 2D floorplan switch.",
+          c6t: "3D Parametric Blooming Lotus",
+          c6p: "Interactive curved parametric lotus petals (mesh) + 90 batched Fibonacci pollen spheres with live bloom slider, palettes, and wireframe view.",
           cta: "Open demo →"
         },
         ko: {
@@ -349,7 +389,9 @@ writeFileSync(
           c4t: "3D Warp Field",
           c4p: "WebGPU/WebGL2 자동 백엔드 선택을 사용하는 공식 plugin.denovo.field 3D 쇼케이스.",
           c5t: "물류 창고 디지털 트윈 (2D ↔ 3D)",
-          c5p: "20개 통로 × 5단 적재 팔레트 5,000개 + 이동 AGV 20대(6색)를 단일 drawCall=1로 렌더링하고 2D 평면도로 즉시 전환합니다.",
+          c5p: "파란 철골 랙·주황 로드빔·목재 팔레트·화물·12대 AGV(3,367 파츠)를 단 2 drawCalls로 렌더링하고 2D 평면도로 즉시 전환합니다.",
+          c6t: "3D 파라메트릭 연꽃 (Blooming Lotus)",
+          c6p: "곡면 파라메트릭 꽃잎 메시 + 90개 피보나치 배칭 수술 구로 구현한 인터랙티브 3D 연꽃(개화 슬라이더·팔레트·와이어프레임).",
           cta: "데모 열기 →"
         },
         zh: {
@@ -368,7 +410,9 @@ writeFileSync(
           c4t: "3D Warp Field",
           c4p: "支持 WebGPU/WebGL2 自动后端选择的官方 plugin.denovo.field 3D 示例。",
           c5t: "仓储数字孪生（2D ↔ 3D）",
-          c5p: "20 巷道 × 5 层 5,000 个多色堆叠托盘 + 20 台移动 AGV 仅需 1 次 drawCall，并支持一键切换 2D 平面图。",
+          c5p: "工业钢货架、木托盘、多色货物与 12 台 AGV（3,367 个部件）仅需 2 次 drawCalls，并支持一键切换 2D 平面图。",
+          c6t: "3D 参数化绽放莲花",
+          c6p: "基于参数化曲面网格花瓣与 90 个斐波那契合批花蕊球体，支持实时绽放滑块、配色方案与线框视图。",
           cta: "打开示例 →"
         }
       };
@@ -391,7 +435,9 @@ writeFileSync(
         document.getElementById("c4-p").textContent = d.c4p;
         document.getElementById("c5-t").textContent = d.c5t;
         document.getElementById("c5-p").textContent = d.c5p;
-        for (const id of ["c1-cta", "c2-cta", "c3-cta", "c4-cta", "c5-cta"]) {
+        document.getElementById("c6-t").textContent = d.c6t;
+        document.getElementById("c6-p").textContent = d.c6p;
+        for (const id of ["c1-cta", "c2-cta", "c3-cta", "c4-cta", "c5-cta", "c6-cta"]) {
           document.getElementById(id).textContent = d.cta;
         }
         document.querySelectorAll(".langs button").forEach((btn) => {
