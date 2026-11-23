@@ -5,9 +5,19 @@ Canvas.
 
 Repository governance files live at the repo root:
 [LICENSE](../LICENSE), [NOTICE](../NOTICE),
+[CHANGELOG](../CHANGELOG.md),
 [CONTRIBUTING](../CONTRIBUTING.md),
 [CODE_OF_CONDUCT](../CODE_OF_CONDUCT.md), and
 [SECURITY](../SECURITY.md). The Work is Apache-2.0.
+
+## Open-Source Guides (English / 한국어 / 简体中文)
+
+Localized guides provide friendly onboarding for open-source adopters. When any
+translation differs from a normative specification, the canonical English
+document under `docs/` takes precedence.
+
+- **Project Overview**: [English README](../README.md) | [한국어 README](../README.ko.md) | [简体中文 README](../README.zh-CN.md)
+- **Getting Started & Optimization Guide**: [English](./getting-started.md) | [한국어](./getting-started.ko.md) | [简体中文](./getting-started.zh-CN.md)
 
 ## Core Documents
 

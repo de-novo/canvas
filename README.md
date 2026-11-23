@@ -1,5 +1,7 @@
 # Denovo Canvas
 
+**English** | [한국어](./README.ko.md) | [简体中文](./README.zh-CN.md)
+
 Denovo Canvas is a framework-agnostic TypeScript SDK for building fast,
 editable 2D and 3D canvas applications. Like TanStack Table and TanStack
 Virtual for DOM interfaces, Denovo Canvas owns the hard parts behind a small
@@ -11,6 +13,11 @@ renderer-independent JSON persistence.
 Your app supplies the UI controls, design system, and storage destination. Use
 the same editor and document model from vanilla JavaScript, React / Next.js,
 Vue, Svelte, or Solid.
+
+> New to Denovo Canvas? Read the
+> [Getting Started & Optimization Guide](./docs/getting-started.md)
+> ([한국어](./docs/getting-started.ko.md) | [简体中文](./docs/getting-started.zh-CN.md))
+> or browse the [Documentation Index](./docs/README.md).
 
 ## What You Can Build Today
 
