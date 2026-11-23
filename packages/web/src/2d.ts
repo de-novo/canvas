@@ -83,6 +83,7 @@ import {
   renderCanvas2DConnectionHandles,
   renderCanvas2DDrawableNode,
   renderCanvas2DScene,
+  renderCanvas2DSnapGuides,
   renderTransformHandles,
   resolveCanvas2DGridRenderRange,
   type Canvas2DContentColors,
@@ -161,6 +162,7 @@ export type Canvas2DRuntime = Omit<CanvasHitTestRuntime<"2d">, "mode"> &
     options?: Canvas2DSnapOptions
   ) => Canvas2DSnapResult;
   getSpatialIndexStats: () => Canvas2DSpatialIndexStats;
+  setSnapGuides: (guides: readonly Canvas2DSnapGuide[]) => void;
   readPixels: () => Promise<ImageData>;
 };
 
@@ -232,6 +234,7 @@ export function createCanvas2D(
   let selectionIds: ReadonlySet<string> = new Set();
   let hoveredId: string | null = null;
   let authoringPreviews: readonly CanvasAuthoringPreviewForMode<"2d">[] = [];
+  let snapGuides: readonly Canvas2DSnapGuide[] = [];
   let sceneGraph = createCanvas2DSceneGraph(initialScene);
   let spatialIndex = createCanvas2DSpatialIndex(initialScene, sceneGraph);
   let lastCanvas2DDrawCalls = 0;
@@ -752,6 +755,14 @@ export function createCanvas2D(
       viewState.zoom,
       contentColors
     );
+    if (snapGuides.length > 0) {
+      renderCanvas2DSnapGuides(
+        context2d,
+        snapGuides,
+        viewState.zoom,
+        contentColors
+      );
+    }
 
     if (connectionHandlesVisible) {
       renderCanvas2DConnectionHandles(
@@ -1106,6 +1117,13 @@ export function createCanvas2D(
     },
     getSpatialIndexStats() {
       return spatialIndex.getStats();
+    },
+    setSnapGuides(guides) {
+      if (snapGuides.length === 0 && guides.length === 0) {
+        return;
+      }
+      snapGuides = guides.length === 0 ? [] : [...guides];
+      scheduleRender();
     },
     ...(renderNode === undefined ? {} : { renderOverlayNode: renderNode }),
     setConnectionHandlesVisible,

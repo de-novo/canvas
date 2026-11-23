@@ -1,12 +1,15 @@
 export type NamedOperationRole = "read" | "write";
 
 export type NamedOperationFieldKind =
+  | "align-2d-mode"
   | "boolean"
   | "create-id"
+  | "distribute-2d-axis"
   | "field-pattern"
   | "layer-id"
   | "layer-id-or-null"
   | "node-id"
+  | "node-id-list"
   | "number"
   | "shade-pattern"
   | "sparkline-style"
@@ -14,6 +17,8 @@ export type NamedOperationFieldKind =
   | "string";
 
 export type NamedOperationFieldName =
+  | "alignment"
+  | "axis"
   | "createId"
   | "face"
   | "index"
@@ -21,6 +26,7 @@ export type NamedOperationFieldName =
   | "locked"
   | "name"
   | "nodeId"
+  | "nodeIds"
   | "on"
   | "pattern"
   | "style"
@@ -36,6 +42,8 @@ export type NamedOperationField = {
 
 export type NamedOperationName =
   | "addLayer"
+  | "alignNodes"
+  | "distributeNodes"
   | "listLabels"
   | "listLayers"
   | "listNodes"
@@ -70,6 +78,22 @@ const NAMED_OPERATION_MANIFEST: readonly NamedOperationManifestEntry[] = [
       { kind: "number", name: "index", required: false }
     ],
     name: "addLayer",
+    role: "write"
+  },
+  {
+    fields: [
+      { kind: "node-id-list", name: "nodeIds", required: true },
+      { kind: "align-2d-mode", name: "alignment", required: true }
+    ],
+    name: "alignNodes",
+    role: "write"
+  },
+  {
+    fields: [
+      { kind: "node-id-list", name: "nodeIds", required: true },
+      { kind: "distribute-2d-axis", name: "axis", required: true }
+    ],
+    name: "distributeNodes",
     role: "write"
   },
   {

@@ -42,6 +42,7 @@ export * from "@denovo/canvas-core";
 export {
   CanvasEditorError,
   addLayer,
+  alignNodes,
   applyCommandsToDocument,
   applyCommandsToStoredDocument,
   applyNamedOperations,
@@ -59,6 +60,7 @@ export {
   createTimeGraphLayoutAdapter,
   createTransformTool,
   createUngroupNodesCommand,
+  distributeNodes,
   getEffectiveNodeState,
   isNodeEffectivelyLocked,
   isNodeEffectivelyVisible,
@@ -88,6 +90,8 @@ export {
 } from "@denovo/canvas-editor";
 export type {
   AddLayerInput,
+  AlignNodesInput,
+  AlignNodesMode,
   ApplyStoredCommandsOptions,
   Canvas2DShapeToolOptions,
   CanvasAnnotationDraft,
@@ -119,6 +123,8 @@ export type {
   CanvasTransformToolOptions,
   ConnectEditorToStorageOptions,
   CreateCanvasEditorOptions,
+  DistributeNodesAxis,
+  DistributeNodesInput,
   ListLabelsOptions,
   ListNodesOptions,
   ListedLabel,

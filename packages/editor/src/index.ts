@@ -249,7 +249,9 @@ export type {
 } from "./layout/graph-adapters.js";
 export {
   addLayer,
+  alignNodes,
   applyNamedOperations,
+  distributeNodes,
   listLabels,
   listLayers,
   listNodes,
@@ -276,6 +278,10 @@ export {
 } from "./authoring/named-operations-catalog.js";
 export type {
   AddLayerInput,
+  AlignNodesInput,
+  AlignNodesMode,
+  DistributeNodesAxis,
+  DistributeNodesInput,
   ListedLabel,
   ListedLabelType,
   ListedLayer,

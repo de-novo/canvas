@@ -53,7 +53,7 @@ document under `docs/` takes precedence.
   exact world-aligned box-on-box surface placement, transient ghost, strict
   surface-query capability, lifecycle, no-fallback, and verification contract.
 - [Named Authoring Operations](./named-authoring-operations.md): sayable
-  helpers (`setLayerVisible`, `setLayerLocked`, `stackBox`, `listNodes`,
+  helpers (`alignNodes`, `distributeNodes`, `setLayerVisible`, `setLayerLocked`, `stackBox`, `listNodes`,
   `listLayers`, `listLabels`, `setNodeVisible`, `setNodeLocked`, `removeNode`,
   `removeEdge`, `removeLayer`, `addLayer`, `reorderLayer`,
   `setFieldPattern`, `setSparklineStyle`, `setShadePattern`, `setLayerName`,

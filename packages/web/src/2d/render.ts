@@ -29,6 +29,7 @@ import {
   type Canvas2DRectBounds,
   type Canvas2DViewState
 } from "../view2d";
+import type { Canvas2DSnapGuide } from "./snap";
 import {
   resolveLiveParentWorldTransform,
   type Canvas2DSpatialIndex
@@ -438,6 +439,59 @@ export function renderCanvas2DPreviewAnchor(
   context.fill();
   context.restore();
 }
+export function renderCanvas2DSnapGuides(
+  context: CanvasRenderingContext2D,
+  guides: readonly Canvas2DSnapGuide[],
+  zoom: number,
+  colors: Canvas2DContentColors
+): void {
+  if (guides.length === 0) {
+    return;
+  }
+  const safeZoom = Math.max(zoom, 1e-4);
+  const lineWidth = 1 / safeZoom;
+  const dash = 4 / safeZoom;
+  const tick = 3 / safeZoom;
+
+  context.save();
+  context.strokeStyle = colors.accent || "#f43f5e";
+  context.lineWidth = lineWidth;
+  context.setLineDash([dash, dash]);
+
+  for (let i = 0; i < guides.length; i += 1) {
+    const guide = guides[i]!;
+    context.beginPath();
+    if (guide.axis === "x") {
+      context.moveTo(guide.position, guide.from);
+      context.lineTo(guide.position, guide.to);
+    } else {
+      context.moveTo(guide.from, guide.position);
+      context.lineTo(guide.to, guide.position);
+    }
+    context.stroke();
+  }
+
+  context.setLineDash([]);
+  for (let i = 0; i < guides.length; i += 1) {
+    const guide = guides[i]!;
+    context.beginPath();
+    if (guide.axis === "x") {
+      context.moveTo(guide.position - tick, guide.from);
+      context.lineTo(guide.position + tick, guide.from);
+      context.moveTo(guide.position - tick, guide.to);
+      context.lineTo(guide.position + tick, guide.to);
+    } else {
+      context.moveTo(guide.from, guide.position - tick);
+      context.lineTo(guide.from, guide.position + tick);
+      context.moveTo(guide.to, guide.position - tick);
+      context.lineTo(guide.to, guide.position + tick);
+    }
+    context.stroke();
+  }
+
+  context.restore();
+}
+
 export function renderCanvas2DScene(
   context: CanvasRenderingContext2D,
   scene: Canvas2DScene,

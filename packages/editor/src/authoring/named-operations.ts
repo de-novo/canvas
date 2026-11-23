@@ -110,6 +110,26 @@ export type SetNodeLayerInput = {
   readonly layerId: CanvasLayerId;
 };
 
+export type AlignNodesMode =
+  | "left"
+  | "center"
+  | "right"
+  | "top"
+  | "middle"
+  | "bottom";
+
+export type AlignNodesInput = {
+  readonly nodeIds: readonly NodeId[];
+  readonly alignment: AlignNodesMode;
+};
+
+export type DistributeNodesAxis = "horizontal" | "vertical";
+
+export type DistributeNodesInput = {
+  readonly nodeIds: readonly NodeId[];
+  readonly axis: DistributeNodesAxis;
+};
+
 export type SetTextInput = {
   readonly nodeId: NodeId;
   readonly text: string;
@@ -724,6 +744,410 @@ export function setShadePattern(input: SetShadePatternInput): NamedOperation {
         }
       })
     };
+  };
+}
+
+const ALIGN_NODES_MODES: readonly AlignNodesMode[] = [
+  "left",
+  "center",
+  "right",
+  "top",
+  "middle",
+  "bottom"
+];
+const ALIGN_NODES_KEYS = new Set(["alignment", "nodeIds"]);
+const DISTRIBUTE_NODES_AXES: readonly DistributeNodesAxis[] = [
+  "horizontal",
+  "vertical"
+];
+const DISTRIBUTE_NODES_KEYS = new Set(["axis", "nodeIds"]);
+const LAYOUT_EPSILON = 1e-6;
+
+type Positionable2DNode = Extract<
+  CanvasNode,
+  { readonly position: readonly [number, number] }
+>;
+
+type Node2DBoundsEntry = {
+  readonly node: Positionable2DNode;
+  readonly minX: number;
+  readonly minY: number;
+  readonly maxX: number;
+  readonly maxY: number;
+  readonly order: number;
+};
+
+function isPositionable2DNode(node: CanvasNode): node is Positionable2DNode {
+  return (
+    "position" in node &&
+    Array.isArray(node.position) &&
+    node.position.length === 2
+  );
+}
+
+function measure2DNodeLayoutBounds(
+  node: Positionable2DNode,
+  order: number
+): Node2DBoundsEntry {
+  const [x, y] = node.position;
+  switch (node.type) {
+    case "rect": {
+      const w = node.size[0] * node.scale[0];
+      const h = node.size[1] * node.scale[1];
+      return {
+        node,
+        minX: Math.min(x, x + w),
+        minY: Math.min(y, y + h),
+        maxX: Math.max(x, x + w),
+        maxY: Math.max(y, y + h),
+        order
+      };
+    }
+    case "circle": {
+      const rx = Math.abs(node.radius * node.scale[0]);
+      const ry = Math.abs(node.radius * node.scale[1]);
+      return {
+        node,
+        minX: x - rx,
+        minY: y - ry,
+        maxX: x + rx,
+        maxY: y + ry,
+        order
+      };
+    }
+    case "html": {
+      const w = (node.width ?? 0) * node.scale[0];
+      const h = (node.height ?? 0) * node.scale[1];
+      return {
+        node,
+        minX: Math.min(x, x + w),
+        minY: Math.min(y, y + h),
+        maxX: Math.max(x, x + w),
+        maxY: Math.max(y, y + h),
+        order
+      };
+    }
+    case "text": {
+      const w = (node.width ?? 0) * node.scale[0];
+      return {
+        node,
+        minX: Math.min(x, x + w),
+        minY: y,
+        maxX: Math.max(x, x + w),
+        maxY: y + node.fontSize * Math.abs(node.scale[1]),
+        order
+      };
+    }
+    default:
+      return {
+        node,
+        minX: x,
+        minY: y,
+        maxX: x,
+        maxY: y,
+        order
+      };
+  }
+}
+
+function parseNodeIdList(
+  value: unknown,
+  operation: "alignNodes" | "distributeNodes"
+): readonly NodeId[] {
+  if (!Array.isArray(value)) {
+    throw new CanvasEditorError(
+      "invalid-command",
+      `${operation} requires a nodeIds array.`
+    );
+  }
+  const seen = new Set<string>();
+  const parsedIds: NodeId[] = [];
+  for (let i = 0; i < value.length; i += 1) {
+    const parsed = NodeIdSchema.safeParse(value[i]);
+    if (!parsed.success) {
+      throw new CanvasEditorError(
+        "invalid-command",
+        `${operation} nodeIds[${i}] must be a valid node id.`
+      );
+    }
+    if (seen.has(parsed.data)) {
+      throw new CanvasEditorError(
+        "invalid-command",
+        `${operation} received duplicate node id: ${parsed.data}`
+      );
+    }
+    seen.add(parsed.data);
+    parsedIds.push(parsed.data);
+  }
+  return parsedIds;
+}
+
+function parseAlignNodesInput(input: AlignNodesInput): AlignNodesInput {
+  if (!isPlainObject(input)) {
+    throw new CanvasEditorError(
+      "invalid-command",
+      "alignNodes input must be an object."
+    );
+  }
+  for (const key of Object.keys(input)) {
+    if (!ALIGN_NODES_KEYS.has(key)) {
+      throw new CanvasEditorError(
+        "invalid-command",
+        `alignNodes does not accept field: ${key}`
+      );
+    }
+  }
+  const nodeIds = parseNodeIdList(input.nodeIds, "alignNodes");
+  if (
+    typeof input.alignment !== "string" ||
+    !ALIGN_NODES_MODES.includes(input.alignment as AlignNodesMode)
+  ) {
+    throw new CanvasEditorError(
+      "invalid-command",
+      "alignNodes alignment must be left, center, right, top, middle, or bottom."
+    );
+  }
+  return {
+    alignment: input.alignment as AlignNodesMode,
+    nodeIds
+  };
+}
+
+function parseDistributeNodesInput(
+  input: DistributeNodesInput
+): DistributeNodesInput {
+  if (!isPlainObject(input)) {
+    throw new CanvasEditorError(
+      "invalid-command",
+      "distributeNodes input must be an object."
+    );
+  }
+  for (const key of Object.keys(input)) {
+    if (!DISTRIBUTE_NODES_KEYS.has(key)) {
+      throw new CanvasEditorError(
+        "invalid-command",
+        `distributeNodes does not accept field: ${key}`
+      );
+    }
+  }
+  const nodeIds = parseNodeIdList(input.nodeIds, "distributeNodes");
+  if (
+    typeof input.axis !== "string" ||
+    !DISTRIBUTE_NODES_AXES.includes(input.axis as DistributeNodesAxis)
+  ) {
+    throw new CanvasEditorError(
+      "invalid-command",
+      "distributeNodes axis must be horizontal or vertical."
+    );
+  }
+  return {
+    axis: input.axis as DistributeNodesAxis,
+    nodeIds
+  };
+}
+
+function resolve2DLayoutEntries(
+  document: CanvasDocument,
+  nodeIds: readonly NodeId[],
+  operation: "alignNodes" | "distributeNodes"
+): readonly Node2DBoundsEntry[] {
+  if (document.scene.mode !== "2d") {
+    throw new CanvasEditorError(
+      "invalid-command",
+      `${operation} requires a 2D document.`
+    );
+  }
+  const entries: Node2DBoundsEntry[] = [];
+  for (let i = 0; i < nodeIds.length; i += 1) {
+    const node = findNamedOperationNode(document, nodeIds[i]!);
+    if (!isPositionable2DNode(node)) {
+      throw new CanvasEditorError(
+        "invalid-command",
+        `${operation} requires positionable 2D nodes; unsupported node ${node.id} (${node.type}).`
+      );
+    }
+    const state = resolveEffectiveNodeState(document, node.id);
+    if (state.locked) {
+      throw new CanvasEditorError(
+        "locked-target",
+        `Node is locked: ${node.id}`
+      );
+    }
+    entries.push(measure2DNodeLayoutBounds(node, i));
+  }
+  return entries;
+}
+
+function apply2DPositionUpdates(
+  document: CanvasDocument,
+  updates: ReadonlyMap<NodeId, readonly [number, number]>
+): NamedOperationResult {
+  if (updates.size === 0) {
+    return {
+      changed: false,
+      commands: [],
+      document
+    };
+  }
+  const commands: CanvasCommand[] = [];
+  const nextNodes = document.scene.nodes.map((candidate) => {
+    const nextPosition = updates.get(candidate.id);
+    if (!nextPosition) {
+      return candidate;
+    }
+    commands.push(
+      createNodeUpdateCommand(candidate, {
+        position: [nextPosition[0], nextPosition[1]]
+      })
+    );
+    return {
+      ...candidate,
+      position: [nextPosition[0], nextPosition[1]]
+    };
+  });
+  return {
+    changed: true,
+    commands,
+    document: parseNamedOperationDocument({
+      ...document,
+      scene: {
+        ...document.scene,
+        nodes: nextNodes
+      }
+    } as CanvasDocument)
+  };
+}
+
+export function alignNodes(input: AlignNodesInput): NamedOperation {
+  const parsed = parseAlignNodesInput(input);
+
+  return (document) => {
+    const entries = resolve2DLayoutEntries(
+      document,
+      parsed.nodeIds,
+      "alignNodes"
+    );
+    if (entries.length < 2) {
+      return {
+        changed: false,
+        commands: [],
+        document
+      };
+    }
+
+    let minX = Number.POSITIVE_INFINITY;
+    let minY = Number.POSITIVE_INFINITY;
+    let maxX = Number.NEGATIVE_INFINITY;
+    let maxY = Number.NEGATIVE_INFINITY;
+    for (const entry of entries) {
+      minX = Math.min(minX, entry.minX);
+      minY = Math.min(minY, entry.minY);
+      maxX = Math.max(maxX, entry.maxX);
+      maxY = Math.max(maxY, entry.maxY);
+    }
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
+
+    const updates = new Map<NodeId, readonly [number, number]>();
+    for (const entry of entries) {
+      let dx = 0;
+      let dy = 0;
+      switch (parsed.alignment) {
+        case "left":
+          dx = minX - entry.minX;
+          break;
+        case "center":
+          dx = centerX - (entry.minX + entry.maxX) / 2;
+          break;
+        case "right":
+          dx = maxX - entry.maxX;
+          break;
+        case "top":
+          dy = minY - entry.minY;
+          break;
+        case "middle":
+          dy = centerY - (entry.minY + entry.maxY) / 2;
+          break;
+        case "bottom":
+          dy = maxY - entry.maxY;
+          break;
+      }
+      if (Math.abs(dx) > LAYOUT_EPSILON || Math.abs(dy) > LAYOUT_EPSILON) {
+        updates.set(entry.node.id, [
+          entry.node.position[0] + dx,
+          entry.node.position[1] + dy
+        ]);
+      }
+    }
+
+    return apply2DPositionUpdates(document, updates);
+  };
+}
+
+export function distributeNodes(input: DistributeNodesInput): NamedOperation {
+  const parsed = parseDistributeNodesInput(input);
+
+  return (document) => {
+    const entries = resolve2DLayoutEntries(
+      document,
+      parsed.nodeIds,
+      "distributeNodes"
+    );
+    if (entries.length < 3) {
+      return {
+        changed: false,
+        commands: [],
+        document
+      };
+    }
+
+    const sorted = [...entries].sort((a, b) => {
+      const aMin = parsed.axis === "horizontal" ? a.minX : a.minY;
+      const bMin = parsed.axis === "horizontal" ? b.minX : b.minY;
+      return aMin !== bMin ? aMin - bMin : a.order - b.order;
+    });
+
+    const first = sorted[0]!;
+    const last = sorted[sorted.length - 1]!;
+    const startEdge = parsed.axis === "horizontal" ? first.minX : first.minY;
+    const endEdge = parsed.axis === "horizontal" ? last.maxX : last.maxY;
+    let totalSize = 0;
+    for (const entry of sorted) {
+      totalSize +=
+        parsed.axis === "horizontal"
+          ? entry.maxX - entry.minX
+          : entry.maxY - entry.minY;
+    }
+    const gap = (endEdge - startEdge - totalSize) / (sorted.length - 1);
+
+    const updates = new Map<NodeId, readonly [number, number]>();
+    let cursor =
+      startEdge +
+      (parsed.axis === "horizontal"
+        ? first.maxX - first.minX
+        : first.maxY - first.minY) +
+      gap;
+
+    for (let i = 1; i < sorted.length - 1; i += 1) {
+      const entry = sorted[i]!;
+      const currentMin = parsed.axis === "horizontal" ? entry.minX : entry.minY;
+      const size =
+        parsed.axis === "horizontal"
+          ? entry.maxX - entry.minX
+          : entry.maxY - entry.minY;
+      const delta = cursor - currentMin;
+      if (Math.abs(delta) > LAYOUT_EPSILON) {
+        updates.set(
+          entry.node.id,
+          parsed.axis === "horizontal"
+            ? [entry.node.position[0] + delta, entry.node.position[1]]
+            : [entry.node.position[0], entry.node.position[1] + delta]
+        );
+      }
+      cursor += size + gap;
+    }
+
+    return apply2DPositionUpdates(document, updates);
   };
 }
 

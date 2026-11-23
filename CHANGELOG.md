@@ -16,7 +16,9 @@ and published packages follow [Semantic Versioning](https://semver.org/spec/v2.0
 - **2D scale optimizations**: uniform-grid `Canvas2DSpatialIndex` with O(k)
   incremental edit updates, viewport culling for rendering, hit-testing, and
   marquee queries, O(visible) smart snap guides (`computeCanvas2DSnapGuides` /
-  `runtime.current.computeSnapGuides`), O(visible) HTML overlay virtualization
+  `runtime.current.computeSnapGuides` / `runtime.current.setSnapGuides`),
+  multi-node 2D layout Named Operations (`alignNodes`, `distributeNodes`),
+  O(visible) HTML overlay virtualization
   with diffed `renderNode` updates, O(1) cached minimap rendering, rAF input
   burst coalescing, and 2D WebGPU GPU-resident vertex / atlas / bind-group
   caching with spatial culling.

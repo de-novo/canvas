@@ -49,10 +49,10 @@ React / Next.js、Vue、Svelte 或 Solid 中共用同一套编辑器与文档模
   - 规范 `0.2.0` JSON 文档（含 `0.1.0` 确定性迁移）、强校验命令、原子事务、
     有界 Undo/Redo 历史、内置工具集（`Select`、`Pan/Orbit`、`Transform`、
     `Connector`、`2D Shape`、`3D Primitive`、`3D Surface Placement`、
-    `Distance Measurement`、`Annotation`）、供宿主 UI 与 AI Agent 共用的 20 个
-    Named Operations（`setLayerVisible`、`setNodeVisible`、`removeEdge`、
-    `removeNode`、`stackBox`、`listNodes` 等），以及内存、文件系统与 IndexedDB
-    存储适配器。
+    `Distance Measurement`、`Annotation`）、供宿主 UI 与 AI Agent 共用的 22 个
+    Named Operations（`alignNodes`、`distributeNodes`、`setLayerVisible`、
+    `setNodeVisible`、`removeEdge`、`removeNode`、`stackBox`、`listNodes` 等），
+    以及内存、文件系统与 IndexedDB 存储适配器。
 
 ## 快速上手
 

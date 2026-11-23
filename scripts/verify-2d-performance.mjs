@@ -504,6 +504,11 @@ function perf2DBenchHtml() {
         snap.snappedBounds.minY === 180 &&
         snap.guides.some((g) => g.axis === "x" && g.position === 180) &&
         snap.guides.some((g) => g.axis === "y" && g.position === 180);
+      // Paint and clear ephemeral snap guides on Canvas2D without mutating scene.
+      current.setSnapGuides(snap.guides);
+      runtime.render();
+      current.setSnapGuides([]);
+      runtime.render();
 
       const movedNodes = nodes.map((node, index) =>
         index === 0 ? { ...node, position: [4200, 2600] } : node

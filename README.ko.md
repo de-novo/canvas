@@ -54,8 +54,9 @@ Vanilla JavaScript, React / Next.js, Vue, Svelte, Solid 어디서나 동일한
     원자적 트랜잭션, 제한된 Undo/Redo 이력, 내장 툴(`Select`, `Pan/Orbit`,
     `Transform`, `Connector`, `2D Shape`, `3D Primitive`, `3D Surface Placement`,
     `Distance Measurement`, `Annotation`), 호스트 UI와 AI 에이전트가 공유하는
-    20개 Named Operations(`setLayerVisible`, `setNodeVisible`, `removeEdge`,
-    `removeNode`, `stackBox`, `listNodes` 등), 메모리·파일시스템·IndexedDB 어댑터.
+    22개 Named Operations(`alignNodes`, `distributeNodes`, `setLayerVisible`,
+    `setNodeVisible`, `removeEdge`, `removeNode`, `stackBox`, `listNodes` 등),
+    메모리·파일시스템·IndexedDB 어댑터.
 
 ## 빠른 시작
 

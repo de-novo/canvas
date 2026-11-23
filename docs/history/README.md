@@ -179,3 +179,4 @@ Each entry should include:
 - [2026-11-23 Three.js-free ./2d entrypoints for Vue, Svelte, and Solid adapters](./2026-11-23-framework-2d-entrypoints.md)
 - [2026-11-23 Incremental 2D spatial-index updates and O(visible) smart snap guides](./2026-11-23-incremental-spatial-index-and-snap.md)
 - [2026-11-23 Multilingual open-source documentation (English, Korean, Simplified Chinese)](./2026-11-23-multilingual-open-source-docs.md)
+- [2026-11-23 2D alignNodes & distributeNodes Named Operations and snap guide overlay rendering](./2026-11-23-align-distribute-and-snap-overlay.md)

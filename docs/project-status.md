@@ -486,6 +486,8 @@ product-level extension seam, `CanvasPlugin` is a host bundle, and
 
 ## Evidence
 
+- 2026-11-23: 2D multi-node layout Named Operations (`alignNodes`, `distributeNodes`, total 22 Named Operations) and ephemeral Canvas2D snap guide overlay rendering (`runtime.current.setSnapGuides`) landed for Issue #16, verified by `pnpm build`, `pnpm typecheck`, `pnpm verify:public-api`, `pnpm verify:editor-core`, `pnpm verify:2d-performance`, `pnpm verify:pack-smoke`, and `pnpm verify:docs`. See [alignNodes, distributeNodes, and snap overlay](./history/2026-11-23-align-distribute-and-snap-overlay.md).
+
 - 2026-11-23: Multilingual open-source documentation landed for Issue #15: added `README.ko.md` (한국어), `README.zh-CN.md` (简体中文), `docs/getting-started.{md,ko.md,zh-CN.md}`, cross-linked language switchers, and an open-source guide hub in `docs/README.md` (keeping English `docs/` contracts canonical). Verified by `pnpm verify:docs`. See [multilingual open-source docs](./history/2026-11-23-multilingual-open-source-docs.md).
 
 - 2026-11-23: Incremental O(k) 2D spatial-index updates (`syncCanvas2DSpatialIndex`) and O(visible) smart snap guides (`computeCanvas2DSnapGuides` + `runtime.current.computeSnapGuides`) landed for Issue #14, verified on 10k-node scenes (`lastSyncKind="incremental"`, `lastSyncedNodeCount=1`, O(visible) snap candidate pruning) alongside `verify:public-api`, `verify:hit-testing`, `verify:pack-smoke`, `verify:docs`, `pnpm build`, and `pnpm typecheck`. See [incremental spatial-index and smart snap](./history/2026-11-23-incremental-spatial-index-and-snap.md).

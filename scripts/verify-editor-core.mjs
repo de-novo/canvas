@@ -5941,6 +5941,131 @@ try {
   );
 }
 
+// alignNodes & distributeNodes Named Operations (2D multi-node layout)
+{
+  const layoutDoc = facade.defineDocument({
+    id: "layout-ops-doc",
+    scene: {
+      id: "layout-ops-scene",
+      mode: "2d",
+      layers: [{ id: "board", name: "Board" }],
+      nodes: [
+        {
+          id: "a",
+          layerId: "board",
+          type: "rect",
+          position: [20, 40],
+          size: [100, 60],
+          fill: "#22c55e"
+        },
+        {
+          id: "b",
+          layerId: "board",
+          type: "rect",
+          position: [150, 120],
+          size: [80, 40],
+          fill: "#38bdf8"
+        },
+        {
+          id: "c",
+          layerId: "board",
+          type: "rect",
+          position: [400, 260],
+          size: [100, 80],
+          fill: "#f59e0b"
+        },
+        {
+          id: "locked-node",
+          layerId: "board",
+          type: "rect",
+          position: [0, 0],
+          size: [40, 40],
+          fill: "#94a3b8",
+          locked: true
+        }
+      ]
+    }
+  });
+  const layoutEditor = facade.createEditor({ document: layoutDoc });
+  const getPos = (id) => {
+    const node = layoutEditor
+      .getState()
+      .document.scene.nodes.find((n) => n.id === id);
+    assert.ok(node && "position" in node);
+    return node.position;
+  };
+
+  // align left -> all minX become 20; atomic single undo step.
+  await layoutEditor.apply([
+    facade.alignNodes({ nodeIds: ["a", "b", "c"], alignment: "left" })
+  ]);
+  assert.deepEqual(getPos("a"), [20, 40]);
+  assert.deepEqual(getPos("b"), [20, 120]);
+  assert.deepEqual(getPos("c"), [20, 260]);
+  assert.equal(layoutEditor.getState().history.undoDepth, 1);
+
+  // Re-applying identical alignment is a no-op and does not grow history.
+  await layoutEditor.apply([
+    facade.alignNodes({ nodeIds: ["a", "b", "c"], alignment: "left" })
+  ]);
+  assert.equal(layoutEditor.getState().history.undoDepth, 1);
+
+  // Undo restores all three positions in one step.
+  await layoutEditor.undo();
+  assert.deepEqual(getPos("b"), [150, 120]);
+  assert.deepEqual(getPos("c"), [400, 260]);
+
+  // align middle -> envelope minY=40, maxY=340 -> centerY=190.
+  await layoutEditor.apply([
+    facade.alignNodes({ nodeIds: ["a", "b", "c"], alignment: "middle" })
+  ]);
+  assert.deepEqual(getPos("a"), [20, 160]);
+  assert.deepEqual(getPos("b"), [150, 170]);
+  assert.deepEqual(getPos("c"), [400, 150]);
+
+  // distribute horizontal -> first minX=20 (w=100), last maxX=500 (w=100),
+  // totalSpan=480, occupied=280 -> gap=100 -> b moves to x = 20 + 100 + 100 = 220.
+  await layoutEditor.apply([
+    facade.distributeNodes({ nodeIds: ["c", "a", "b"], axis: "horizontal" })
+  ]);
+  assert.deepEqual(getPos("a"), [20, 160]);
+  assert.deepEqual(getPos("b"), [220, 170]);
+  assert.deepEqual(getPos("c"), [400, 150]);
+
+  // < 2 nodes for align or < 3 nodes for distribute are explicit no-ops.
+  const depthBeforeNoop = layoutEditor.getState().history.undoDepth;
+  await layoutEditor.apply([
+    facade.alignNodes({ nodeIds: ["a"], alignment: "right" }),
+    facade.distributeNodes({ nodeIds: ["a", "b"], axis: "vertical" })
+  ]);
+  assert.equal(layoutEditor.getState().history.undoDepth, depthBeforeNoop);
+
+  // Locked node fails closed with locked-target.
+  await assert.rejects(
+    () =>
+      layoutEditor.apply([
+        facade.alignNodes({ nodeIds: ["a", "locked-node"], alignment: "top" })
+      ]),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "locked-target"
+  );
+
+  // Invalid inputs fail closed with invalid-command.
+  assert.throws(
+    () => facade.alignNodes({ nodeIds: ["a", "a"], alignment: "left" }),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "invalid-command"
+  );
+  assert.throws(
+    () => facade.distributeNodes({ nodeIds: ["a", "b", "c"], axis: "diagonal" }),
+    (error) =>
+      error instanceof facade.CanvasEditorError &&
+      error.code === "invalid-command"
+  );
+}
+
 // Reaching here means every sequential assertion above held: any failure throws
 // and aborts the run, which the non-zero exit code reports.
 check("editor-core-suite", () => {});

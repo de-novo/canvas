@@ -4001,11 +4001,13 @@ void depthValue;
 writeFileSync(
   path.join(tmpDir, "facade-2d-smoke.ts"),
   `import {
+  alignNodes,
   computeCanvas2DSnapGuides,
   connectEditorToCanvas,
   createCanvas,
   createEditor,
   defineDocument,
+  distributeNodes,
   shallowEqual,
   subscribeCanvasSelector,
   type Canvas2DSnapResult,
@@ -4072,11 +4074,21 @@ const snapRuntime: Canvas2DSnapResult = runtime.current.computeSnapGuides(
   { excludeNodeIds: ["r1"], threshold: 6 }
 );
 const spatialStats: Canvas2DSpatialIndexStats = runtime.current.getSpatialIndexStats();
+runtime.current.setSnapGuides(snapRuntime.guides);
+runtime.current.setSnapGuides([]);
+const alignOp = alignNodes({ nodeIds: ["r1"], alignment: "center" });
+const distOp = distributeNodes({ nodeIds: ["r1"], axis: "horizontal" });
 // @ts-expect-error computeCanvas2DSnapGuides threshold must be a number.
 computeCanvas2DSnapGuides({ minX: 0, minY: 0, maxX: 10, maxY: 10 }, [], { threshold: "6px" });
+// @ts-expect-error alignNodes alignment must be a closed AlignNodesMode union member.
+alignNodes({ nodeIds: ["r1"], alignment: "justify" });
+// @ts-expect-error distributeNodes axis must be horizontal or vertical.
+distributeNodes({ nodeIds: ["r1"], axis: "diagonal" });
 void snapPure;
 void snapRuntime;
 void spatialStats;
+void alignOp;
+void distOp;
 const disconnect = connectEditorToCanvas(editor, runtime);
 const unsub = subscribeCanvasSelector(
   editor,

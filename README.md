@@ -60,10 +60,10 @@ Vue, Svelte, or Solid.
     validated commands, atomic transactions, bounded undo/redo history, built-in
     tools (`Select`, `Pan/Orbit`, `Transform` with axis/plane handles,
     `Connector`, `2D Shape`, `3D Primitive`, `3D Surface Placement`,
-    `Distance Measurement`, `Annotation`), 20 shared Named Operations for host
-    UIs and AI agents (`setLayerVisible`, `setNodeVisible`, `removeEdge`,
-    `removeNode`, `stackBox`, `listNodes`, etc.), and memory, filesystem, and
-    IndexedDB storage adapters.
+    `Distance Measurement`, `Annotation`), 22 shared Named Operations for host
+    UIs and AI agents (`alignNodes`, `distributeNodes`, `setLayerVisible`,
+    `setNodeVisible`, `removeEdge`, `removeNode`, `stackBox`, `listNodes`,
+    etc.), and memory, filesystem, and IndexedDB storage adapters.
 
 ## Quick Start
 
