@@ -82,6 +82,36 @@ buildViteApp("@denovo/canvas-network-example", "network");
 // 4. 3D Warp Field showcase
 buildViteApp("@denovo/canvas-field-example", "field");
 
+// 5. Warehouse Digital Twin (5,000 multi-color stacked 3D pallets + 20 AGVs + 2D floorplan)
+const warehouseConfigPath = path.join(outRoot, ".warehouse-vite.config.mjs");
+writeFileSync(
+  warehouseConfigPath,
+  `import { resolve } from "node:path";
+export default {
+  root: ${JSON.stringify(path.join(root, "apps/playground-field"))},
+  base: "./",
+  build: {
+    outDir: ${JSON.stringify(path.join(outRoot, "warehouse"))},
+    emptyOutDir: true,
+    rollupOptions: {
+      input: resolve(${JSON.stringify(path.join(root, "apps/playground-field"))}, "warehouse.html")
+    }
+  }
+};
+`
+);
+console.log("[build:pages] building Warehouse Digital Twin -> dist-pages/warehouse");
+execFileSync(
+  "pnpm",
+  ["--filter", "@denovo/canvas-field-example", "exec", "vite", "build", "--config", warehouseConfigPath],
+  { cwd: root, stdio: "inherit" }
+);
+rmSync(warehouseConfigPath, { force: true });
+renameSync(
+  path.join(outRoot, "warehouse", "warehouse.html"),
+  path.join(outRoot, "warehouse", "index.html")
+);
+
 // 5. Root multilingual open-source landing hub (EN / KO / ZH-CN)
 writeFileSync(path.join(outRoot, ".nojekyll"), "");
 writeFileSync(
@@ -257,6 +287,14 @@ writeFileSync(
           </div>
           <span class="cta" id="c3-cta"></span>
         </a>
+        <a class="card" href="./warehouse/">
+          <div>
+            <span class="tag">@denovo/canvas · 5,020 Pallets · 1 drawCall</span>
+            <h2 id="c5-t"></h2>
+            <p id="c5-p"></p>
+          </div>
+          <span class="cta" id="c5-cta"></span>
+        </a>
         <a class="card" href="./field/">
           <div>
             <span class="tag">@denovo/canvas · 3D WebGPU/WebGL2</span>
@@ -291,6 +329,8 @@ writeFileSync(
           c3p: "Multi-layout 2D topology viewer and editor with viewport culling and zoom-scaled HTML cards.",
           c4t: "3D Warp Field",
           c4p: "Official plugin.denovo.field 3D showcase with WebGPU/WebGL2 auto backend resolution.",
+          c5t: "Warehouse Digital Twin (2D ↔ 3D)",
+          c5p: "5,000 stacked 3D pallets across 20 aisles + 20 moving AGVs across 6 live status colors in 1 single drawCall, with instant 2D floorplan switch.",
           cta: "Open demo →"
         },
         ko: {
@@ -308,6 +348,8 @@ writeFileSync(
           c3p: "뷰포트 컬링과 줌 스케일 HTML 카드를 갖춘 멀티 레이아웃 2D 토폴로지 뷰어.",
           c4t: "3D Warp Field",
           c4p: "WebGPU/WebGL2 자동 백엔드 선택을 사용하는 공식 plugin.denovo.field 3D 쇼케이스.",
+          c5t: "물류 창고 디지털 트윈 (2D ↔ 3D)",
+          c5p: "20개 통로 × 5단 적재 팔레트 5,000개 + 이동 AGV 20대(6색)를 단일 drawCall=1로 렌더링하고 2D 평면도로 즉시 전환합니다.",
           cta: "데모 열기 →"
         },
         zh: {
@@ -325,6 +367,8 @@ writeFileSync(
           c3p: "支持多布局切换、视口裁剪与缩放 HTML 卡片的 2D 拓扑视图。",
           c4t: "3D Warp Field",
           c4p: "支持 WebGPU/WebGL2 自动后端选择的官方 plugin.denovo.field 3D 示例。",
+          c5t: "仓储数字孪生（2D ↔ 3D）",
+          c5p: "20 巷道 × 5 层 5,000 个多色堆叠托盘 + 20 台移动 AGV 仅需 1 次 drawCall，并支持一键切换 2D 平面图。",
           cta: "打开示例 →"
         }
       };
@@ -345,7 +389,9 @@ writeFileSync(
         document.getElementById("c3-p").textContent = d.c3p;
         document.getElementById("c4-t").textContent = d.c4t;
         document.getElementById("c4-p").textContent = d.c4p;
-        for (const id of ["c1-cta", "c2-cta", "c3-cta", "c4-cta"]) {
+        document.getElementById("c5-t").textContent = d.c5t;
+        document.getElementById("c5-p").textContent = d.c5p;
+        for (const id of ["c1-cta", "c2-cta", "c3-cta", "c4-cta", "c5-cta"]) {
           document.getElementById(id).textContent = d.cta;
         }
         document.querySelectorAll(".langs button").forEach((btn) => {

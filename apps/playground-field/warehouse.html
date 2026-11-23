@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Denovo Canvas — Warehouse Digital Twin (5,020 Pallets · 2D/3D)</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: #070d1a;
+        color: #e2e8f0;
+        display: grid;
+        grid-template-rows: auto 1fr;
+        height: 100dvh;
+        overflow: hidden;
+      }
+      header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 10px 14px;
+        background: #0f172a;
+        border-bottom: 1px solid #1e293b;
+      }
+      .title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 14px;
+        font-weight: 600;
+      }
+      .title a { color: #94a3b8; text-decoration: none; font-weight: 500; }
+      .title a:hover { color: #f8fafc; }
+      .badge {
+        font-size: 11px;
+        padding: 2px 8px;
+        border-radius: 999px;
+        background: #172554;
+        color: #7dd3fc;
+        border: 1px solid #1d4ed8;
+      }
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-items: center;
+      }
+      button {
+        background: #1e293b;
+        color: #f8fafc;
+        border: 1px solid #334155;
+        border-radius: 6px;
+        padding: 5px 10px;
+        font-size: 12px;
+        cursor: pointer;
+      }
+      button:hover { border-color: #38bdf8; }
+      button.active {
+        background: #0284c7;
+        border-color: #38bdf8;
+      }
+      button.alert {
+        background: #7f1d1d;
+        border-color: #ef4444;
+      }
+      main {
+        position: relative;
+        min-height: 0;
+        display: grid;
+        grid-template-columns: 1fr 270px;
+      }
+      #stage {
+        width: 100%;
+        height: 100%;
+        min-height: 0;
+      }
+      aside {
+        background: #0f172a;
+        border-left: 1px solid #1e293b;
+        padding: 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        overflow-y: auto;
+        font-size: 12px;
+      }
+      aside h3 {
+        margin: 0 0 6px;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: #94a3b8;
+      }
+      .stat-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+      .stat {
+        background: #1e293b;
+        border: 1px solid #334155;
+        border-radius: 8px;
+        padding: 8px;
+      }
+      .stat .v {
+        font-size: 16px;
+        font-weight: 700;
+        color: #38bdf8;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+      .stat .l {
+        font-size: 11px;
+        color: #94a3b8;
+        margin-top: 2px;
+      }
+      .legend {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+      }
+      .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        color: #cbd5e1;
+      }
+      .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 3px;
+        flex: none;
+      }
+      .inspector {
+        background: #111827;
+        border: 1px solid #1e293b;
+        border-radius: 8px;
+        padding: 10px;
+        line-height: 1.65;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+      .status-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 8px;
+      }
+      .status-actions button { font-size: 11px; padding: 4px 8px; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="title">
+        <a href="../">← Hub</a>
+        <span>Warehouse Digital Twin</span>
+        <span class="badge">5,000 Pallets + 20 AGVs · 6 Colors · 1 drawCall</span>
+      </div>
+      <div class="controls">
+        <button id="btn-mode-3d" type="button" class="active">3D Rack View</button>
+        <button id="btn-mode-2d" type="button">2D Floorplan</button>
+        <button id="btn-telemetry" type="button">Live Telemetry: OFF</button>
+        <button id="btn-tick-once" type="button">Step Telemetry</button>
+        <button id="btn-orbit-tour" type="button">Camera Sweep</button>
+      </div>
+    </header>
+    <main>
+      <div id="stage"></div>
+      <aside>
+        <div>
+          <h3>Live Runtime Telemetry</h3>
+          <div class="stat-grid">
+            <div class="stat"><div class="v" id="stat-nodes">5,020</div><div class="l">Nodes</div></div>
+            <div class="stat"><div class="v" id="stat-draws">-</div><div class="l">drawCalls</div></div>
+            <div class="stat"><div class="v" id="stat-mode">3D</div><div class="l">View Mode</div></div>
+            <div class="stat"><div class="v" id="stat-tick">-</div><div class="l">Tick Update</div></div>
+          </div>
+        </div>
+        <div>
+          <h3>Status Palette</h3>
+          <div class="legend">
+            <div class="legend-item"><span class="dot" style="background:#22c55e"></span>Available</div>
+            <div class="legend-item"><span class="dot" style="background:#38bdf8"></span>Occupied</div>
+            <div class="legend-item"><span class="dot" style="background:#f59e0b"></span>Picking</div>
+            <div class="legend-item"><span class="dot" style="background:#ef4444"></span>Alert</div>
+            <div class="legend-item"><span class="dot" style="background:#64748b"></span>Empty</div>
+            <div class="legend-item"><span class="dot" style="background:#a855f7"></span>AGV Bot</div>
+          </div>
+        </div>
+        <div>
+          <h3>Selected Bin / Pallet</h3>
+          <div id="inspector" class="inspector">Click any pallet or AGV on the canvas to inspect SKU &amp; location.</div>
+          <div class="status-actions">
+            <button id="btn-mark-alert" type="button" class="alert">Flag Alert</button>
+            <button id="btn-mark-picking" type="button">Mark Picking</button>
+            <button id="btn-mark-ok" type="button">Mark Available</button>
+          </div>
+        </div>
+      </aside>
+    </main>
+    <script type="module" src="/src/warehouse.ts"></script>
+  </body>
+</html>

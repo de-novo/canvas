@@ -64,7 +64,8 @@ await check("build-pages-static-bundle", () => {
     "bench-2d/index.html",
     "flow/index.html",
     "network/index.html",
-    "field/index.html"
+    "field/index.html",
+    "warehouse/index.html"
   ]) {
     assert.ok(existsSync(path.join(distDir, rel)), `missing dist-pages/${rel}`);
   }
@@ -141,6 +142,38 @@ try {
       { timeout: 5_000 }
     );
     assert.deepEqual(errors, []);
+    await page.close();
+  });
+
+  await check("pages-warehouse-digital-twin-3d-and-2d", async () => {
+    const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+    const errors = [];
+    page.on("pageerror", (e) => errors.push(String(e)));
+    page.on("console", (m) => {
+      if (m.type() === "error") errors.push(m.text());
+    });
+    await page.goto(`${url}/warehouse/`, { waitUntil: "networkidle" });
+    await page.waitForFunction(
+      () => Boolean(window.__warehouseDemo && window.__warehouseDemo.getState().drawCalls > 0),
+      undefined,
+      { timeout: 15_000 }
+    );
+    const s3d = await page.evaluate(() => window.__warehouseDemo.getState());
+    assert.equal(s3d.mode, "3d");
+    assert.equal(s3d.nodeCount, 5_020);
+    assert.equal(s3d.drawCalls, 1, `expected 1 single drawCall across 5,020 multi-color pallets, got ${s3d.drawCalls}`);
+
+    await page.click("#btn-tick-once");
+    const afterTick = await page.evaluate(() => window.__warehouseDemo.getState());
+    assert.equal(afterTick.drawCalls, 1, "drawCalls must remain 1 after live status color & AGV tick");
+
+    await page.click("#btn-mode-2d");
+    await page.waitForFunction(
+      () => window.__warehouseDemo && window.__warehouseDemo.getState().mode === "2d" && window.__warehouseDemo.getState().drawCalls > 0,
+      undefined,
+      { timeout: 10_000 }
+    );
+    assert.deepEqual(errors, [], `warehouse had errors: ${errors.join("; ")}`);
     await page.close();
   });
 

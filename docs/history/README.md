@@ -183,3 +183,4 @@ Each entry should include:
 - [2026-11-23 GitHub Pages open-source demo hub and 10k 2D live benchmark](./2026-11-23-github-pages-demo-hub.md)
 - [2026-11-23 Incremental validation cache, O(k) 2D/3D runtime updates, and 10k/100k comparative benchmarks](./2026-11-23-incremental-validation-and-100k-benchmarks.md)
 - [2026-11-23 Multi-color single-drawCall 3D InstancedMesh (instanceColor) and one-line editor mounting DX](./2026-11-23-multicolor-3d-batching-and-editor-dx.md)
+- [2026-11-23 Interactive Warehouse Digital Twin demo (2D floorplan + 3D 5,020 pallets & AGVs)](./2026-11-23-warehouse-digital-twin-demo.md)
