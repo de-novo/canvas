@@ -9,9 +9,10 @@ and published packages follow [Semantic Versioning](https://semver.org/spec/v2.0
 
 ### Added
 
-- **Lightweight Three.js-free 2D entrypoints**: `@denovo/canvas/2d`,
-  `@denovo/canvas/react/2d`, and `@denovo/react-canvas/2d` (`Canvas2DView`,
-  `useCanvasSelector`, `shallowEqual`), cutting 2D application bundles by ~81%.
+- **Lightweight Three.js-free 2D entrypoints across all frameworks**:
+  `@denovo/canvas/2d`, `@denovo/canvas/react/2d`, `@denovo/react-canvas/2d`,
+  `@denovo/vue-canvas/2d`, `@denovo/svelte-canvas/2d`, and
+  `@denovo/solid-canvas/2d`, cutting 2D application bundles by ~81%.
 - **2D scale optimizations**: uniform-grid `Canvas2DSpatialIndex` with viewport
   culling for rendering, hit-testing, and marquee queries; O(visible) HTML
   overlay virtualization with diffed `renderNode` updates; O(1) cached minimap

@@ -144,7 +144,7 @@ The package must also expose:
 - `./2d` for the lightweight 2D-only facade entrypoint (`createCanvas`, `connectEditorToCanvas`, `connectEditorToRuntime`, editor/tools/named-operations/selectors, and 2D camera helpers) with zero `three`, `three/webgpu`, or `three-mesh-bvh` imports;
 - `./styles.css` for the styling contract;
 - `./react` for optional React adapter exports (`CanvasView`, `CanvasStage3D`, `useCanvasSelector`, `shallowEqual`);
-- `./react/2d` for the optional Three.js/R3F/Drei-free React 2D adapter (`Canvas2DView`, `useCanvasSelector`, `shallowEqual`);
+- `./react/2d` for the optional Three.js/R3F/Drei-free React 2D adapter (`Canvas2DView`, `useCanvasSelector`, `shallowEqual`); optional Vue (`@denovo/vue-canvas/2d`), Svelte (`@denovo/svelte-canvas/2d`), and Solid (`@denovo/solid-canvas/2d`) adapters mirror this Three.js-free `./2d` subpath (`DenovoCanvas2D`, selector hook/store, `shallowEqual`);
 - `./web` for host kind drawer registration (`registerPluginNodeDrawer`).
   The default import must not export that function or Canvas2D/Three
   types for it.

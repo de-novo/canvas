@@ -118,6 +118,27 @@ for (const forbidden of [
     `react ./2d bundle must not import ${forbidden}`
   );
 }
+for (const [label, filePath] of [
+  ["vue ./2d", path.join(packagesDir, "vue-canvas", "dist", "2d.js")],
+  ["svelte ./2d", path.join(packagesDir, "svelte-canvas", "src", "2d.ts")],
+  ["svelte ./2d component", path.join(packagesDir, "svelte-canvas", "src", "DenovoCanvas2D.svelte")],
+  ["solid ./2d", path.join(packagesDir, "solid-canvas", "src", "2d.tsx")]
+]) {
+  const source = readFileSync(filePath, "utf8");
+  for (const forbidden of [
+    "\"three\"",
+    "\"three/webgpu\"",
+    "\"three-mesh-bvh\"",
+    "\"@denovo/canvas-three\"",
+    "\"@denovo/canvas-web\"",
+    "\"@denovo/canvas\""
+  ]) {
+    assert.ok(
+      !source.includes(forbidden),
+      `${label} must not import ${forbidden}`
+    );
+  }
+}
 for (const appName of ["playground-flow", "playground-network", "playground-diagram"]) {
   const assetsDir = path.join(root, "apps", appName, "dist", "assets");
   if (existsSync(assetsDir)) {
@@ -3995,6 +4016,22 @@ import {
   type Canvas2DViewProps
 } from "${facadeName}/react/2d";
 
+import {
+  DenovoCanvas2D as VueCanvas2D,
+  useCanvasSelector as useVue2DSelector
+} from "@denovo/vue-canvas/2d";
+
+import {
+  DenovoCanvas2D as SvelteCanvas2D,
+  createCanvasSelectorStore as createSvelte2DSelectorStore
+} from "@denovo/svelte-canvas/2d";
+
+import {
+  DenovoCanvas2D as SolidCanvas2D,
+  useCanvasSelector as useSolid2DSelector,
+  type DenovoCanvas2DProps as SolidCanvas2DProps
+} from "@denovo/solid-canvas/2d";
+
 const doc2d = defineDocument({
   id: "smoke-2d-doc",
   scene: {
@@ -4067,6 +4104,36 @@ function React2DSmoke() {
 }
 void badReact2DProps;
 void React2DSmoke;
+
+const vue2dUndo = useVue2DSelector(editor, (s) => s.history.canUndo);
+const vue2dUndoBool: boolean = vue2dUndo.value;
+// @ts-expect-error mismatched Vue 2D selector equality comparator.
+useVue2DSelector(editor, (s) => s.history.canUndo, (a: number, b: number) => a === b);
+void VueCanvas2D;
+void vue2dUndoBool;
+
+const svelte2dStore = createSvelte2DSelectorStore(editor, (s) => s.history.undoDepth);
+svelte2dStore.subscribe((depth: number) => {
+  void depth;
+});
+// @ts-expect-error mismatched Svelte 2D selector equality comparator.
+createSvelte2DSelectorStore(editor, (s) => s.history.undoDepth, (a: string, b: string) => a === b);
+void SvelteCanvas2D;
+
+const validSolid2DProps: SolidCanvas2DProps = {
+  scene: { id: "s2d", mode: "2d", layers: [{ id: "default", name: "Default" }], nodes: [] }
+};
+const badSolid2DProps: SolidCanvas2DProps = {
+  // @ts-expect-error Solid DenovoCanvas2D rejects 3D scenes at compile time.
+  scene: { id: "s3d", mode: "3d", layers: [{ id: "default", name: "Default" }], nodes: [] }
+};
+const solid2dUndo: boolean = useSolid2DSelector(editor, (s) => s.history.canUndo)();
+// @ts-expect-error mismatched Solid 2D selector equality comparator.
+useSolid2DSelector(editor, (s) => s.history.canUndo, (a: number, b: number) => a === b);
+void SolidCanvas2D;
+void validSolid2DProps;
+void badSolid2DProps;
+void solid2dUndo;
 `
 );
 
@@ -4206,7 +4273,10 @@ writeFileSync(
         paths: {
           [`${facadeName}/2d`]: ["../../packages/canvas/dist/2d.d.ts"],
           [`${facadeName}/react/2d`]: ["../../packages/canvas/dist/react-2d.d.ts"],
-          "@denovo/react-canvas/2d": ["../../packages/react/dist/2d.d.ts"]
+          "@denovo/react-canvas/2d": ["../../packages/react/dist/2d.d.ts"],
+          "@denovo/vue-canvas/2d": ["../../packages/vue-canvas/dist/2d.d.ts"],
+          "@denovo/svelte-canvas/2d": ["../../packages/svelte-canvas/dist/2d.d.ts"],
+          "@denovo/solid-canvas/2d": ["../../packages/solid-canvas/dist/2d.d.ts"]
         }
       },
       include: ["facade-2d-smoke.ts"]

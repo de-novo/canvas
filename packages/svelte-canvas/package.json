@@ -13,6 +13,11 @@
       "types": "./dist/index.d.ts",
       "svelte": "./src/index.ts",
       "import": "./src/index.ts"
+    },
+    "./2d": {
+      "types": "./dist/2d.d.ts",
+      "svelte": "./src/2d.ts",
+      "import": "./src/2d.ts"
     }
   },
   "files": [

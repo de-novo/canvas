@@ -12,6 +12,11 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
+    },
+    "./2d": {
+      "types": "./dist/2d.d.ts",
+      "import": "./dist/2d.js",
+      "require": "./dist/2d.cjs"
     }
   },
   "files": [
@@ -21,7 +26,7 @@
   ],
   "sideEffects": false,
   "scripts": {
-    "build": "tsup src/index.ts --format esm,cjs --clean --external vue --external @denovo/canvas --external @denovo/canvas-core && tsc --emitDeclarationOnly",
+    "build": "tsup src/index.ts src/2d.ts --format esm,cjs --clean --external vue --external @denovo/canvas --external @denovo/canvas/2d --external @denovo/canvas-core && tsc --emitDeclarationOnly",
     "clean": "rm -rf dist .turbo",
     "typecheck": "tsc --noEmit"
   },

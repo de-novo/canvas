@@ -486,6 +486,8 @@ product-level extension seam, `CanvasPlugin` is a host bundle, and
 
 ## Evidence
 
+- 2026-11-23: Three.js-free `./2d` entrypoints landed across Vue (`@denovo/vue-canvas/2d`), Svelte (`@denovo/svelte-canvas/2d`), and Solid (`@denovo/solid-canvas/2d`) for Issue #13 (full 4-framework parity with `@denovo/react-canvas/2d`), plus `.github/workflows/release.yml` clean-checkout bootstrap fix. Verified by `pnpm build`, `pnpm typecheck`, `pnpm verify:public-api`, `pnpm verify:pack-smoke`, `pnpm verify:selectors`, and `pnpm verify:docs`. See [framework 2D entrypoints](./history/2026-11-23-framework-2d-entrypoints.md).
+
 - 2026-11-23: Open-source distribution compliance landed for Issue #12: included root Apache-2.0 `LICENSE` & `NOTICE` in all 12 publishable `packages/*` tarballs (enforced byte-for-byte by `pnpm verify:pack-smoke`), added `.github/ISSUE_TEMPLATE/{bug_report,feature_request,config}.yml`, root `CHANGELOG.md`, and `.github/workflows/release.yml` (npm provenance + `dry_run: true` default). See [open-source distribution compliance](./history/2026-11-23-open-source-distribution-compliance.md).
 
 - 2026-11-23: Open-source release prep landed for Issue #11: standardized `repository`/`homepage`/`bugs`/`publishConfig` across all 12 publishable `packages/*/package.json` manifests, added `pnpm verify:pack-smoke` (12/12 tarball export & zero-`workspace:` checks + external unpacked ESM smoke) wired into `.github/workflows/ci.yml`, and updated `README.md` with current 2D/3D capabilities, `@denovo/canvas/2d` and `@denovo/canvas/react/2d` quickstarts, framework selectors, and verified benchmarks. See [open-source pack smoke and README](./history/2026-11-23-open-source-pack-and-readme.md).

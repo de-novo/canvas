@@ -50,7 +50,10 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Bootstrap optional React peer declarations for clean checkout
-        run: pnpm --filter @denovo/react-canvas build
+        run: |
+          pnpm --filter @denovo/canvas-core --filter @denovo/canvas-worker --filter @denovo/canvas-three --filter @denovo/canvas-editor --filter @denovo/canvas-web build
+          pnpm --filter @denovo/canvas build || true
+          pnpm --filter @denovo/react-canvas build
 
       - name: Build all packages and apps
         run: pnpm build

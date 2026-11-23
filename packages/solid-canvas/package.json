@@ -13,6 +13,12 @@
       "solid": "./src/index.tsx",
       "import": "./src/index.tsx",
       "require": "./src/index.tsx"
+    },
+    "./2d": {
+      "types": "./dist/2d.d.ts",
+      "solid": "./src/2d.tsx",
+      "import": "./src/2d.tsx",
+      "require": "./src/2d.tsx"
     }
   },
   "files": [

@@ -24,9 +24,11 @@ Vue, Svelte, or Solid.
     overlay DOM virtualization + diffed `renderNode` updates, O(1) cached
     minimap rendering, rAF input burst coalescing, and optional 2D WebGPU with
     GPU-resident vertex/atlas caching.
-  - Three.js-free 2D entrypoints (`@denovo/canvas/2d` and
-    `@denovo/canvas/react/2d`) that keep 3D engine code completely out of 2D
-    application bundles.
+  - Three.js-free 2D entrypoints across the facade and all four framework
+    adapters (`@denovo/canvas/2d`, `@denovo/canvas/react/2d`,
+    `@denovo/react-canvas/2d`, `@denovo/vue-canvas/2d`,
+    `@denovo/svelte-canvas/2d`, `@denovo/solid-canvas/2d`) keep 3D engine code
+    completely out of 2D application bundles.
 - **High-performance 3D viewers, editors, and BIM workflows**
   - Built-in 3D nodes: `box`, `sphere`, `mesh` (inline or external geometry
     asset blobs), `instances`, `group`, `measurement`, `annotation`, and
@@ -197,16 +199,16 @@ const stop = subscribeCanvasSelector(
   { equals: shallowEqual }
 );
 
-// Vue 3 (@denovo/vue-canvas) — auto-disposes with effectScope
-import { useCanvasSelector } from "@denovo/vue-canvas";
+// Vue 3 (@denovo/vue-canvas or Three.js-free @denovo/vue-canvas/2d) — auto-disposes with effectScope
+import { useCanvasSelector } from "@denovo/vue-canvas/2d";
 const undoDepth = useCanvasSelector(editor, (s) => s.history.undoDepth);
 
-// Svelte (@denovo/svelte-canvas) — standard $store readable contract
-import { createCanvasSelectorStore } from "@denovo/svelte-canvas";
+// Svelte (@denovo/svelte-canvas or Three.js-free @denovo/svelte-canvas/2d) — standard $store contract
+import { createCanvasSelectorStore } from "@denovo/svelte-canvas/2d";
 const selectedId = createCanvasSelectorStore(editor, (s) => s.selection.primaryId);
 
-// Solid (@denovo/solid-canvas) — auto-disposes with onCleanup
-import { useCanvasSelector } from "@denovo/solid-canvas";
+// Solid (@denovo/solid-canvas or Three.js-free @denovo/solid-canvas/2d) — auto-disposes with onCleanup
+import { useCanvasSelector } from "@denovo/solid-canvas/2d";
 const undoDepthSignal = useCanvasSelector(editor, (s) => s.history.undoDepth);
 ```
 
@@ -342,9 +344,9 @@ flowchart TD
 | `@denovo/canvas-web` | Browser 2D (Canvas2D + 2D WebGPU) and 3D (WebGL2 + WebGPU) runtimes, spatial index, overlay virtualization, and `./2d` / `./3d` / `./indexed-db` subpaths. |
 | `@denovo/canvas-three` | Three.js optimization helpers (demand rendering, instancing, BVH raycasting, official field drawer). |
 | `@denovo/react-canvas` | React adapter (`CanvasView`, `CanvasStage3D`, `useCanvasSelector`) plus `./2d` (`Canvas2DView`, `useCanvasSelector` without Three.js/R3F/Drei). |
-| `@denovo/vue-canvas` | Vue 3 adapter (`DenovoCanvas`, `useCanvasSelector`). |
-| `@denovo/svelte-canvas` | Svelte adapter (`DenovoCanvas`, `createCanvasSelectorStore`). |
-| `@denovo/solid-canvas` | Solid adapter (`DenovoCanvas`, `useCanvasSelector`). |
+| `@denovo/vue-canvas` | Vue 3 adapter (`DenovoCanvas`, `useCanvasSelector`) plus Three.js-free `./2d` (`DenovoCanvas2D`, `useCanvasSelector`). |
+| `@denovo/svelte-canvas` | Svelte adapter (`DenovoCanvas`, `createCanvasSelectorStore`) plus Three.js-free `./2d` (`DenovoCanvas2D`, `createCanvasSelectorStore`). |
+| `@denovo/solid-canvas` | Solid adapter (`DenovoCanvas`, `useCanvasSelector`) plus Three.js-free `./2d` (`DenovoCanvas2D`, `useCanvasSelector`). |
 | `@denovo/canvas-server` | Server-side scene storage adapters and optimistic conflict-checked persistence. |
 | `@denovo/canvas-worker` | Web Worker task queue and off-main-thread geometry conversion. |
 | `@denovo/canvas-bim` | Optional BIM contracts and `./web-ifc` multi-model IFC parser adapter. |
