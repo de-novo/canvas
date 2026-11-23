@@ -55,3 +55,6 @@ Initial public open-source release of Denovo Canvas (`@denovo/canvas` and its
   `flow`, `network`, `field` via `pnpm build:pages` / `pnpm verify:pages`),
   GitHub issue templates, and npm provenance release workflow
   (`.github/workflows/release.yml`).
+
+[Unreleased]: https://github.com/de-novo/canvas/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/de-novo/canvas/releases/tag/v0.1.0

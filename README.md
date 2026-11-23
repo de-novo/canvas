@@ -1,6 +1,10 @@
 # Denovo Canvas
 
-**English** | [한국어](./README.ko.md) | [简体中文](./README.zh-CN.md)
+[![CI](https://github.com/de-novo/canvas/actions/workflows/ci.yml/badge.svg)](https://github.com/de-novo/canvas/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](./LICENSE)
+[![Live Demo](https://img.shields.io/badge/demo-GitHub%20Pages-0284c7.svg)](https://de-novo.github.io/canvas/)
+
+**English** | [한국어](./README.ko.md) | [简体中文](./README.zh-CN.md) | [Live Demo Hub](https://de-novo.github.io/canvas/)
 
 Denovo Canvas is a framework-agnostic TypeScript SDK for building fast,
 editable 2D and 3D canvas applications. Like TanStack Table and TanStack

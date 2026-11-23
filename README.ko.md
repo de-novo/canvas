@@ -1,6 +1,10 @@
 # Denovo Canvas
 
-[English](./README.md) | **한국어** | [简体中文](./README.zh-CN.md)
+[![CI](https://github.com/de-novo/canvas/actions/workflows/ci.yml/badge.svg)](https://github.com/de-novo/canvas/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](./LICENSE)
+[![Live Demo](https://img.shields.io/badge/demo-GitHub%20Pages-0284c7.svg)](https://de-novo.github.io/canvas/)
+
+[English](./README.md) | **한국어** | [简体中文](./README.zh-CN.md) | [라이브 데모 허브](https://de-novo.github.io/canvas/)
 
 Denovo Canvas는 빠르고 편집 가능한 2D 및 3D 캔버스 애플리케이션을 만들기 위한
 프레임워크 독립형 TypeScript SDK입니다. DOM 인터페이스에서 TanStack Table과
