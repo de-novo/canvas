@@ -1,6 +1,6 @@
 {
   "name": "@denovo/canvas-bim",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "license": "Apache-2.0",
   "description": "Optional BIM adapter contracts and web-ifc integration for Denovo Canvas.",
   "type": "module",

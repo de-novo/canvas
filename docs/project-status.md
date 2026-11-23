@@ -486,6 +486,8 @@ product-level extension seam, `CanvasPlugin` is a host bundle, and
 
 ## Evidence
 
+- 2026-11-23: Prepared first public open-source release `v0.1.0` for Issue #22: bumped all 12 publishable `packages/*/package.json` manifests from `0.0.0` to `0.1.0`, finalized `CHANGELOG.md` `[0.1.0] - 2026-11-23`, and verified all 12 `0.1.0` tarballs via `pnpm verify:pack-smoke`, `pnpm build`, `pnpm typecheck`, `pnpm verify:public-api`, and `pnpm verify:docs`. See [v0.1.0 release cut](./history/2026-11-23-v0-1-0-release-cut.md).
+
 - 2026-11-23: One-line `editor` prop parity landed across React `<CanvasView>`, Vue `DenovoCanvas`/`DenovoCanvas2D`, Svelte `DenovoCanvas`/`DenovoCanvas2D`, and Solid `DenovoCanvas`/`DenovoCanvas2D` for Issue #21. Verified by `pnpm build`, `pnpm typecheck`, `pnpm verify:public-api`, `pnpm verify:selectors`, `pnpm verify:pack-smoke`, and `pnpm verify:docs`. See [framework editor prop parity](./history/2026-11-23-framework-editor-prop-parity.md).
 
 - 2026-11-23: Interactive Warehouse Digital Twin demo (`apps/playground-field/warehouse.html`, 20 aisles × 5 tiers × 50 stacked pallets + 20 AGVs = 5,020 multi-color boxes in 1 drawCall, live telemetry, click-to-inspect SKU, 3D ↔ 2D floorplan switch) landed for Issue #20 and verified in `pnpm verify:pages` (5/5). See [Warehouse Digital Twin demo](./history/2026-11-23-warehouse-digital-twin-demo.md).
