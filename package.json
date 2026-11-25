@@ -45,11 +45,11 @@
   },
   "devDependencies": {
     "@tanstack/react-query": "^5.101.3",
-    "@types/node": "^26.1.1",
-    "fake-indexeddb": "^6.2.5",
-    "playwright": "^1.61.1",
-    "tsup": "^8.5.1",
-    "turbo": "^2.10.4",
+    "@types/node": "^26.6.6",
+    "fake-indexeddb": "^6.2.8",
+    "playwright": "^1.65.1",
+    "tsup": "^9.0.0",
+    "turbo": "^2.11.12",
     "typescript": "^7.0.2"
   }
 }
