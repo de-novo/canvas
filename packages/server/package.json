@@ -35,7 +35,7 @@
     "@de-novo/canvas-editor": "workspace:*"
   },
   "devDependencies": {
-    "@types/node": "^26.1.1"
+    "@types/node": "^26.6.6"
   },
   "homepage": "https://github.com/de-novo/canvas#readme",
   "bugs": {
