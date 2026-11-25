@@ -3,7 +3,7 @@
  * 2D canvas performance measurement and regression gate.
  *
  * Benchmarks large 2D scenes (1k / 10k rects + 1k HTML overlays) through the
- * real `@denovo/canvas` facade in Chromium:
+ * real `@de-novo/canvas` facade in Chromium:
  * - pan/zoom render latency (viewport culling effectiveness)
  * - hitTest latency (spatial index vs linear scan)
  * - getNodesInBounds marquee query latency
@@ -248,7 +248,7 @@ function perf2DBenchHtml() {
 <body style="margin:0;background:#070b14;">
   <div id="stage" style="position:fixed;inset:0;"></div>
   <script type="module">
-    import { createCanvas } from "@denovo/canvas";
+    import { createCanvas } from "@de-novo/canvas";
 
     const params = new URLSearchParams(location.search);
     const kind = params.get("kind") || "rects";
@@ -504,9 +504,23 @@ function perf2DBenchHtml() {
         snap.snappedBounds.minY === 180 &&
         snap.guides.some((g) => g.axis === "x" && g.position === 180) &&
         snap.guides.some((g) => g.axis === "y" && g.position === 180);
-      // Paint and clear ephemeral snap guides on Canvas2D without mutating scene.
+      // Paint and clear ephemeral snap guides and inspection overlay on Canvas2D without mutating scene.
       current.setSnapGuides(snap.guides);
+      current.setInspectionOverlay({
+        boxModels: [
+          {
+            bounds: { minX: 180, minY: 180, maxX: 300, maxY: 260 },
+            margin: { top: 8, right: 8, bottom: 8, left: 8 },
+            padding: { top: 6, right: 6, bottom: 6, left: 6 },
+            label: "rect-1 · 120 × 80"
+          }
+        ],
+        redlines: [
+          { start: [300, 220], end: [360, 220], label: "60px" }
+        ]
+      });
       runtime.render();
+      current.setInspectionOverlay(null);
       current.setSnapGuides([]);
       runtime.render();
 
@@ -596,7 +610,7 @@ function startViteServer() {
   return new Promise((resolve, reject) => {
     const child = spawn(
       "pnpm",
-      ["--filter", "@denovo/canvas-vanilla-example", "exec", "vite", "--host", "127.0.0.1", "--port", String(PORT)],
+      ["--filter", "@de-novo/canvas-vanilla-example", "exec", "vite", "--host", "127.0.0.1", "--port", String(PORT)],
       { cwd: process.cwd(), stdio: ["ignore", "pipe", "pipe"] }
     );
     let output = "";

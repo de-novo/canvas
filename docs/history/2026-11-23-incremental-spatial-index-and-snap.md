@@ -12,8 +12,8 @@ Issue: [#14](https://github.com/de-novo/canvas/issues/14).
 - Added `packages/web/src/2d/snap.ts` providing pure `computeCanvas2DSnapGuides`
   and spatial-index-backed `computeCanvas2DSnapGuidesFromIndex` (exposed as
   `runtime.current.computeSnapGuides(targetBounds, options?)` and re-exported
-  from `@denovo/canvas-web/2d`, `@denovo/canvas-web`, `@denovo/canvas/2d`, and
-  `@denovo/canvas`), plus `runtime.current.getSpatialIndexStats()`.
+  from `@de-novo/canvas-web/2d`, `@de-novo/canvas-web`, `@de-novo/canvas/2d`, and
+  `@de-novo/canvas`), plus `runtime.current.getSpatialIndexStats()`.
 - Added deterministic 10k incremental sync and O(visible) snap gates to
   `scripts/verify-2d-performance.mjs` and positive/negative consumer fixtures
   to `scripts/verify-public-api.mjs`.

@@ -4,7 +4,7 @@ import type {
   CanvasLayoutPlacement,
   CanvasLayoutResult,
   CanvasRectBounds
-} from "@denovo/canvas-core";
+} from "@de-novo/canvas-core";
 
 export type CanvasAlignAxis =
   | "left"

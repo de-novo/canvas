@@ -4,11 +4,11 @@ import {
   type Canvas2DPointFieldEdge,
   type Canvas2DPointFieldPoint,
   type Canvas2DRuntime
-} from "@denovo/canvas-web";
+} from "@de-novo/canvas-web";
 import {
   createRelationGraphLayoutAdapter,
   createTimeGraphLayoutAdapter
-} from "@denovo/canvas-editor";
+} from "@de-novo/canvas-editor";
 
 const FILLS = ["#38bdf8", "#f97316", "#a78bfa", "#94a3b8", "#22c55e", "#f43f5e", "#eab308", "#2dd4bf"];
 const DAY = 24 * 60 * 60 * 1000;

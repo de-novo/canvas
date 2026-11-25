@@ -12,7 +12,7 @@ playground.
 
 ## Changes
 
-- `@denovo/canvas-editor` and `@denovo/canvas` export `listLayers`
+- `@de-novo/canvas-editor` and `@de-novo/canvas` export `listLayers`
   and `ListedLayer`.
 - `listLayers(document)` returns `{ id, name, visible, locked }` in
   document order. Own flags, not effective node state. No metadata.

@@ -5,8 +5,8 @@
     type CanvasEditor,
     type DenovoCanvasCommonConfig,
     type DenovoCanvasRuntime
-  } from "@denovo/canvas";
-  import type { CanvasSceneInput } from "@denovo/canvas-core";
+  } from "@de-novo/canvas";
+  import type { CanvasSceneInput } from "@de-novo/canvas-core";
 
   /**
    * Scene document to render. Reactive: changing it calls `runtime.update`.

@@ -4,7 +4,7 @@
  * (`createBimWorkerHandler`); both produce transferable typed arrays so the
  * worker path never copies geometry across the boundary.
  *
- * @module @denovo/canvas-bim/web-ifc
+ * @module @de-novo/canvas-bim/web-ifc
  */
 
 import {
@@ -19,7 +19,7 @@ import {
   type CanvasLayer,
   type CanvasMeshGeometry,
   type JsonValue
-} from "@denovo/canvas-core";
+} from "@de-novo/canvas-core";
 import {
   IFCBUILDINGSTOREY,
   IFCPROPERTYSET,

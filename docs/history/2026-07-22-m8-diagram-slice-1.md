@@ -64,7 +64,7 @@ edge/text/camera primitives and wires them through the schema, renderer, and hit
 - **Runtime API** (`packages/web/src/2d.ts` + `types.ts`): `getViewportSize()`,
   `fitViewBounds(bounds, padding?=64)`, `flyToNode(nodeId, zoom?)→ViewState|null`
   (uses the Phase-1 world-center helper), `getVisibleBounds()`. All apply via the
-  existing `setViewState`. Re-exported from `@denovo/canvas-web` and the facade.
+  existing `setViewState`. Re-exported from `@de-novo/canvas-web` and the facade.
 - **Animation**: instant snap only (single `setViewState`). Smooth rAF tween
   deferred.
 

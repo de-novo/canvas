@@ -1,5 +1,5 @@
 {
-  "name": "@denovo/canvas-threeui-example",
+  "name": "@de-novo/canvas-threeui-example",
   "version": "0.0.0",
   "license": "Apache-2.0",
   "private": true,
@@ -12,7 +12,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@denovo/canvas-core": "workspace:*",
+    "@de-novo/canvas-core": "workspace:*",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "three": "0.149.0",

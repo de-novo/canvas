@@ -10,12 +10,12 @@ most out of the built-in 2D and 3D optimizations.
 
 | App type | Recommended imports | Three.js bundled? |
 | --- | --- | --- |
-| 2D Vanilla / TypeScript | `@denovo/canvas/2d` + `@denovo/canvas/styles.css` | No (`0 B`) |
-| 2D React / Next.js | `@denovo/canvas/2d` + `@denovo/canvas/react/2d` (or `@denovo/react-canvas/2d`) | No (`0 B`) |
-| 2D Vue 3 | `@denovo/canvas/2d` + `@denovo/vue-canvas/2d` | No (`0 B`) |
-| 2D Svelte | `@denovo/canvas/2d` + `@denovo/svelte-canvas/2d` | No (`0 B`) |
-| 2D Solid | `@denovo/canvas/2d` + `@denovo/solid-canvas/2d` | No (`0 B`) |
-| 3D or dynamic 2D/3D | `@denovo/canvas` + optional `@denovo/react-canvas` / `vue` / `svelte` / `solid` | Yes |
+| 2D Vanilla / TypeScript | `@de-novo/canvas/2d` + `@de-novo/canvas/styles.css` | No (`0 B`) |
+| 2D React / Next.js | `@de-novo/canvas/2d` + `@de-novo/canvas/react/2d` (or `@de-novo/react-canvas/2d`) | No (`0 B`) |
+| 2D Vue 3 | `@de-novo/canvas/2d` + `@de-novo/vue-canvas/2d` | No (`0 B`) |
+| 2D Svelte | `@de-novo/canvas/2d` + `@de-novo/svelte-canvas/2d` | No (`0 B`) |
+| 2D Solid | `@de-novo/canvas/2d` + `@de-novo/solid-canvas/2d` | No (`0 B`) |
+| 3D or dynamic 2D/3D | `@de-novo/canvas` + optional `@de-novo/react-canvas` / `vue` / `svelte` / `solid` | Yes |
 
 ## 2. Core Mental Model
 
@@ -38,7 +38,7 @@ state, select only the slice each component needs and pass `shallowEqual` when
 returning derived objects or arrays:
 
 ```ts
-import { shallowEqual, subscribeCanvasSelector } from "@denovo/canvas/2d";
+import { shallowEqual, subscribeCanvasSelector } from "@de-novo/canvas/2d";
 
 const stop = subscribeCanvasSelector(
   editor,
@@ -85,17 +85,17 @@ Most 2D optimizations are active automatically:
 - Keep `renderer: "auto"` to prefer 3D WebGPU where supported and fall back to
   WebGL2 cleanly, or request `"webgpu"` / `"webgl2"` explicitly for strict
   fail-closed behavior.
-- Offload heavy mesh parsing with `@denovo/canvas/worker`, stream large scenes
+- Offload heavy mesh parsing with `@de-novo/canvas/worker`, stream large scenes
   with `createSceneChunkLoader`, and federate multi-model IFC files with
-  `@denovo/canvas-bim`.
+  `@de-novo/canvas-bim`.
 
 ## 6. Styling And Custom Kinds
 
 - Override public `--dc-*` CSS custom properties after importing
-  `@denovo/canvas/styles.css` (falls back cleanly to Tailwind v4 `--color-*`
+  `@de-novo/canvas/styles.css` (falls back cleanly to Tailwind v4 `--color-*`
   and shadcn semantic tokens).
 - Register custom visual kinds (`plugin.<org>.<kind>`) via
-  `registerPluginNodeDrawer` from `@denovo/canvas/web`. See
+  `registerPluginNodeDrawer` from `@de-novo/canvas/web`. See
   [Kind Drawer Seam](./kind-drawer-seam.md) and
   [Public API Contract](./public-api-contract.md).
 

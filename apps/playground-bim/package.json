@@ -1,5 +1,5 @@
 {
-  "name": "@denovo/canvas-bim-example",
+  "name": "@de-novo/canvas-bim-example",
   "version": "0.0.0",
   "license": "Apache-2.0",
   "private": true,
@@ -13,8 +13,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@denovo/canvas": "workspace:*",
-    "@denovo/canvas-bim": "workspace:*",
+    "@de-novo/canvas": "workspace:*",
+    "@de-novo/canvas-bim": "workspace:*",
     "web-ifc": "^0.0.77"
   },
   "devDependencies": {

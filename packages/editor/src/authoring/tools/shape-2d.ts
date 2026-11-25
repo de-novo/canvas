@@ -29,7 +29,7 @@ import {
   type NodeId,
   type Point2,
   type Vector3
-} from "@denovo/canvas-core";
+} from "@de-novo/canvas-core";
 import { CanvasEditorError } from "../../errors.js";
 import {
   parse2DGrid,
@@ -264,7 +264,15 @@ function create2DShapeNode(
     }
 
     return RectNodeSchema.parse({
+      ...(options.cornerRadius === undefined
+        ? {}
+        : { cornerRadius: options.cornerRadius }),
       ...(options.fill === undefined ? {} : { fill: options.fill }),
+      ...(options.opacity === undefined ? {} : { opacity: options.opacity }),
+      ...(options.stroke === undefined ? {} : { stroke: options.stroke }),
+      ...(options.strokeWidth === undefined
+        ? {}
+        : { strokeWidth: options.strokeWidth }),
       id: nodeId,
       layerId,
       position: [Math.min(start[0], end[0]), Math.min(start[1], end[1])],
@@ -281,6 +289,11 @@ function create2DShapeNode(
 
   return CircleNodeSchema.parse({
     ...(options.fill === undefined ? {} : { fill: options.fill }),
+    ...(options.opacity === undefined ? {} : { opacity: options.opacity }),
+    ...(options.stroke === undefined ? {} : { stroke: options.stroke }),
+    ...(options.strokeWidth === undefined
+      ? {}
+      : { strokeWidth: options.strokeWidth }),
     id: nodeId,
     layerId,
     position: start,

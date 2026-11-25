@@ -12,7 +12,7 @@ First catalog case that passes the
 
 ## Changes
 
-- Added `@denovo/canvas-flow-example` (`apps/playground-flow`).
+- Added `@de-novo/canvas-flow-example` (`apps/playground-flow`).
 - The release board is a `defineDocument` scene: five `html` cards, four
   `edge`s, two `text` labels, `board` and `labels` layers.
 - Host `renderNode` builds cards with `createElement`. It does not assign
@@ -26,8 +26,8 @@ This does not absorb a hero graphic and does not wrap ThreeUI.
 
 ## Verification
 
-- `pnpm --filter @denovo/canvas-flow-example typecheck`: passed
-- `pnpm --filter @denovo/canvas-flow-example build`: passed
+- `pnpm --filter @de-novo/canvas-flow-example typecheck`: passed
+- `pnpm --filter @de-novo/canvas-flow-example build`: passed
 - `pnpm verify:flow-showcase`: passed 2/2
   - desktop: no iframe, five cards, Build hit-tests, hide labels
     (`title.visible === false`, undoDepth 1), undo restores

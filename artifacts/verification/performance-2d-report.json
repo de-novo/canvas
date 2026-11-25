@@ -1,5 +1,5 @@
 {
-  "measuredAt": "2026-11-21T09:06:18.244Z",
+  "measuredAt": "2026-11-25T06:46:59.118Z",
   "workloads": [
     {
       "label": "1k-2d-rects",
@@ -16,7 +16,10 @@
         "p50": 0,
         "p95": 0
       },
-      "hitTestTotalMs": 0.5,
+      "hitTestTotalMs": 0.2999997138977051,
+      "incrementalQueryParityOk": null,
+      "incrementalSyncKind": null,
+      "incrementalSyncedNodeCount": null,
       "marqueeMs": {
         "p50": 0,
         "p95": 0.09999990463256836
@@ -28,6 +31,9 @@
         "p95": 0.09999990463256836
       },
       "singleCardEditRenderNodeCalls": null,
+      "snapCandidateCount": null,
+      "snapMs": null,
+      "snapOk": null,
       "topmostHitOk": true,
       "triangles": null
     },
@@ -47,6 +53,9 @@
         "p95": 0
       },
       "hitTestTotalMs": 0.5,
+      "incrementalQueryParityOk": true,
+      "incrementalSyncKind": "incremental",
+      "incrementalSyncedNodeCount": 1,
       "marqueeMs": {
         "p50": 0,
         "p95": 0.09999990463256836
@@ -58,6 +67,9 @@
         "p95": 0.10000038146972656
       },
       "singleCardEditRenderNodeCalls": null,
+      "snapCandidateCount": 28,
+      "snapMs": 0.5,
+      "snapOk": true,
       "topmostHitOk": true,
       "triangles": null
     },
@@ -76,7 +88,10 @@
         "p50": 0,
         "p95": 0
       },
-      "hitTestTotalMs": 0.8000001907348633,
+      "hitTestTotalMs": 0.8999996185302734,
+      "incrementalQueryParityOk": null,
+      "incrementalSyncKind": null,
+      "incrementalSyncedNodeCount": null,
       "marqueeMs": {
         "p50": 0,
         "p95": 0
@@ -88,6 +103,9 @@
         "p95": 0.10000038146972656
       },
       "singleCardEditRenderNodeCalls": 1,
+      "snapCandidateCount": null,
+      "snapMs": null,
+      "snapOk": null,
       "topmostHitOk": true,
       "triangles": null
     },
@@ -106,7 +124,10 @@
         "p50": 0,
         "p95": 0
       },
-      "hitTestTotalMs": 0.5999999046325684,
+      "hitTestTotalMs": 0.9000000953674316,
+      "incrementalQueryParityOk": null,
+      "incrementalSyncKind": null,
+      "incrementalSyncedNodeCount": null,
       "marqueeMs": {
         "p50": 0,
         "p95": 0.09999990463256836
@@ -115,9 +136,12 @@
       "nonBlank": true,
       "panRenderMs": {
         "p50": 0,
-        "p95": 0.10000038146972656
+        "p95": 0.09999990463256836
       },
       "singleCardEditRenderNodeCalls": null,
+      "snapCandidateCount": null,
+      "snapMs": null,
+      "snapOk": null,
       "topmostHitOk": true,
       "triangles": 210
     }

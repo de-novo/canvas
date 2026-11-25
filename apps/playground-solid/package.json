@@ -1,5 +1,5 @@
 {
-  "name": "@denovo/canvas-solid-example",
+  "name": "@de-novo/canvas-solid-example",
   "version": "0.0.0",
   "license": "Apache-2.0",
   "private": true,
@@ -12,9 +12,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@denovo/canvas-core": "workspace:*",
-    "@denovo/canvas-web": "workspace:*",
-    "@denovo/solid-canvas": "workspace:*",
+    "@de-novo/canvas-core": "workspace:*",
+    "@de-novo/canvas-web": "workspace:*",
+    "@de-novo/solid-canvas": "workspace:*",
     "solid-js": "^1.9.3"
   },
   "devDependencies": {

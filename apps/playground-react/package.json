@@ -1,5 +1,5 @@
 {
-  "name": "@denovo/canvas-react-example",
+  "name": "@de-novo/canvas-react-example",
   "version": "0.0.0",
   "license": "Apache-2.0",
   "private": true,
@@ -12,8 +12,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@denovo/canvas-core": "workspace:*",
-    "@denovo/react-canvas": "workspace:*",
+    "@de-novo/canvas-core": "workspace:*",
+    "@de-novo/react-canvas": "workspace:*",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.6.1",
     "react": "^19.2.7",

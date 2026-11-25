@@ -9,7 +9,7 @@ import {
   type CanvasToolContext,
   type CanvasToolDefinition,
   type NodeId
-} from "@denovo/canvas-core";
+} from "@de-novo/canvas-core";
 import { CanvasEditorError } from "../../errors.js";
 import {
   acquireAuthoringPreviewLease,

@@ -1,6 +1,6 @@
 {
-  "name": "@denovo/vue-canvas",
-  "version": "0.1.0",
+  "name": "@de-novo/vue-canvas",
+  "version": "0.2.0",
   "license": "Apache-2.0",
   "description": "Vue adapter for Denovo Canvas.",
   "type": "module",
@@ -26,18 +26,18 @@
   ],
   "sideEffects": false,
   "scripts": {
-    "build": "tsup src/index.ts src/2d.ts --format esm,cjs --clean --external vue --external @denovo/canvas --external @denovo/canvas/2d --external @denovo/canvas-core && tsc --emitDeclarationOnly",
+    "build": "tsup src/index.ts src/2d.ts --format esm,cjs --clean --external vue --external @de-novo/canvas --external @de-novo/canvas/2d --external @de-novo/canvas-core && tsc --emitDeclarationOnly",
     "clean": "rm -rf dist .turbo",
     "typecheck": "tsc --noEmit"
   },
   "peerDependencies": {
-    "@denovo/canvas": "workspace:*",
-    "@denovo/canvas-core": "workspace:*",
+    "@de-novo/canvas": "workspace:*",
+    "@de-novo/canvas-core": "workspace:*",
     "vue": ">=3.4.0"
   },
   "devDependencies": {
-    "@denovo/canvas": "workspace:*",
-    "@denovo/canvas-core": "workspace:*",
+    "@de-novo/canvas": "workspace:*",
+    "@de-novo/canvas-core": "workspace:*",
     "vue": "^3.5.13"
   },
   "homepage": "https://github.com/de-novo/canvas#readme",

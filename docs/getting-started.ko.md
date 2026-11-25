@@ -11,12 +11,12 @@
 
 | 앱 유형 | 권장 임포트 | Three.js 포함 여부 |
 | --- | --- | --- |
-| 2D Vanilla / TypeScript | `@denovo/canvas/2d` + `@denovo/canvas/styles.css` | 미포함 (`0 B`) |
-| 2D React / Next.js | `@denovo/canvas/2d` + `@denovo/canvas/react/2d` (또는 `@denovo/react-canvas/2d`) | 미포함 (`0 B`) |
-| 2D Vue 3 | `@denovo/canvas/2d` + `@denovo/vue-canvas/2d` | 미포함 (`0 B`) |
-| 2D Svelte | `@denovo/canvas/2d` + `@denovo/svelte-canvas/2d` | 미포함 (`0 B`) |
-| 2D Solid | `@denovo/canvas/2d` + `@denovo/solid-canvas/2d` | 미포함 (`0 B`) |
-| 3D 또는 동적 2D/3D | `@denovo/canvas` + 선택적 `@denovo/react-canvas` / `vue` / `svelte` / `solid` | 포함 |
+| 2D Vanilla / TypeScript | `@de-novo/canvas/2d` + `@de-novo/canvas/styles.css` | 미포함 (`0 B`) |
+| 2D React / Next.js | `@de-novo/canvas/2d` + `@de-novo/canvas/react/2d` (또는 `@de-novo/react-canvas/2d`) | 미포함 (`0 B`) |
+| 2D Vue 3 | `@de-novo/canvas/2d` + `@de-novo/vue-canvas/2d` | 미포함 (`0 B`) |
+| 2D Svelte | `@de-novo/canvas/2d` + `@de-novo/svelte-canvas/2d` | 미포함 (`0 B`) |
+| 2D Solid | `@de-novo/canvas/2d` + `@de-novo/solid-canvas/2d` | 미포함 (`0 B`) |
+| 3D 또는 동적 2D/3D | `@de-novo/canvas` + 선택적 `@de-novo/react-canvas` / `vue` / `svelte` / `solid` | 포함 |
 
 ## 2. 핵심 아키텍처 개념
 
@@ -38,7 +38,7 @@
 구독하고, 파생 객체/배열을 반환할 때는 `shallowEqual`을 전달하세요.
 
 ```ts
-import { shallowEqual, subscribeCanvasSelector } from "@denovo/canvas/2d";
+import { shallowEqual, subscribeCanvasSelector } from "@de-novo/canvas/2d";
 
 const stop = subscribeCanvasSelector(
   editor,
@@ -84,16 +84,16 @@ const stop = subscribeCanvasSelector(
 - `renderer: "auto"`는 WebGPU 지원 환경에서 WebGPU를 우선 선택하고 미지원 시
   WebGL2로 폴백합니다. 엄격한 실패 보장이 필요하면 `"webgpu"` 또는 `"webgl2"`를
   명시하세요.
-- 무거운 메시 변환은 `@denovo/canvas/worker`, 대규모 청크 스트리밍은
-  `createSceneChunkLoader`, 멀티 모델 IFC 연합은 `@denovo/canvas-bim`을
+- 무거운 메시 변환은 `@de-novo/canvas/worker`, 대규모 청크 스트리밍은
+  `createSceneChunkLoader`, 멀티 모델 IFC 연합은 `@de-novo/canvas-bim`을
   사용합니다.
 
 ## 6. 스타일링과 커스텀 노드
 
-- `@denovo/canvas/styles.css` 임포트 후 `--dc-*` CSS 커스텀 변수를 덮어쓰면
+- `@de-novo/canvas/styles.css` 임포트 후 `--dc-*` CSS 커스텀 변수를 덮어쓰면
   빌드 없이 테마를 바꿀 수 있습니다(미지정 시 Tailwind v4 `--color-*` 및 shadcn
   토큰을 자동 사용).
-- 사용자 정의 시각 노드(`plugin.<org>.<kind>`)는 `@denovo/canvas/web`의
+- 사용자 정의 시각 노드(`plugin.<org>.<kind>`)는 `@de-novo/canvas/web`의
   `registerPluginNodeDrawer`로 등록합니다. 자세한 내용은
   [Kind Drawer Seam](./kind-drawer-seam.md)과
   [Public API Contract](./public-api-contract.md)을 참고하세요.

@@ -35,14 +35,14 @@ import {
   type CanvasScenePointResult,
   type CanvasScenePointResultFor,
   type CanvasStorageAdapter
-} from "@denovo/canvas-core";
+} from "@de-novo/canvas-core";
 import {
   connectEditorToRuntime as connectEditorRuntime,
   connectEditorToStorage,
   type CanvasEditor,
   type CanvasEditorRuntimeTarget,
   type ConnectEditorToStorageOptions
-} from "@denovo/canvas-editor";
+} from "@de-novo/canvas-editor";
 import {
   CanvasReadPixelsUnsupportedError,
   connectCanvasSelection,
@@ -60,10 +60,10 @@ import {
   type CreateCanvasOptions,
   type DynamicCanvasRuntime,
   type WebCanvasRuntime
-} from "@denovo/canvas-web";
+} from "@de-novo/canvas-web";
 import { Cause, Effect, Either, Option } from "effect";
 
-export * from "@denovo/canvas-core";
+export * from "@de-novo/canvas-core";
 export * from "./react-query";
 export {
   CanvasEditorError,
@@ -83,6 +83,7 @@ export {
   removeNode,
   reorderLayer,
   setFieldPattern,
+  setImageFit,
   setShadePattern,
   setSparklineStyle,
   setLayerLocked,
@@ -116,7 +117,7 @@ export {
   isNodeEffectivelyVisible,
   snapPointToGrid,
   validateGridWorkPlaneCompatibility
-} from "@denovo/canvas-editor";
+} from "@de-novo/canvas-editor";
 export type {
   Canvas2DShapeToolOptions,
   Canvas3DPrimitiveToolOptions,
@@ -177,6 +178,7 @@ export type {
   RemoveNodeInput,
   ReorderLayerInput,
   SetFieldPatternInput,
+  SetImageFitInput,
   SetShadePatternInput,
   SetSparklineStyleInput,
   SetLayerLockedInput,
@@ -190,29 +192,53 @@ export type {
   StackBoxFace,
   StackBoxInput,
   TimeGraphLayoutOptions
-} from "@denovo/canvas-editor";
+} from "@de-novo/canvas-editor";
 export {
   canvasToScenePoint,
+  captureCanvas2DSnapshot,
+  computeCanvas2DRedlines,
   computeCanvas2DSnapGuides,
   connectCanvasSelection,
   connectCanvasToolInput,
   createCanvas2D,
   createCanvas3D,
+  createMemoryImageStore,
   createSceneChunkLoader,
   CanvasSceneChunkCancelledError,
+  DEFAULT_BOX_MODEL_COLORS,
+  DEFAULT_REDLINE_COLOR,
   defineCanvas2DViewState,
   fitCanvas2DView,
   flyCanvas2DViewTo,
+  formatCanvas2DRedlineDistance,
   getCanvas2DVisibleBounds,
   IDENTITY_CANVAS_2D_VIEW,
+  inspectCanvas2DRuntime,
+  orthogonalSegmentIntersectsBoxInterior,
   panCanvas2DView,
+  resolveCanvas2DBoxModelRegions,
+  resolveCanvas2DObstacleFreeOrthogonalWaypoints,
   sceneToCanvasPoint,
+  summarizeCanvasImageData,
   zoomCanvas2DViewAt
-} from "@denovo/canvas-web";
+} from "@de-novo/canvas-web";
 export type {
+  Canvas2DBoxEdges,
+  Canvas2DBoxModelColors,
+  Canvas2DBoxModelOverlay,
+  Canvas2DBoxModelRect,
+  Canvas2DCapturedSnapshot,
+  Canvas2DInspectableRuntime,
+  Canvas2DInspectedLayer,
+  Canvas2DInspectedNode,
+  Canvas2DInspectionOverlay,
   Canvas2DNavigationOptions,
   Canvas2DObject,
+  Canvas2DObstacleRouteOptions,
   Canvas2DRectBounds,
+  Canvas2DRedlineExtension,
+  Canvas2DRedlineOptions,
+  Canvas2DRedlineOverlay,
   Canvas2DRenderNode,
   Canvas2DRenderNodeContext,
   Canvas2DViewportSize,
@@ -220,6 +246,7 @@ export type {
   Canvas2DViewStateInput,
   Canvas2DOptions,
   Canvas2DRuntime,
+  Canvas2DRuntimeSnapshot,
   Canvas2DSnapCandidate,
   Canvas2DSnapEdge,
   Canvas2DSnapGuide,
@@ -236,11 +263,15 @@ export type {
   CanvasAuthoringRuntime,
   CanvasHitSelectionTarget,
   CanvasHitTestRuntime,
+  CanvasImageSource2D,
+  CanvasImageStore,
   CanvasNavigationInputCapability,
   CanvasNavigationInputRuntime,
   CanvasNavigationInputUnsupported,
   CanvasNodeTransformHandleRuntime,
   CanvasNodeTransformRuntime,
+  CanvasPixelDataLike,
+  CanvasPixelSummary,
   CanvasPointerSelectionOptions,
   CanvasSceneChunkLoader,
   CanvasSceneChunkLoaderOptions,
@@ -248,11 +279,14 @@ export type {
   CanvasTarget,
   CanvasToolInputTarget,
   Canvas3DGpuRenderer,
+  CaptureCanvas2DSnapshotOptions,
+  InspectCanvas2DOptions,
+  ResolvedCanvas2DBoxModelRegions,
   CreateCanvasOptions,
   DynamicCanvasRuntime,
   ThreeCanvasRuntime,
   WebCanvasRuntime
-} from "@denovo/canvas-web";
+} from "@de-novo/canvas-web";
 
 export type CanvasTargetInput = string | CanvasTarget;
 export type CanvasDocumentSource = CanvasDocumentInput | string;
@@ -707,6 +741,21 @@ function connectEditorToolState(
   };
 }
 
+function extractFacadeImageAssetUris(
+  document: CanvasDocument | null
+): ReadonlyMap<string, string> {
+  const uris = new Map<string, string>();
+  if (!document) {
+    return uris;
+  }
+  for (const asset of document.assets) {
+    if (asset.type === "image" && asset.uri !== undefined) {
+      uris.set(asset.id, asset.uri);
+    }
+  }
+  return uris;
+}
+
 export function createCanvas(
   targetInput: CanvasTargetInput,
   config: DenovoCanvasConfig = {}
@@ -728,6 +777,7 @@ export function createCanvas(
   const registry = createRegistry();
   const registryController = createRegistryController(registry);
   const pluginReady = setupPlugins(config.plugins ?? [], registryController);
+  const initialImageAssetUris = extractFacadeImageAssetUris(currentDocument);
   const options: CreateCanvasOptions = {
     ...(config.antialias === undefined ? {} : { antialias: config.antialias }),
     ...(config.autoStart === undefined ? {} : { autoStart: config.autoStart }),
@@ -740,6 +790,14 @@ export function createCanvas(
     ...(config.geometryStore === undefined
       ? {}
       : { geometryStore: config.geometryStore }),
+    ...(config.imageStore === undefined
+      ? {}
+      : { imageStore: config.imageStore }),
+    ...(config.imageAssetUris !== undefined
+      ? { imageAssetUris: config.imageAssetUris }
+      : initialImageAssetUris.size > 0
+        ? { imageAssetUris: initialImageAssetUris }
+        : {}),
     ...(config.renderNode === undefined ? {} : { renderNode: config.renderNode }),
     ...(renderer.resolved === "webgpu"
       ? {
@@ -935,6 +993,9 @@ export function createCanvas(
     },
     loadDocument(documentSource) {
       const document = resolveDocumentSource(documentSource);
+      if ("setImageAssetUris" in runtime && typeof runtime.setImageAssetUris === "function") {
+        runtime.setImageAssetUris(extractFacadeImageAssetUris(document));
+      }
       const updatedScene = updateRuntimeScene(document.scene);
       currentDocument = defineDocument({
         ...document,

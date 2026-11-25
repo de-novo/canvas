@@ -13,8 +13,11 @@ import {
   denovoShadeStripCount,
   denovoSparklinePoints,
   isCanvas2DPluginNode,
+  isDenovoImageNode,
   isDenovoShadeNode,
   isDenovoSparklineNode,
+  resolveDenovoImageDrawRect,
+  resolveDenovoImageStyle,
   type Canvas2DGrid,
   type Canvas2DNode,
   type Canvas2DPluginNode,
@@ -22,7 +25,8 @@ import {
   type CanvasAuthoringPreviewForMode,
   type CanvasNodeTransformHandleTarget,
   type CanvasNodeTransformPreview
-} from "@denovo/canvas-core";
+} from "@de-novo/canvas-core";
+import type { Canvas2DImageCache } from "./image-cache";
 
 import {
   canvasToScenePoint,
@@ -30,6 +34,13 @@ import {
   type Canvas2DViewState
 } from "../view2d";
 import type { Canvas2DSnapGuide } from "./snap";
+import {
+  DEFAULT_BOX_MODEL_COLORS,
+  DEFAULT_REDLINE_COLOR,
+  formatCanvas2DRedlineDistance,
+  resolveCanvas2DBoxModelRegions,
+  type Canvas2DInspectionOverlay
+} from "./inspection";
 import {
   resolveLiveParentWorldTransform,
   type Canvas2DSpatialIndex
@@ -44,12 +55,14 @@ import {
 } from "./constants";
 import {
   getCanvas2DMidpoint,
+  hasNonZeroCornerRadius,
   isCanvas2DConnectableNode,
   resolveCanvas2DConnectionHandlePoint,
   resolveCanvas2DEdgeGeometry,
   resolveCanvas2DNodeWorldBounds,
   resolveCanvas2DNodeWorldCenter,
   resolveCanvas2DPluginNodeLocalSize,
+  resolveClampedCornerRadii,
   resolveNodeRenderTransform,
   resolvePreviewParentWorldTransform,
   type Canvas2DEdgeNode
@@ -66,6 +79,7 @@ import {
   type Canvas2DMatrix
 } from "./matrix";
 import {
+  getCanvas2DAncestors,
   getCanvas2DGroupChildren,
   getCanvas2DLayerRoots,
   isNodeEffectivelyLocked,
@@ -292,7 +306,8 @@ export function renderCanvas2DAuthoringOverlayPreviews(
   scene: Canvas2DScene,
   sceneGraph: Canvas2DSceneGraph,
   zoom: number,
-  colors: Canvas2DContentColors
+  colors: Canvas2DContentColors,
+  imageCache?: Canvas2DImageCache
 ): void {
   for (const preview of previews) {
     switch (preview.kind) {
@@ -321,7 +336,8 @@ export function renderCanvas2DAuthoringOverlayPreviews(
           null,
           colors,
           scene,
-          sceneGraph
+          sceneGraph,
+          imageCache
         );
         context.restore();
         break;
@@ -439,6 +455,263 @@ export function renderCanvas2DPreviewAnchor(
   context.fill();
   context.restore();
 }
+const CANVAS_2D_INSPECTION_FONT =
+  "600 11px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace";
+
+function isTransparentFill(fill: string): boolean {
+  return fill === "none" || fill === "transparent";
+}
+
+export function traceCanvas2DRoundedRectPath(
+  context: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radii: readonly [number, number, number, number]
+): void {
+  const rx = width < 0 ? x + width : x;
+  const ry = height < 0 ? y + height : y;
+  const rw = Math.abs(width);
+  const rh = Math.abs(height);
+  const [tl, tr, br, bl] = radii;
+
+  context.beginPath();
+  if (tl === 0 && tr === 0 && br === 0 && bl === 0) {
+    context.rect(rx, ry, rw, rh);
+    return;
+  }
+
+  context.moveTo(rx + tl, ry);
+  context.lineTo(rx + rw - tr, ry);
+  if (tr > 0) {
+    context.arcTo(rx + rw, ry, rx + rw, ry + tr, tr);
+  }
+  context.lineTo(rx + rw, ry + rh - br);
+  if (br > 0) {
+    context.arcTo(rx + rw, ry + rh, rx + rw - br, ry + rh, br);
+  }
+  context.lineTo(rx + bl, ry + rh);
+  if (bl > 0) {
+    context.arcTo(rx, ry + rh, rx, ry + rh - bl, bl);
+  }
+  context.lineTo(rx, ry + tl);
+  if (tl > 0) {
+    context.arcTo(rx, ry, rx + tl, ry, tl);
+  }
+  context.closePath();
+}
+
+function drawInspectionPill(
+  context: CanvasRenderingContext2D,
+  sceneX: number,
+  sceneY: number,
+  text: string,
+  background: string,
+  foreground: string,
+  invZoom: number,
+  verticalAnchor: "above" | "center"
+): void {
+  if (text.length === 0) {
+    return;
+  }
+
+  context.save();
+  context.translate(sceneX, sceneY);
+  context.scale(invZoom, invZoom);
+  context.font = CANVAS_2D_INSPECTION_FONT;
+  const textWidth =
+    typeof context.measureText === "function"
+      ? context.measureText(text).width
+      : text.length * 6.5;
+  const padX = 6;
+  const pillWidth = textWidth + padX * 2;
+  const pillHeight = 18;
+  const pillX = -pillWidth * 0.5;
+  const pillY =
+    verticalAnchor === "above" ? -(pillHeight + 6) : -pillHeight * 0.5;
+
+  traceCanvas2DRoundedRectPath(
+    context,
+    pillX,
+    pillY,
+    pillWidth,
+    pillHeight,
+    [4, 4, 4, 4]
+  );
+  context.fillStyle = background;
+  context.fill();
+
+  context.fillStyle = foreground;
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.fillText(text, 0, pillY + pillHeight * 0.5 + 0.5);
+  context.restore();
+}
+
+/**
+ * Renders ephemeral DevTools-style box-model regions and spacing redlines on
+ * top of the 2D scene without mutating the document or undo history.
+ */
+export function renderCanvas2DInspectionOverlay(
+  context: CanvasRenderingContext2D,
+  overlay: Canvas2DInspectionOverlay,
+  zoom: number,
+  colors: Canvas2DContentColors
+): void {
+  const boxModels = overlay.boxModels;
+  const redlines = overlay.redlines;
+  if (
+    (!boxModels || boxModels.length === 0) &&
+    (!redlines || redlines.length === 0)
+  ) {
+    return;
+  }
+
+  const safeZoom = Math.max(zoom, 1e-4);
+  const invZoom = 1 / safeZoom;
+
+  if (boxModels && boxModels.length > 0) {
+    for (let i = 0; i < boxModels.length; i += 1) {
+      const boxModel = boxModels[i]!;
+      const regions = resolveCanvas2DBoxModelRegions(boxModel);
+      const palette = {
+        ...DEFAULT_BOX_MODEL_COLORS,
+        ...boxModel.colors
+      };
+
+      context.save();
+
+      if (regions.marginStrips.length > 0) {
+        context.fillStyle = palette.margin;
+        context.globalAlpha = 0.26;
+        for (let s = 0; s < regions.marginStrips.length; s += 1) {
+          const strip = regions.marginStrips[s]!;
+          context.fillRect(strip.x, strip.y, strip.width, strip.height);
+        }
+      }
+
+      if (regions.borderStrips.length > 0) {
+        context.fillStyle = palette.border;
+        context.globalAlpha = 0.34;
+        for (let s = 0; s < regions.borderStrips.length; s += 1) {
+          const strip = regions.borderStrips[s]!;
+          context.fillRect(strip.x, strip.y, strip.width, strip.height);
+        }
+      }
+
+      if (regions.paddingStrips.length > 0) {
+        context.fillStyle = palette.padding;
+        context.globalAlpha = 0.26;
+        for (let s = 0; s < regions.paddingStrips.length; s += 1) {
+          const strip = regions.paddingStrips[s]!;
+          context.fillRect(strip.x, strip.y, strip.width, strip.height);
+        }
+      }
+
+      if (regions.contentRect) {
+        context.fillStyle = palette.content;
+        context.globalAlpha = 0.22;
+        context.fillRect(
+          regions.contentRect.x,
+          regions.contentRect.y,
+          regions.contentRect.width,
+          regions.contentRect.height
+        );
+      }
+
+      context.globalAlpha = 0.92;
+      context.strokeStyle = palette.content;
+      context.lineWidth = invZoom;
+      context.setLineDash([4 * invZoom, 3 * invZoom]);
+      context.strokeRect(
+        regions.borderBox.minX,
+        regions.borderBox.minY,
+        regions.borderBox.maxX - regions.borderBox.minX,
+        regions.borderBox.maxY - regions.borderBox.minY
+      );
+      context.restore();
+
+      if (boxModel.label) {
+        const labelX = (regions.borderBox.minX + regions.borderBox.maxX) * 0.5;
+        const labelY = regions.marginBox.minY;
+        drawInspectionPill(
+          context,
+          labelX,
+          labelY,
+          boxModel.label,
+          palette.labelBackground,
+          palette.labelForeground,
+          invZoom,
+          "above"
+        );
+      }
+    }
+  }
+
+  if (redlines && redlines.length > 0) {
+    const tickHalf = 4 * invZoom;
+    for (let i = 0; i < redlines.length; i += 1) {
+      const redline = redlines[i]!;
+      const accent = redline.color ?? DEFAULT_REDLINE_COLOR;
+      const dx = redline.end[0] - redline.start[0];
+      const dy = redline.end[1] - redline.start[1];
+      const length = Math.hypot(dx, dy);
+
+      context.save();
+      context.strokeStyle = accent;
+
+      if (redline.extensions && redline.extensions.length > 0) {
+        context.globalAlpha = 0.65;
+        context.lineWidth = invZoom;
+        context.setLineDash([3 * invZoom, 3 * invZoom]);
+        for (let e = 0; e < redline.extensions.length; e += 1) {
+          const ext = redline.extensions[e]!;
+          context.beginPath();
+          context.moveTo(ext.start[0], ext.start[1]);
+          context.lineTo(ext.end[0], ext.end[1]);
+          context.stroke();
+        }
+      }
+
+      context.globalAlpha = 1;
+      context.setLineDash([]);
+      context.lineWidth = 1.5 * invZoom;
+      context.beginPath();
+      context.moveTo(redline.start[0], redline.start[1]);
+      context.lineTo(redline.end[0], redline.end[1]);
+
+      if (length > 1e-6) {
+        const nx = (-dy / length) * tickHalf;
+        const ny = (dx / length) * tickHalf;
+        context.moveTo(redline.start[0] - nx, redline.start[1] - ny);
+        context.lineTo(redline.start[0] + nx, redline.start[1] + ny);
+        context.moveTo(redline.end[0] - nx, redline.end[1] - ny);
+        context.lineTo(redline.end[0] + nx, redline.end[1] + ny);
+      }
+      context.stroke();
+      context.restore();
+
+      const labelText =
+        redline.label ?? formatCanvas2DRedlineDistance(length);
+      if (labelText.length > 0) {
+        const midX = (redline.start[0] + redline.end[0]) * 0.5;
+        const midY = (redline.start[1] + redline.end[1]) * 0.5;
+        drawInspectionPill(
+          context,
+          midX,
+          midY,
+          labelText,
+          accent,
+          colors.foreground === accent ? "#0f172a" : "#ffffff",
+          invZoom,
+          "center"
+        );
+      }
+    }
+  }
+}
+
 export function renderCanvas2DSnapGuides(
   context: CanvasRenderingContext2D,
   guides: readonly Canvas2DSnapGuide[],
@@ -500,7 +773,8 @@ export function renderCanvas2DScene(
   colors: Canvas2DContentColors,
   emphasis: Canvas2DEmphasis = CANVAS_2D_NO_EMPHASIS,
   spatialIndex?: Canvas2DSpatialIndex,
-  visibleBounds?: Canvas2DRectBounds
+  visibleBounds?: Canvas2DRectBounds,
+  imageCache?: Canvas2DImageCache
 ): number {
   if (spatialIndex && visibleBounds) {
     const candidates = spatialIndex.queryRect(visibleBounds, preview, sceneGraph);
@@ -529,6 +803,58 @@ export function renderCanvas2DScene(
         continue;
       }
 
+      if (entry.hasStyledAncestor) {
+        context.save();
+        const ancestors = getCanvas2DAncestors(node, sceneGraph);
+        let ancestorVisible = true;
+        let world = CANVAS_2D_IDENTITY_MATRIX;
+        for (let a = ancestors.length - 1; a >= 0; a -= 1) {
+          const ancestor = ancestors[a]!;
+          if (ancestor.opacity <= 0) {
+            ancestorVisible = false;
+            break;
+          }
+          const local = createCanvas2DTransformMatrix(
+            resolveNodeRenderTransform(ancestor, preview)
+          );
+          applyCanvas2DMatrix(context, local);
+          world = multiplyCanvas2DMatrices(world, local);
+          if (ancestor.opacity < 1) {
+            context.globalAlpha *= ancestor.opacity;
+          }
+          if (ancestor.clip !== null) {
+            const clipRadii = resolveClampedCornerRadii(
+              ancestor.clip.width,
+              ancestor.clip.height,
+              ancestor.clip.cornerRadius
+            );
+            traceCanvas2DRoundedRectPath(
+              context,
+              ancestor.clip.x,
+              ancestor.clip.y,
+              ancestor.clip.width,
+              ancestor.clip.height,
+              clipRadii
+            );
+            context.clip();
+          }
+        }
+        if (ancestorVisible) {
+          renderCanvas2DDrawableNode(
+            context,
+            node,
+            world,
+            preview,
+            colors,
+            scene,
+            sceneGraph,
+            imageCache
+          );
+        }
+        context.restore();
+        continue;
+      }
+
       const parentWorldTransform = resolveLiveParentWorldTransform(
         entry,
         sceneGraph,
@@ -546,7 +872,8 @@ export function renderCanvas2DScene(
           preview,
           colors,
           scene,
-          sceneGraph
+          sceneGraph,
+          imageCache
         );
         context.restore();
       } else {
@@ -557,7 +884,8 @@ export function renderCanvas2DScene(
           preview,
           colors,
           scene,
-          sceneGraph
+          sceneGraph,
+          imageCache
         );
       }
     }
@@ -581,7 +909,8 @@ export function renderCanvas2DScene(
         CANVAS_2D_IDENTITY_MATRIX,
         preview,
         colors,
-        emphasis
+        emphasis,
+        imageCache
       );
     }
   }
@@ -596,7 +925,8 @@ export function renderCanvas2DTreeNode(
   parentWorldTransform: Canvas2DMatrix,
   preview: CanvasNodeTransformPreview | null,
   colors: Canvas2DContentColors,
-  emphasis: Canvas2DEmphasis = CANVAS_2D_NO_EMPHASIS
+  emphasis: Canvas2DEmphasis = CANVAS_2D_NO_EMPHASIS,
+  imageCache?: Canvas2DImageCache
 ) {
   if (!node.visible) {
     return;
@@ -626,11 +956,16 @@ export function renderCanvas2DTreeNode(
       preview,
       colors,
       scene,
-      sceneGraph
+      sceneGraph,
+      imageCache
     );
     return;
   }
 
+
+  if (node.opacity <= 0) {
+    return;
+  }
 
   const localTransform = createCanvas2DTransformMatrix(
     resolveNodeRenderTransform(node, preview)
@@ -641,6 +976,25 @@ export function renderCanvas2DTreeNode(
   );
   context.save();
   applyCanvas2DMatrix(context, localTransform);
+  if (node.opacity < 1) {
+    context.globalAlpha *= node.opacity;
+  }
+  if (node.clip !== null) {
+    const clipRadii = resolveClampedCornerRadii(
+      node.clip.width,
+      node.clip.height,
+      node.clip.cornerRadius
+    );
+    traceCanvas2DRoundedRectPath(
+      context,
+      node.clip.x,
+      node.clip.y,
+      node.clip.width,
+      node.clip.height,
+      clipRadii
+    );
+    context.clip();
+  }
 
   for (const child of getCanvas2DGroupChildren(sceneGraph, node.id)) {
     renderCanvas2DTreeNode(
@@ -651,7 +1005,8 @@ export function renderCanvas2DTreeNode(
       worldTransform,
       preview,
       colors,
-      emphasis
+      emphasis,
+      imageCache
     );
   }
 
@@ -664,7 +1019,8 @@ export function renderCanvas2DDrawableNode(
   preview: CanvasNodeTransformPreview | null,
   colors: Canvas2DContentColors,
   scene: Canvas2DScene,
-  sceneGraph: Canvas2DSceneGraph
+  sceneGraph: Canvas2DSceneGraph,
+  imageCache?: Canvas2DImageCache
 ) {
   switch (node.type) {
     case "rect":
@@ -701,6 +1057,10 @@ export function renderCanvas2DDrawableNode(
       // html nodes are rendered into the DOM overlay, not the bitmap canvas.
       return;
     default: {
+      if (isDenovoImageNode(node)) {
+        renderCanvas2DImageNode(context, node, preview, imageCache);
+        return;
+      }
       if (isDenovoSparklineNode(node)) {
         renderCanvas2DSparkline(context, node, preview);
         return;
@@ -726,6 +1086,85 @@ export function renderCanvas2DDrawableNode(
       return exhaustive;
     }
   }
+}
+
+function renderCanvas2DImageNode(
+  context: CanvasRenderingContext2D,
+  node: Canvas2DPluginNode,
+  preview: CanvasNodeTransformPreview | null,
+  imageCache?: Canvas2DImageCache
+) {
+  if (!isDenovoImageNode(node)) {
+    return;
+  }
+
+  const style = resolveDenovoImageStyle(node.props);
+  if (style.opacity <= 0) {
+    return;
+  }
+
+  const transform = resolveNodeRenderTransform(node, preview);
+  const width = node.props.width;
+  const height = node.props.height;
+  const radii = resolveClampedCornerRadii(width, height, style.cornerRadius);
+  const hasRadius = hasNonZeroCornerRadius(radii);
+  const resolved = imageCache?.resolve(node.props) ?? null;
+
+  context.save();
+  if (style.opacity < 1) {
+    context.globalAlpha *= style.opacity;
+  }
+  applyCanvas2DMatrix(context, createCanvas2DTransformMatrix(transform));
+
+  if (resolved) {
+    const drawRect = resolveDenovoImageDrawRect(
+      resolved.naturalWidth,
+      resolved.naturalHeight,
+      width,
+      height,
+      style.fit
+    );
+    if (drawRect) {
+      context.save();
+      traceCanvas2DRoundedRectPath(context, 0, 0, width, height, radii);
+      context.clip();
+      if (style.fit === "contain" && !isTransparentFill(style.placeholder)) {
+        context.fillStyle = style.placeholder;
+        context.fillRect(0, 0, width, height);
+      }
+      context.drawImage(
+        resolved.source,
+        drawRect.sx,
+        drawRect.sy,
+        drawRect.sw,
+        drawRect.sh,
+        drawRect.dx,
+        drawRect.dy,
+        drawRect.dw,
+        drawRect.dh
+      );
+      context.restore();
+    }
+  } else if (!isTransparentFill(style.placeholder)) {
+    if (hasRadius) {
+      traceCanvas2DRoundedRectPath(context, 0, 0, width, height, radii);
+      context.fillStyle = style.placeholder;
+      context.fill();
+    } else {
+      context.fillStyle = style.placeholder;
+      context.fillRect(0, 0, width, height);
+    }
+  }
+
+  if (style.stroke !== null && style.strokeWidth > 0) {
+    traceCanvas2DRoundedRectPath(context, 0, 0, width, height, radii);
+    context.strokeStyle = style.stroke;
+    context.lineWidth = style.strokeWidth;
+    context.lineJoin = "round";
+    context.stroke();
+  }
+
+  context.restore();
 }
 function renderCanvas2DPluginMarker(
   context: CanvasRenderingContext2D,
@@ -828,19 +1267,65 @@ export function renderCanvas2DShapeNode(
   node: Canvas2DShapeNode,
   preview: CanvasNodeTransformPreview | null
 ) {
+  if (node.opacity <= 0) {
+    return;
+  }
+
   const transform = resolveNodeRenderTransform(node, preview);
+  const hasStroke = node.stroke !== null && node.strokeWidth > 0;
+  const hasFill = !isTransparentFill(node.fill);
   context.save();
+  if (node.opacity < 1) {
+    context.globalAlpha *= node.opacity;
+  }
   applyCanvas2DMatrix(context, createCanvas2DTransformMatrix(transform));
-  context.fillStyle = node.fill;
 
   switch (node.type) {
-    case "rect":
-      context.fillRect(0, 0, node.size[0], node.size[1]);
+    case "rect": {
+      const radii = resolveClampedCornerRadii(
+        node.size[0],
+        node.size[1],
+        node.cornerRadius
+      );
+      if (!hasNonZeroCornerRadius(radii) && !hasStroke) {
+        if (hasFill) {
+          context.fillStyle = node.fill;
+          context.fillRect(0, 0, node.size[0], node.size[1]);
+        }
+        break;
+      }
+      traceCanvas2DRoundedRectPath(
+        context,
+        0,
+        0,
+        node.size[0],
+        node.size[1],
+        radii
+      );
+      if (hasFill) {
+        context.fillStyle = node.fill;
+        context.fill();
+      }
+      if (hasStroke && node.stroke !== null) {
+        context.strokeStyle = node.stroke;
+        context.lineWidth = node.strokeWidth;
+        context.lineJoin = "round";
+        context.stroke();
+      }
       break;
+    }
     case "circle":
       context.beginPath();
       context.arc(0, 0, node.radius, 0, Math.PI * 2);
-      context.fill();
+      if (hasFill) {
+        context.fillStyle = node.fill;
+        context.fill();
+      }
+      if (hasStroke && node.stroke !== null) {
+        context.strokeStyle = node.stroke;
+        context.lineWidth = node.strokeWidth;
+        context.stroke();
+      }
       break;
     default: {
       const exhaustive: never = node;

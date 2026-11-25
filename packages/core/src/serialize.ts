@@ -9,7 +9,7 @@
  * across unrelated document state and lets a server (or offline-replay layer)
  * reason about rejected patches via `inversePatch`.
  *
- * @module @denovo/canvas-core
+ * @module @de-novo/canvas-core
  */
 
 import {
@@ -19,7 +19,7 @@ import {
   type DocumentPatchRecord,
   type JsonValue,
   type NodeId
-} from "@denovo/canvas-core";
+} from "@de-novo/canvas-core";
 
 /**
  * Path segments used when describing where a command touches the document.

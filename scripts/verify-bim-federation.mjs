@@ -105,7 +105,7 @@ function startPlayground(port) {
       "pnpm",
       [
         "--filter",
-        "@denovo/canvas-bim-example",
+        "@de-novo/canvas-bim-example",
         "exec",
         "vite",
         "--host",

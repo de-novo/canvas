@@ -39,7 +39,7 @@ Ran after the material fix on 2026-08-21:
   vanilla M3 suite and a performance baseline, not M4–M8 acceptance.
 - 10k-box p50 is slower than the 2026-07-17 batched 91.70 ms reading.
   Headless Chromium variance is expected; draw-call count is unchanged.
-- Framework adapters still mount `@denovo/canvas-web`, not the facade.
+- Framework adapters still mount `@de-novo/canvas-web`, not the facade.
 
 ## Next action
 

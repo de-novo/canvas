@@ -128,7 +128,7 @@ async function startViteServer() {
     "pnpm",
     [
       "--filter",
-      "@denovo/canvas-vanilla-example",
+      "@de-novo/canvas-vanilla-example",
       "exec",
       "vite",
       "--config",

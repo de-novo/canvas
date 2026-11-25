@@ -21,19 +21,19 @@ import {
   type CanvasSelectorEquality,
   type DenovoCanvasCommonConfig,
   type DenovoCanvasRuntime
-} from "@denovo/canvas";
-import type { CanvasSceneInput } from "@denovo/canvas-core";
+} from "@de-novo/canvas";
+import type { CanvasSceneInput } from "@de-novo/canvas-core";
 
 /**
  * Vue 3 adapter for Denovo Canvas. Mounts a {@link createCanvas} runtime on a
  * host `<div>`, keeps it in sync with a reactive `scene` prop, and destroys it
- * on unmount. Mirrors the `CanvasView` pattern from `@denovo/react-canvas` so
+ * on unmount. Mirrors the `CanvasView` pattern from `@de-novo/react-canvas` so
  * the same document/runtime model works across frameworks.
  *
  * @example
  * ```vue
  * <script setup lang="ts">
- * import { DenovoCanvas } from "@denovo/vue-canvas";
+ * import { DenovoCanvas } from "@de-novo/vue-canvas";
  * const scene = { id: "demo", mode: "3d", layers: [{ id: "default", name: "Default" }], nodes: [] };
  * </script>
  * <template>
@@ -199,5 +199,5 @@ export {
   type CanvasSelectorEquality,
   type DenovoCanvasCommonConfig,
   type DenovoCanvasRuntime
-} from "@denovo/canvas";
-export type { CanvasSceneInput } from "@denovo/canvas-core";
+} from "@de-novo/canvas";
+export type { CanvasSceneInput } from "@de-novo/canvas-core";

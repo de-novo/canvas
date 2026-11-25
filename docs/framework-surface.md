@@ -128,7 +128,7 @@ document node  →  kind schema  →  official drawer  →  engine
 
 The drawer may use Three.js or Canvas2D. The catalog and the public
 types must not import those engines. Host kinds register a drawer on
-`@denovo/canvas-web`; see [Kind Drawer Seam](./kind-drawer-seam.md).
+`@de-novo/canvas-web`; see [Kind Drawer Seam](./kind-drawer-seam.md).
 Official kinds keep their hard-coded drawers. A registered kind without
 a drawer still paints the gray marker.
 
@@ -143,7 +143,7 @@ Absorption for a new kind:
 This is the shipped official kind. No Three types appear.
 
 ```ts
-import { createCanvas, defineDocument } from "@denovo/canvas";
+import { createCanvas, defineDocument } from "@de-novo/canvas";
 
 const document = defineDocument({
   id: "landing-hero",
@@ -233,13 +233,13 @@ hero catalog.
 
 ## Package Boundary
 
-- `@denovo/canvas`: facade. Kinds, properties, named operations,
+- `@de-novo/canvas`: facade. Kinds, properties, named operations,
   `createCanvas`. No Three types.
-- `@denovo/canvas-core`: schemas for built-ins and the plugin-node
+- `@de-novo/canvas-core`: schemas for built-ins and the plugin-node
   union.
 - Official kind packages (for example a future field package): schema +
   drawer. Optional. The facade may re-export the official kind.
-- `@denovo/canvas-web` / `@denovo/canvas-three`: engines. Not the
+- `@de-novo/canvas-web` / `@de-novo/canvas-three`: engines. Not the
   default import for catalog examples.
 
 ## First Implementation Slice

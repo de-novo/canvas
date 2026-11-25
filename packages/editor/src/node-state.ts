@@ -1,4 +1,4 @@
-import type { CanvasDocument, NodeId } from "@denovo/canvas-core";
+import type { CanvasDocument, NodeId } from "@de-novo/canvas-core";
 import { CanvasEditorError } from "./errors.js";
 import { freezeValue } from "./utils.js";
 

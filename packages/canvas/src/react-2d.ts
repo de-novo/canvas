@@ -1,1 +1,1 @@
-export * from "@denovo/react-canvas/2d";
+export * from "@de-novo/react-canvas/2d";

@@ -7,7 +7,7 @@
 ## Scope
 
 Decision on package responsibility for large 2D point graphs, plus the
-first throughput primitive in `@denovo/canvas-web`.
+first throughput primitive in `@de-novo/canvas-web`.
 
 ## Changes
 
@@ -24,8 +24,8 @@ tickets per person per sprint reaches that count in a quarter.
 
 ## Verification
 
-- `pnpm --filter @denovo/canvas-web build`: passed
-- `pnpm --filter @denovo/canvas-graph-example typecheck`: passed
+- `pnpm --filter @de-novo/canvas-web build`: passed
+- `pnpm --filter @de-novo/canvas-graph-example typecheck`: passed
 - `pnpm verify:point-field`: **5/5** passed (2026-08-22)
   - screen size clamp 4 / 8 / 14
   - on-screen draw, off-screen cull, edge count

@@ -12,7 +12,7 @@ surface query. No `listNodes`.
 
 ## Changes
 
-- `@denovo/canvas-editor` and `@denovo/canvas` export `stackBox`,
+- `@de-novo/canvas-editor` and `@de-novo/canvas` export `stackBox`,
   `StackBoxInput`, and `StackBoxFace`.
 - Compiles to one `node.add`. `layerId` defaults to the source layer.
   New box copies source `scale` and `color`.

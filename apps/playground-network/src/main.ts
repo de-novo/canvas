@@ -8,8 +8,8 @@ import {
   type Canvas2DNode,
   type Canvas2DRenderNodeContext,
   type ListedNode
-} from "@denovo/canvas/2d";
-import "@denovo/canvas/styles.css";
+} from "@de-novo/canvas/2d";
+import "@de-novo/canvas/styles.css";
 
 import { renderNetworkService } from "./cards";
 import {

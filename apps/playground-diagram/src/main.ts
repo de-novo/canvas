@@ -7,13 +7,13 @@ import {
   type Canvas2DNode,
   type Canvas2DRenderNodeContext,
   type CanvasSceneInput
-} from "@denovo/canvas/2d";
+} from "@de-novo/canvas/2d";
 import {
   createAlignAdapter,
   createConnectorTool,
   type CanvasLayoutAdapter
-} from "@denovo/canvas-editor";
-import "@denovo/canvas/styles.css";
+} from "@de-novo/canvas-editor";
+import "@de-novo/canvas/styles.css";
 import "./styles.css";
 
 const stage = document.getElementById("stage");

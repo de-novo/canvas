@@ -5,7 +5,7 @@
  * `measureCanvas2DText` and `wrapCanvas2DText` read from the passed context but
  * never draw, and restore any font they set.
  */
-import type { Canvas2DNode } from "@denovo/canvas-core";
+import type { Canvas2DNode } from "@de-novo/canvas-core";
 
 import { transformCanvas2DPoint, type Canvas2DMatrix } from "./matrix";
 

@@ -7,7 +7,7 @@
  * @example
  * ```svelte
  * <script lang="ts">
- *   import { DenovoCanvas } from "@denovo/svelte-canvas";
+ *   import { DenovoCanvas } from "@de-novo/svelte-canvas";
  *   const scene = { id: "demo", mode: "3d", layers: [{ id: "default", name: "Default" }], nodes: [] };
  * </script>
  *
@@ -19,7 +19,7 @@ import {
   type CanvasEditor,
   type CanvasSelector,
   type CanvasSelectorEquality
-} from "@denovo/canvas";
+} from "@de-novo/canvas";
 
 export { default as DenovoCanvas } from "./DenovoCanvas.svelte";
 
@@ -65,5 +65,5 @@ export {
   type CanvasSelectorEquality,
   type DenovoCanvasCommonConfig,
   type DenovoCanvasRuntime
-} from "@denovo/canvas";
-export type { CanvasSceneInput } from "@denovo/canvas-core";
+} from "@de-novo/canvas";
+export type { CanvasSceneInput } from "@de-novo/canvas-core";

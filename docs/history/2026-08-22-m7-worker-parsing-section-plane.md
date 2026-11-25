@@ -28,10 +28,10 @@ one shared tessellation core.
   never touches the main thread. Node runtimes may omit the WASM config.
 - `packages/bim/src/worker-adapter.ts` (new):
   `createWorkerBimAdapter({ queue, maxElements })` — a `BimAdapter` over a
-  `@denovo/canvas-worker` queue with `getSkippedElementCount()` and
+  `@de-novo/canvas-worker` queue with `getSkippedElementCount()` and
   `getElementProperties(expressIDs)`.
-- New export subpath `@denovo/canvas-bim/web-ifc-worker`;
-  `@denovo/canvas-worker` is an optional peer.
+- New export subpath `@de-novo/canvas-bim/web-ifc-worker`;
+  `@de-novo/canvas-worker` is an optional peer.
 - `WebIfcBimAdapter` was refactored onto the same core and gained
   `getElementProperties`; its public API is unchanged.
 
@@ -41,7 +41,7 @@ one shared tessellation core.
   `setSectionPlane({ normal, constant } | null)` using renderer-level
   clipping planes (normalized normal; explicit failures for zero normals
   and non-finite constants). Forwarded through the dynamic web runtime and
-  the facade runtime; re-exported from `@denovo/canvas`.
+  the facade runtime; re-exported from `@de-novo/canvas`.
 - v1 semantics documented on the method: global cut (handles/overlays clip
   too while active), hit testing unaffected.
 

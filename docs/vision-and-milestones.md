@@ -160,7 +160,7 @@ Deliverables:
   documented before implementation.
 - dependency strategy: identify which libraries are engines, which are optional
   extensions, and which are adapter-level dependencies.
-- facade strategy: define `@denovo/canvas` as the default user-facing entrypoint
+- facade strategy: define `@de-novo/canvas` as the default user-facing entrypoint
   with adapters and plugins underneath.
 
 Acceptance criteria:
@@ -350,7 +350,7 @@ Goal: support BIM without coupling core to BIM.
 
 Deliverables:
 
-- optional `@denovo/canvas-bim`;
+- optional `@de-novo/canvas-bim`;
 - `web-ifc` parser adapter;
 - `xeokit` bridge or separate viewer adapter;
 - IFC metadata/property tree contract;
@@ -402,9 +402,9 @@ extra bundle cost:
 
 ### Near-Term Optional Extensions
 
-- **glTF / GLB Asset Importer (`@denovo/canvas-gltf`, optional)**: parse
+- **glTF / GLB Asset Importer (`@de-novo/canvas-gltf`, optional)**: parse
   Blender-exported `.glb`/`.gltf` assets off the main thread via
-  `@denovo/canvas/worker` into canonical `mesh` + `geometryAssetId` + PBR
+  `@de-novo/canvas/worker` into canonical `mesh` + `geometryAssetId` + PBR
   material/texture references, enabling instanced rendering and BVH picking of
   rich industrial and organic models (e.g., custom racks, forklifts, botanical
   or product models).
@@ -417,9 +417,9 @@ extra bundle cost:
 
 ### Long-Term Horizon: Optional Mesh-Editing / DCC Layer (Blender-Inspired)
 
-- **Separate Opt-In Package (`@denovo/canvas-mesh-edit`)**: layered strictly on
+- **Separate Opt-In Package (`@de-novo/canvas-mesh-edit`)**: layered strictly on
   top of `CanvasGeometryStore`, canonical undoable commands, and the tool
-  registry without expanding `@denovo/canvas-core` or `@denovo/canvas/2d`:
+  registry without expanding `@de-novo/canvas-core` or `@de-novo/canvas/2d`:
   - **Sub-object editing**: BVH-accelerated `vertex`, `edge`, and `face`
     selection and transient gizmo previews.
   - **Direct mesh operations**: `extrude`, `bevel`, `inset`, `loop-cut`, and

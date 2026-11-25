@@ -216,11 +216,11 @@ same lifecycle boundaries and cannot commit after cancellation.
 
 | Package | M3.1 responsibility | Must not own |
 | --- | --- | --- |
-| `@denovo/canvas-core` | Strict 3D surface request/result, unit-normal, box-face feature, and preview schemas and types | Raycasting, DOM input, tool sessions, Three.js values |
-| `@denovo/canvas-editor` | Placement state machine, exact support-offset math, target/candidate revalidation, command dispatch, cancellation, and history | DOM events, renderer intersections, renderer resources |
-| `@denovo/canvas-web` | Built-in runtime surface query, world-space point/normal/feature resolution, ghost rendering, and lifecycle cleanup | Document mutation, history, fallback placement policy |
-| `@denovo/canvas-three` | Optional reusable ray, box-face, and later spatial-index helpers | Public editor semantics, facade policy, persisted relationships |
-| `@denovo/canvas` | Explicit exports, structural capability wiring, runtime-replacement cancellation, and ordinary public domain errors | Duplicate schemas, duplicate placement math, implicit renderer selection |
+| `@de-novo/canvas-core` | Strict 3D surface request/result, unit-normal, box-face feature, and preview schemas and types | Raycasting, DOM input, tool sessions, Three.js values |
+| `@de-novo/canvas-editor` | Placement state machine, exact support-offset math, target/candidate revalidation, command dispatch, cancellation, and history | DOM events, renderer intersections, renderer resources |
+| `@de-novo/canvas-web` | Built-in runtime surface query, world-space point/normal/feature resolution, ghost rendering, and lifecycle cleanup | Document mutation, history, fallback placement policy |
+| `@de-novo/canvas-three` | Optional reusable ray, box-face, and later spatial-index helpers | Public editor semantics, facade policy, persisted relationships |
+| `@de-novo/canvas` | Explicit exports, structural capability wiring, runtime-replacement cancellation, and ordinary public domain errors | Duplicate schemas, duplicate placement math, implicit renderer selection |
 | Framework adapters and examples | Host controls and desktop/mobile acceptance proof through the facade contract | Private mutation paths or renderer-specific placement semantics |
 
 Core and editor remain usable without DOM, React, Canvas2D, Three.js, or R3F.

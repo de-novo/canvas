@@ -23,7 +23,7 @@ and named operations that compile to canonical commands. Optional engines
 `CanvasPlugin` is demoted from "the plugin architecture" to what the code
 already makes it: a per-canvas **host bundle** of tools and host-private
 commands. `pluginState` is host bookkeeping and may never be where a visual
-lives. The ten-category plugin taxonomy and the `@denovo/canvas/plugins/*`
+lives. The ten-category plugin taxonomy and the `@de-novo/canvas/plugins/*`
 package shape are superseded as direction. No export, schema, or namespace
 string changes; the word `plugin.` stays as a namespace grammar and stops
 being an architecture concept.
@@ -42,10 +42,10 @@ Every claim below was checked against the tree on 2026-09-04.
 | --- | --- | --- | --- |
 | `CanvasPlugin` | `packages/core/src/index.ts` (`CanvasPluginContext`, `CanvasPlugin`) | `{ name, setup?(ctx), tools? }`; `ctx` exposes only `coreVersion`, `registerCommand`, `registerTool`. Staged, committed atomically, private registry, installed into editors by the facade connectors, rolled back on conflict. | One: `apps/vanilla` `sceneCommandPlugin` (built-in tools plus `plugin.example.load-scene` / `load-document`). No workspace package ships one. |
 | `plugin.<owner>.<kind>` node kinds | `packages/core/src/plugin-nodes.ts` | Module-global `Map` registry. `registerPluginNodeKind` validates props at parse; unregistered kinds fail closed; `mode` is `2d`, `3d`, or `both`. | Official `plugin.denovo.field`, `plugin.denovo.sparkline`, and `plugin.denovo.shade` under `core/src/kinds/`, pre-registered when core loads. `apps/playground-field` uses field. |
-| Kind drawers | `packages/web/src/3d.ts` default branch; `packages/web/src/2d/render.ts` default branch; `packages/three/src/kinds/field.ts` | Hard-coded official drawers plus `@denovo/canvas-web` `registerPluginNodeDrawer`. Unregistered host kinds still draw the `#64748b` marker. | Hosts register a kind-level drawer instead of replacing the renderer. |
+| Kind drawers | `packages/web/src/3d.ts` default branch; `packages/web/src/2d/render.ts` default branch; `packages/three/src/kinds/field.ts` | Hard-coded official drawers plus `@de-novo/canvas-web` `registerPluginNodeDrawer`. Unregistered host kinds still draw the `#64748b` marker. | Hosts register a kind-level drawer instead of replacing the renderer. |
 | `pluginState` | `packages/core/src/index.ts` document schema | `z.record(z.string(), JsonValueSchema)`. No per-key schema. Preserved across scene updates. | One: `apps/playground-threeui/src/denovo/warp-field-document.ts` — `nodes: []` plus `pluginState["threeui.warp-field"]` plus the vendor renderer. That is the shape [Product Identity](./product-identity.md) names as failing the absorption test. |
 | `plugin.*` commands | `definePluginCommand`, `CanvasPluginCommandDescriptor` | Editor-instance-bound handlers with `parsePayload(unknown)`. `applyCommandsToDocument` (`packages/editor/src/commands/apply-document.ts`) replays with an empty handler map, so a stored `plugin.*` command fails with `unsupported-command` (`commands/handlers.ts`). | `apps/vanilla` only. |
-| Prose taxonomy | [Extensibility](./extensibility.md), [Better Auth Style Architecture](./better-auth-style-architecture.md) | Ten plugin categories (node, renderer, tool, command, asset loader, importer/exporter, persistence, worker, framework adapter, BIM/domain), `@denovo/canvas/plugins/*` subpaths, a `storage:` config field, a CLI. | Only command and tool are registrations a `CanvasPlugin` can make. Framework adapters, the BIM importer, storage adapters, and worker tasks exist as packages or adapter inputs, not as plugins. [M0](./m0-product-contract.md) and [Public API Contract](./public-api-contract.md) already say node and renderer discovery are future contracts and `storage` is not an accepted config field. |
+| Prose taxonomy | [Extensibility](./extensibility.md), [Better Auth Style Architecture](./better-auth-style-architecture.md) | Ten plugin categories (node, renderer, tool, command, asset loader, importer/exporter, persistence, worker, framework adapter, BIM/domain), `@de-novo/canvas/plugins/*` subpaths, a `storage:` config field, a CLI. | Only command and tool are registrations a `CanvasPlugin` can make. Framework adapters, the BIM importer, storage adapters, and worker tasks exist as packages or adapter inputs, not as plugins. [M0](./m0-product-contract.md) and [Public API Contract](./public-api-contract.md) already say node and renderer discovery are future contracts and `storage` is not an accepted config field. |
 
 ### What the optional engines actually use
 
@@ -57,8 +57,8 @@ Every claim below was checked against the tree on 2026-09-04.
   by `packages/web`; `renderNode` is an `html`-only overlay callback. There is
   no diagram package and no plugin mechanism involved.
 - **Hero** (`plugin.denovo.field`): a pre-registered core kind, a drawer in
-  `@denovo/canvas-three`, a dispatch branch in `@denovo/canvas-web`, and
-  `setFieldPattern` in `@denovo/canvas-editor`. Four packages for one kind,
+  `@de-novo/canvas-three`, a dispatch branch in `@de-novo/canvas-web`, and
+  `setFieldPattern` in `@de-novo/canvas-editor`. Four packages for one kind,
   and none of them is a `CanvasPlugin`.
 
 The two verified optional vocabularies and the one verified hero all pass
@@ -71,7 +71,7 @@ absorption failure.
 - Kinds: schemas exist per kind, and `getPluginNodeKind(type)` reads one.
   There is no `listPluginNodeKinds()`.
 - Operations: nineteen named operations are exported from
-  `@denovo/canvas-editor` and re-exported by the facade. They are pure
+  `@de-novo/canvas-editor` and re-exported by the facade. They are pure
   `(document) => { document, changed, commands }` functions with concrete
   inputs and typed `CanvasEditorError` codes. There is no runtime catalog;
   discovery is TypeScript declarations and the contract document.
@@ -165,7 +165,7 @@ categories with no consumer while the hero catalog has two kinds.
    undoes may live only there. The field stays in the schema for
    compatibility; no repository package or catalog app may add a consumer.
 5. **The prose taxonomy is superseded.** The ten categories,
-   `@denovo/canvas/plugins/*`, the `storage:` config field, and the CLI in
+   `@de-novo/canvas/plugins/*`, the `storage:` config field, and the CLI in
    [Extensibility](./extensibility.md) and
    [Better Auth Style Architecture](./better-auth-style-architecture.md) are
    historical target sketches, not direction. Those documents carry a status
@@ -208,7 +208,7 @@ change.
 
 ### Tier 1 — Spine
 
-`@denovo/canvas-core` and `@denovo/canvas-editor`: schema `0.2.0`, canonical
+`@de-novo/canvas-core` and `@de-novo/canvas-editor`: schema `0.2.0`, canonical
 commands, `applyNamedOperations`, `editor.apply`, `listNodes`, `listLayers`,
 `listLabels`, `CanvasEditorError` codes, the kind registry. No change.
 
@@ -220,7 +220,7 @@ its operations. Official kinds live under `kinds/` in core and three.
 Target shape, in order of value:
 
 1. **Kind drawer seam (next contract candidate).** A registration in
-   `@denovo/canvas-web` (and the Three/WebGPU paths it dispatches to) of the
+   `@de-novo/canvas-web` (and the Three/WebGPU paths it dispatches to) of the
    form "for kind `T` in mode `M`, here is the drawer and hit-test", so a
    registered host kind stops drawing as a marker without a custom renderer
    adapter. Acceptance: a `plugin.test.*` kind registered by a host draws
@@ -241,7 +241,7 @@ Target shape, in order of value:
 ### Tier 3 — Bundles And Adapters
 
 `CanvasPlugin` (host bundle), renderer adapters, storage adapters, framework
-adapters, importers such as `@denovo/canvas-bim`. Plumbing. None defines
+adapters, importers such as `@de-novo/canvas-bim`. Plumbing. None defines
 vocabulary. `renderNode` stays an `html` overlay hook. `renderer` stays the
 whole-runtime escape hatch.
 
@@ -310,9 +310,9 @@ decision:
   stays a visual reference and is not product proof; its removal is a
   separate decision.
 - **The capability graph.** No node discovery, renderer discovery, storage
-  plugins, `@denovo/canvas/plugins/*`, or CLI until a second real consumer
+  plugins, `@de-novo/canvas/plugins/*`, or CLI until a second real consumer
   exists.
-- **An agent protocol or package.** No `@denovo/canvas-agent`, chat panel,
+- **An agent protocol or package.** No `@de-novo/canvas-agent`, chat panel,
   prompt format, or fluent `editor.foo().bar()`. The document is the
   protocol.
 - **New `CanvasPluginContext` methods.** The host bundle stays commands and
@@ -326,7 +326,7 @@ decision:
    consumers, no new ThreeUI rooms.
 3. Kind drawer seam contract and implementation: see
    [Kind Drawer Seam](./kind-drawer-seam.md). Host kinds register a
-   Canvas2D paint and a WebGL2 object on `@denovo/canvas-web`. Missing
+   Canvas2D paint and a WebGL2 object on `@de-novo/canvas-web`. Missing
    drawers stay the gray marker. The facade does not export engine types
    for this.
 4. Kind enumeration: read-only `listPluginNodeKinds()` returns

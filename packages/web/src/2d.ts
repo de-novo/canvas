@@ -18,7 +18,7 @@ import {
   type CanvasNodeTransformPreviewForMode,
   type CanvasScenePointRequestFor,
   type CanvasScenePointResultFor
-} from "@denovo/canvas-core";
+} from "@de-novo/canvas-core";
 import {
   createResizeScheduler,
   getRenderRect,
@@ -82,6 +82,7 @@ import {
   renderCanvas2DAuthoringOverlayPreviews,
   renderCanvas2DConnectionHandles,
   renderCanvas2DDrawableNode,
+  renderCanvas2DInspectionOverlay,
   renderCanvas2DScene,
   renderCanvas2DSnapGuides,
   renderTransformHandles,
@@ -89,6 +90,22 @@ import {
   type Canvas2DContentColors,
   type Canvas2DTransformHandleColors
 } from "./2d/render";
+import {
+  computeCanvas2DRedlines,
+  DEFAULT_BOX_MODEL_COLORS,
+  DEFAULT_REDLINE_COLOR,
+  formatCanvas2DRedlineDistance,
+  resolveCanvas2DBoxModelRegions,
+  type Canvas2DBoxEdges,
+  type Canvas2DBoxModelColors,
+  type Canvas2DBoxModelOverlay,
+  type Canvas2DBoxModelRect,
+  type Canvas2DInspectionOverlay,
+  type Canvas2DRedlineExtension,
+  type Canvas2DRedlineOptions,
+  type Canvas2DRedlineOverlay,
+  type ResolvedCanvas2DBoxModelRegions
+} from "./2d/inspection";
 import {
   createCanvas2DSpatialIndex,
   syncCanvas2DSpatialIndex,
@@ -106,6 +123,31 @@ import {
   type Canvas2DSnapOptions,
   type Canvas2DSnapResult
 } from "./2d/snap";
+import {
+  Canvas2DImageCache,
+  createMemoryImageStore,
+  type CanvasImageSource2D,
+  type CanvasImageStore
+} from "./2d/image-cache";
+import {
+  orthogonalSegmentIntersectsBoxInterior,
+  resolveCanvas2DObstacleFreeOrthogonalWaypoints,
+  type Canvas2DObstacleRouteOptions
+} from "./2d/routing";
+import {
+  captureCanvas2DSnapshot,
+  inspectCanvas2DRuntime,
+  summarizeCanvasImageData,
+  type Canvas2DCapturedSnapshot,
+  type Canvas2DInspectableRuntime,
+  type Canvas2DInspectedLayer,
+  type Canvas2DInspectedNode,
+  type Canvas2DRuntimeSnapshot,
+  type CanvasPixelDataLike,
+  type CanvasPixelSummary,
+  type CaptureCanvas2DSnapshotOptions,
+  type InspectCanvas2DOptions
+} from "./2d/inspect";
 import { createCanvas2DWebGpuPresenter, type Canvas2DWebGpuPresenter } from "./2d/webgpu";
 import type { Canvas2DRenderNodeContext } from "./types";
 import type {
@@ -162,6 +204,8 @@ export type Canvas2DRuntime = Omit<CanvasHitTestRuntime<"2d">, "mode"> &
     options?: Canvas2DSnapOptions
   ) => Canvas2DSnapResult;
   getSpatialIndexStats: () => Canvas2DSpatialIndexStats;
+  setImageAssetUris: (uris: ReadonlyMap<string, string>) => void;
+  setInspectionOverlay: (overlay: Canvas2DInspectionOverlay | null) => void;
   setSnapGuides: (guides: readonly Canvas2DSnapGuide[]) => void;
   readPixels: () => Promise<ImageData>;
 };
@@ -234,7 +278,17 @@ export function createCanvas2D(
   let selectionIds: ReadonlySet<string> = new Set();
   let hoveredId: string | null = null;
   let authoringPreviews: readonly CanvasAuthoringPreviewForMode<"2d">[] = [];
+  let inspectionOverlay: Canvas2DInspectionOverlay | null = null;
   let snapGuides: readonly Canvas2DSnapGuide[] = [];
+  const imageCache = new Canvas2DImageCache({
+    ...(options.imageAssetUris === undefined
+      ? {}
+      : { assetUris: options.imageAssetUris }),
+    ...(options.imageStore === undefined
+      ? {}
+      : { imageStore: options.imageStore }),
+    onUpdate: () => scheduleRender()
+  });
   let sceneGraph = createCanvas2DSceneGraph(initialScene);
   let spatialIndex = createCanvas2DSpatialIndex(initialScene, sceneGraph);
   let lastCanvas2DDrawCalls = 0;
@@ -300,7 +354,8 @@ export function createCanvas2D(
         activeOverlayIds,
         renderNode,
         overlayRenderContext,
-        resolved.overlay
+        resolved.overlay,
+        imageCache
       );
     } else if (syncStats.lastSyncKind === "full") {
       rebuildObjects(
@@ -313,7 +368,8 @@ export function createCanvas2D(
         activeOverlayIds,
         renderNode,
         overlayRenderContext,
-        resolved.overlay
+        resolved.overlay,
+        imageCache
       );
     }
     if (resizeState.width === 0 || resizeState.height === 0) {
@@ -685,11 +741,14 @@ export function createCanvas2D(
       connectionHandlesVisible,
       contentColors,
       hoveredId,
+      imageCache,
+      inspectionOverlay,
       measureContext: context2d,
       resizeState,
       scene: currentScene,
       sceneGraph,
       selectedIds: selectionIds,
+      snapGuides,
       spatialIndex,
       transformHandleColors,
       transformHandlePosition: getTransformHandlePosition(),
@@ -777,7 +836,8 @@ export function createCanvas2D(
       contentColors,
       { selectedIds: selectionIds, hoveredId },
       spatialIndex,
-      visibleBounds
+      visibleBounds,
+      imageCache
     );
     renderCanvas2DAuthoringOverlayPreviews(
       context2d,
@@ -785,12 +845,22 @@ export function createCanvas2D(
       currentScene,
       sceneGraph,
       viewState.zoom,
-      contentColors
+      contentColors,
+      imageCache
     );
     if (snapGuides.length > 0) {
       renderCanvas2DSnapGuides(
         context2d,
         snapGuides,
+        viewState.zoom,
+        contentColors
+      );
+    }
+
+    if (inspectionOverlay !== null) {
+      renderCanvas2DInspectionOverlay(
+        context2d,
+        inspectionOverlay,
         viewState.zoom,
         contentColors
       );
@@ -1001,6 +1071,9 @@ export function createCanvas2D(
     resizeScheduler.cancel();
     resizeObserver.disconnect();
     authoringPreviews = [];
+    inspectionOverlay = null;
+    snapGuides = [];
+    imageCache.destroy();
     transformPreview = null;
     transformHandleTarget = null;
     clearNavigationPointers();
@@ -1149,6 +1222,30 @@ export function createCanvas2D(
     },
     getSpatialIndexStats() {
       return spatialIndex.getStats();
+    },
+    setImageAssetUris(uris) {
+      imageCache.setAssetUris(uris);
+      scheduleRender();
+    },
+    setInspectionOverlay(overlay) {
+      const normalized =
+        overlay === null ||
+        ((overlay.boxModels?.length ?? 0) === 0 &&
+          (overlay.redlines?.length ?? 0) === 0)
+          ? null
+          : {
+              ...(overlay.boxModels === undefined
+                ? {}
+                : { boxModels: [...overlay.boxModels] }),
+              ...(overlay.redlines === undefined
+                ? {}
+                : { redlines: [...overlay.redlines] })
+            };
+      if (inspectionOverlay === null && normalized === null) {
+        return;
+      }
+      inspectionOverlay = normalized;
+      scheduleRender();
     },
     setSnapGuides(guides) {
       if (snapGuides.length === 0 && guides.length === 0) {
@@ -1589,7 +1686,7 @@ export function createCanvas2D(
     sceneToCanvas: (point) => sceneToCanvasPoint(viewState, point),
     viewState,
     viewportSize: { width: resizeState.width, height: resizeState.height }
-  }, resolved.overlay);
+  }, resolved.overlay, imageCache);
   if (!useWebGpu) {
     runtime.resize();
     runtime.render();
@@ -1882,7 +1979,8 @@ function updateSingleCanvas2DObject(
   activeOverlayIds: Set<string>,
   renderNode: CreateCanvasOptions["renderNode"],
   renderContext: Canvas2DRenderNodeContext,
-  overlayParent: HTMLElement
+  overlayParent: HTMLElement,
+  imageCache: Canvas2DImageCache
 ) {
   const parentWorldTransform = resolveParentWorldTransform(node, sceneGraph);
   objects.set(node.id, {
@@ -1903,7 +2001,8 @@ function updateSingleCanvas2DObject(
         null,
         colors,
         scene,
-        sceneGraph
+        sceneGraph,
+        imageCache
       );
       context.restore();
     }
@@ -1956,7 +2055,8 @@ function rebuildObjectsIncremental(
   activeOverlayIds: Set<string>,
   renderNode: CreateCanvasOptions["renderNode"],
   renderContext: Canvas2DRenderNodeContext,
-  overlayParent: HTMLElement
+  overlayParent: HTMLElement,
+  imageCache: Canvas2DImageCache
 ) {
   for (let i = 0; i < changedNodeIds.length; i += 1) {
     const node = sceneGraph.nodesById.get(changedNodeIds[i]!);
@@ -1974,7 +2074,8 @@ function rebuildObjectsIncremental(
       activeOverlayIds,
       renderNode,
       renderContext,
-      overlayParent
+      overlayParent,
+      imageCache
     );
   }
 }
@@ -1989,7 +2090,8 @@ function rebuildObjects(
   activeOverlayIds: Set<string>,
   renderNode: CreateCanvasOptions["renderNode"],
   renderContext: Canvas2DRenderNodeContext,
-  overlayParent: HTMLElement
+  overlayParent: HTMLElement,
+  imageCache: Canvas2DImageCache
 ) {
   objects.clear();
 
@@ -2023,7 +2125,8 @@ function rebuildObjects(
           null,
           colors,
           scene,
-          sceneGraph
+          sceneGraph,
+          imageCache
         );
         context.restore();
       }
@@ -2301,7 +2404,32 @@ export {
   type Canvas2DViewStateInput
 } from "./view2d";
 export {
+  captureCanvas2DSnapshot,
+  computeCanvas2DRedlines,
   computeCanvas2DSnapGuides,
+  createMemoryImageStore,
+  DEFAULT_BOX_MODEL_COLORS,
+  DEFAULT_REDLINE_COLOR,
+  formatCanvas2DRedlineDistance,
+  inspectCanvas2DRuntime,
+  orthogonalSegmentIntersectsBoxInterior,
+  resolveCanvas2DBoxModelRegions,
+  resolveCanvas2DObstacleFreeOrthogonalWaypoints,
+  summarizeCanvasImageData,
+  type Canvas2DBoxEdges,
+  type Canvas2DBoxModelColors,
+  type Canvas2DBoxModelOverlay,
+  type Canvas2DBoxModelRect,
+  type Canvas2DCapturedSnapshot,
+  type Canvas2DInspectableRuntime,
+  type Canvas2DInspectedLayer,
+  type Canvas2DInspectedNode,
+  type Canvas2DInspectionOverlay,
+  type Canvas2DObstacleRouteOptions,
+  type Canvas2DRedlineExtension,
+  type Canvas2DRedlineOptions,
+  type Canvas2DRedlineOverlay,
+  type Canvas2DRuntimeSnapshot,
   type Canvas2DSnapCandidate,
   type Canvas2DSnapEdge,
   type Canvas2DSnapGuide,
@@ -2309,7 +2437,14 @@ export {
   type Canvas2DSnapOptions,
   type Canvas2DSnapResult,
   type Canvas2DSpatialIndexStats,
-  type Canvas2DSpatialSyncKind
+  type Canvas2DSpatialSyncKind,
+  type CanvasImageSource2D,
+  type CanvasImageStore,
+  type CanvasPixelDataLike,
+  type CanvasPixelSummary,
+  type CaptureCanvas2DSnapshotOptions,
+  type InspectCanvas2DOptions,
+  type ResolvedCanvas2DBoxModelRegions
 };
 export {
   CanvasReadPixelsUnsupportedError,

@@ -6,7 +6,7 @@
 
 ## Scope
 
-`@denovo/canvas-editor` layout adapters and a playground that switches them.
+`@de-novo/canvas-editor` layout adapters and a playground that switches them.
 No schema bump. No new built-in node kind.
 
 ## Changes
@@ -27,7 +27,7 @@ adopt later. It does not replace React Flow, and it does not add 3D.
 
 ## Verification
 
-- `pnpm --filter @denovo/canvas-editor build`: passed
+- `pnpm --filter @de-novo/canvas-editor build`: passed
 - `pnpm verify:editor-core`: passed (`ok: true`, 1/1 reported check;
   time/relation order-independence, axis/BFS coordinates, screen-radius
   clamp, and one-undo restore are sequential assertions inside that

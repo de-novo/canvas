@@ -194,7 +194,7 @@ should improve the ones it targets.
 
 ### Worker Tasks
 
-- **Workload**: round-trip through `@denovo/canvas-worker`'s
+- **Workload**: round-trip through `@de-novo/canvas-worker`'s
   `createWorkerClient` with representative payloads.
 - **Metric**: request/response RTT p95 by payload size.
 - **Target**: TBD once a real worker task (e.g. geometry/BVH build) is wired;
@@ -205,7 +205,7 @@ should improve the ones it targets.
 `createWorkerTaskQueue` pools workers behind a FIFO queue, and
 `createDenovoWorkerHandler` installs the first-party
 `denovo.geometry.convert` task (raw arrays → transferable typed arrays +
-bounds). The facade re-exports both under `@denovo/canvas/worker`, and
+bounds). The facade re-exports both under `@de-novo/canvas/worker`, and
 `supportsOffscreenCanvas()` is the OffscreenCanvas capability check.
 
 Measured 2026-08-22 in Chromium via `apps/vanilla/worker-bench.html`

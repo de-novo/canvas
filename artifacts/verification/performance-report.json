@@ -24,7 +24,7 @@
     "passed": true,
     "reason": "gpu-within-budget",
     "backend": "webgpu",
-    "drawCalls": 36,
+    "drawCalls": 42,
     "kind": "gpu",
     "p50": 8.300000000000011,
     "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Pro, Unspecified Version)",
@@ -48,12 +48,12 @@
       "threeChildCount": 6,
       "contextLostCount": 0,
       "frameTimeMs": {
-        "p50": 8.300000000000182,
-        "p95": 41.700000000000045,
-        "p99": 745.6999999999999,
-        "min": 7.5,
-        "max": 745.6999999999999,
-        "sampleCount": 31
+        "p50": 8.300000000000068,
+        "p95": 9,
+        "p99": 26.80000000000001,
+        "min": 6.899999999999977,
+        "max": 26.80000000000001,
+        "sampleCount": 32
       },
       "renderStats": {
         "drawCalls": 1,
@@ -79,10 +79,10 @@
       "contextLostCount": 0,
       "frameTimeMs": {
         "p50": 8.300000000000068,
-        "p95": 9.299999999999955,
-        "p99": 40.81400000000002,
-        "min": 7.399999999999977,
-        "max": 40.81400000000002,
+        "p95": 9.399999999999977,
+        "p99": 29.378000000000043,
+        "min": 7.600000000000023,
+        "max": 29.378000000000043,
         "sampleCount": 31
       },
       "renderStats": {
@@ -108,11 +108,11 @@
       "threeChildCount": 6,
       "contextLostCount": 0,
       "frameTimeMs": {
-        "p50": 8.299999999999955,
-        "p95": 8.700000000000045,
-        "p99": 58.39999999999998,
-        "min": 8,
-        "max": 58.39999999999998,
+        "p50": 8.300000000000068,
+        "p95": 8.5,
+        "p99": 42.799999999999955,
+        "min": 8.199999999999932,
+        "max": 42.799999999999955,
         "sampleCount": 31
       },
       "renderStats": {
@@ -138,12 +138,12 @@
       "threeChildCount": 6,
       "contextLostCount": 0,
       "frameTimeMs": {
-        "p50": 8.300000000000011,
-        "p95": 41.69999999999999,
-        "p99": 49.30000000000001,
-        "min": 7.600000000000023,
-        "max": 49.30000000000001,
-        "sampleCount": 33
+        "p50": 8.300000000000068,
+        "p95": 10.400000000000034,
+        "p99": 41.31200000000001,
+        "min": 6.599999999999966,
+        "max": 41.31200000000001,
+        "sampleCount": 31
       },
       "renderStats": {
         "drawCalls": 1,
@@ -171,14 +171,14 @@
       "contextLostCount": 0,
       "frameTimeMs": {
         "p50": 8.300000000000011,
-        "p95": 49.299999999999955,
-        "p99": 549.9000000000001,
-        "min": 7.399999999999977,
-        "max": 549.9000000000001,
-        "sampleCount": 32
+        "p95": 25.100000000000023,
+        "p99": 291.59999999999997,
+        "min": 7.2000000000000455,
+        "max": 291.59999999999997,
+        "sampleCount": 31
       },
       "renderStats": {
-        "drawCalls": 36,
+        "drawCalls": 42,
         "triangles": 0,
         "geometries": 2,
         "textures": 3,

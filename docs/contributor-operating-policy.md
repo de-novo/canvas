@@ -235,7 +235,7 @@ Keep changes scoped to the accepted outcome. Do not implement a large runtime
 feature while its contract is undecided. Do not broaden a task merely because a
 nearby cleanup is possible.
 
-The current name `@denovo/canvas` is provisional. A rename must update facade
+The current name `@de-novo/canvas` is provisional. A rename must update facade
 metadata, examples, and documentation; run build and public API verification;
 and add history. The API shape stays stable unless a breaking-change decision is
 recorded.

@@ -7,9 +7,9 @@ public facade or document model.
 
 ## Changes
 
-- Added `effect` to `@denovo/canvas-core`.
-- Added optional Effect-powered helpers under `@denovo/canvas-core/effect`.
-- Kept the default `@denovo/canvas-core` root import Effect-free so browser
+- Added `effect` to `@de-novo/canvas-core`.
+- Added optional Effect-powered helpers under `@de-novo/canvas-core/effect`.
+- Kept the default `@de-novo/canvas-core` root import Effect-free so browser
   consumers do not pay for Effect unless they opt in.
 - Extended `pnpm verify:public-api` to fail if public declaration files expose
   Effect types.
@@ -31,7 +31,7 @@ python3 ~/.agents/skills/doc-governance/scripts/doc-governance-audit.py --root .
 
 ## Residual Risk
 
-- Effect is now a dependency of `@denovo/canvas-core`; package install impact
+- Effect is now a dependency of `@de-novo/canvas-core`; package install impact
   should be measured before release.
 - Default browser bundle impact should remain low because the root import does
   not import Effect.

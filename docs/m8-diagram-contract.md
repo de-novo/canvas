@@ -222,10 +222,10 @@ the document or history.
 
 | Package | M8 responsibility | Must not own |
 | --- | --- | --- |
-| `@denovo/canvas-core` | `edge` / `text` / `html` schemas, port side enum, edge integrity (same-layer endpoints), correlated `node.update` patches | DOM overlay, path tessellation as persisted data, React cards |
-| `@denovo/canvas-editor` | connector tool, graph paste/delete/ungroup, layout registry, `applyCommandsToDocument` | Canvas drawing, HTML mounting, camera animation |
-| `@denovo/canvas-web` | edge routing/hit-test, port handles, overlay mount/`textContent`, 2D camera helpers | Document mutation, interpreting `node.html` as markup |
-| `@denovo/canvas` | re-exports (`createConnectorTool`, camera helpers, `applyCommandsToDocument`) | A second diagram facade |
+| `@de-novo/canvas-core` | `edge` / `text` / `html` schemas, port side enum, edge integrity (same-layer endpoints), correlated `node.update` patches | DOM overlay, path tessellation as persisted data, React cards |
+| `@de-novo/canvas-editor` | connector tool, graph paste/delete/ungroup, layout registry, `applyCommandsToDocument` | Canvas drawing, HTML mounting, camera animation |
+| `@de-novo/canvas-web` | edge routing/hit-test, port handles, overlay mount/`textContent`, 2D camera helpers | Document mutation, interpreting `node.html` as markup |
+| `@de-novo/canvas` | re-exports (`createConnectorTool`, camera helpers, `applyCommandsToDocument`) | A second diagram facade |
 | Framework adapters and examples | host `renderNode` cards, playground proofs | New node kinds or private mutation paths |
 
 Core and editor remain usable without DOM. Overlay rendering is a web

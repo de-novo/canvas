@@ -11,7 +11,7 @@ Named authoring slice 14. Document-only helper that compiles to one
 
 ## Changes
 
-- `@denovo/canvas-editor` and `@denovo/canvas` export `setLayerName`
+- `@de-novo/canvas-editor` and `@de-novo/canvas` export `setLayerName`
   and `SetLayerNameInput`.
 - Empty name and extra fields fail at the helper.
 - A locked layer is `locked-target`, matching `layer.update`.

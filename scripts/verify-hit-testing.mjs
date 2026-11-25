@@ -831,19 +831,448 @@ check("webgpu-2d-host-drawer-is-wired", () => {
   );
 });
 
+check("rounded-rect-and-stroke-hit-testing", () => {
+  const scene = core.defineScene({
+    id: "rounded-hit-scene",
+    layers: [{ id: "main", name: "Main" }],
+    mode: "2d",
+    nodes: [
+      {
+        id: "rounded-rect",
+        layerId: "main",
+        type: "rect",
+        position: [0, 0],
+        size: [100, 100],
+        cornerRadius: 40,
+        fill: "#22c55e"
+      },
+      {
+        id: "stroked-rect",
+        layerId: "main",
+        type: "rect",
+        position: [150, 0],
+        size: [100, 100],
+        fill: "#1e293b",
+        stroke: "#38bdf8",
+        strokeWidth: 10
+      },
+      {
+        id: "stroked-circle",
+        layerId: "main",
+        type: "circle",
+        position: [350, 50],
+        radius: 30,
+        fill: "#1e293b",
+        stroke: "#f59e0b",
+        strokeWidth: 10
+      }
+    ]
+  });
+  const graph = web.createCanvas2DSceneGraph(scene);
+  const ctx = createRecordingContext();
+
+  // Center of rounded rect hits; cut-off corner outside 40px radius misses.
+  assert.equal(web.hitTestSceneGraph(ctx, scene, graph, [50, 50], null)?.node.id, "rounded-rect");
+  assert.equal(web.hitTestSceneGraph(ctx, scene, graph, [3, 3], null), null);
+  // Outer half of 10px stroke (5px outward) hits; outside 5px misses.
+  assert.equal(web.hitTestSceneGraph(ctx, scene, graph, [146, 50], null)?.node.id, "stroked-rect");
+  assert.equal(web.hitTestSceneGraph(ctx, scene, graph, [143, 50], null), null);
+  // Stroked circle outer stroke half (radius 30 + 5 = 35) hits at +34, misses at +37.
+  assert.equal(web.hitTestSceneGraph(ctx, scene, graph, [384, 50], null)?.node.id, "stroked-circle");
+  assert.equal(web.hitTestSceneGraph(ctx, scene, graph, [387, 50], null), null);
+});
+
+check("clipped-group-hit-testing-and-bounds", () => {
+  const scene = core.defineScene({
+    id: "clipped-group-scene",
+    layers: [{ id: "main", name: "Main" }],
+    mode: "2d",
+    nodes: [
+      {
+        id: "frame",
+        layerId: "main",
+        type: "group",
+        position: [100, 100],
+        clip: { x: 0, y: 0, width: 80, height: 80, cornerRadius: 24 },
+        opacity: 0.9
+      },
+      {
+        id: "overflow-child",
+        layerId: "main",
+        parentId: "frame",
+        type: "rect",
+        position: [0, 0],
+        size: [200, 200],
+        fill: "#3b82f6"
+      }
+    ]
+  });
+  const graph = web.createCanvas2DSceneGraph(scene);
+  const ctx = createRecordingContext();
+  const frame = scene.nodes.find((n) => n.id === "frame");
+
+  assert.deepEqual(web.resolveCanvas2DNodeWorldBounds(frame, graph), {
+    minX: 100,
+    minY: 100,
+    maxX: 180,
+    maxY: 180
+  });
+
+  // Inside clip hits child; overflow outside clip and cut-off rounded corner miss.
+  assert.equal(web.hitTestSceneGraph(ctx, scene, graph, [140, 140], null)?.node.id, "overflow-child");
+  assert.equal(web.hitTestSceneGraph(ctx, scene, graph, [220, 140], null), null);
+  assert.equal(web.hitTestSceneGraph(ctx, scene, graph, [101, 101], null), null);
+
+  // Canvas2D render invokes clip() and respects group opacity.
+  web.renderCanvas2DScene(ctx, scene, graph, null, {
+    accent: "#38bdf8",
+    foreground: "#f8fafc"
+  });
+  assert.equal(ctx.clipCount, 1, "clipped group must call context.clip()");
+});
+
+check("box-model-and-redline-geometry-and-render", () => {
+  const regions = web.resolveCanvas2DBoxModelRegions({
+    bounds: { minX: 100, minY: 100, maxX: 220, maxY: 180 },
+    margin: { top: 10, right: 12, bottom: 14, left: 16 },
+    border: { top: 2, right: 2, bottom: 2, left: 2 },
+    padding: { top: 8, right: 10, bottom: 8, left: 10 }
+  });
+  assert.deepEqual(regions.marginBox, { minX: 84, minY: 90, maxX: 232, maxY: 194 });
+  assert.deepEqual(regions.paddingBox, { minX: 102, minY: 102, maxX: 218, maxY: 178 });
+  assert.deepEqual(regions.contentBox, { minX: 112, minY: 110, maxX: 208, maxY: 170 });
+  assert.equal(regions.marginStrips.length, 4);
+  assert.equal(regions.borderStrips.length, 4);
+  assert.equal(regions.paddingStrips.length, 4);
+  assert.deepEqual(regions.contentRect, { x: 112, y: 110, width: 96, height: 60 });
+
+  // Disjoint horizontal pair -> 1 redline, no extensions.
+  const horizontal = web.computeCanvas2DRedlines(
+    { minX: 0, minY: 0, maxX: 100, maxY: 80 },
+    { minX: 140, minY: 10, maxX: 220, maxY: 90 },
+    { unit: "px" }
+  );
+  assert.equal(horizontal.length, 1);
+  assert.equal(horizontal[0].label, "40px");
+  assert.equal(horizontal[0].extensions, undefined);
+
+  // Diagonally separated pair -> 2 redlines, each with a perpendicular extension.
+  const diagonal = web.computeCanvas2DRedlines(
+    { minX: 0, minY: 0, maxX: 50, maxY: 50 },
+    { minX: 90, minY: 80, maxX: 140, maxY: 130 }
+  );
+  assert.equal(diagonal.length, 2);
+  assert.equal(diagonal[0].label, "40");
+  assert.equal(diagonal[0].extensions?.length, 1);
+  assert.equal(diagonal[1].label, "30");
+  assert.equal(diagonal[1].extensions?.length, 1);
+
+  // Contained box -> 4 inset redlines.
+  const inset = web.computeCanvas2DRedlines(
+    { minX: 20, minY: 10, maxX: 80, maxY: 60 },
+    { minX: 0, minY: 0, maxX: 120, maxY: 100 }
+  );
+  assert.equal(inset.length, 4);
+  assert.deepEqual(
+    inset.map((r) => r.label),
+    ["10", "40", "40", "20"]
+  );
+
+  // Render inspection overlay onto recording context without throwing.
+  const ctx = createRecordingContext();
+  web.renderCanvas2DInspectionOverlay(
+    ctx,
+    {
+      boxModels: [
+        {
+          bounds: { minX: 100, minY: 100, maxX: 220, maxY: 180 },
+          margin: { top: 8, right: 8, bottom: 8, left: 8 },
+          border: { top: 2, right: 2, bottom: 2, left: 2 },
+          padding: { top: 12, right: 12, bottom: 12, left: 12 },
+          label: "card · 120 × 80"
+        }
+      ],
+      redlines: diagonal
+    },
+    1,
+    { accent: "#38bdf8", foreground: "#f8fafc" }
+  );
+  assert.ok(ctx.fills.length >= 13, "box model must draw margin/border/padding/content bands");
+  assert.ok(ctx.strokeCount >= 4, "inspection overlay must stroke border outline and redlines");
+});
+
+check("obstacle-free-gutter-orthogonal-routing", () => {
+  const assertNoInteriorCrossings = (points, boxes, label) => {
+    for (let i = 1; i < points.length; i += 1) {
+      const a = points[i - 1];
+      const b = points[i];
+      const isOrtho =
+        Math.abs(a[0] - b[0]) <= 1e-3 || Math.abs(a[1] - b[1]) <= 1e-3;
+      assert.equal(
+        isOrtho,
+        true,
+        `${label}: segment ${i} must be axis-aligned: ${JSON.stringify([a, b])}`
+      );
+      for (const box of boxes) {
+        assert.equal(
+          web.orthogonalSegmentIntersectsBoxInterior(a, b, box),
+          false,
+          `${label}: segment ${JSON.stringify([a, b])} crossed obstacle ${JSON.stringify(box)}`
+        );
+      }
+    }
+  };
+
+  // 1. Direct blocker between A and C
+  const scene1 = core.defineScene({
+    id: "gutter-direct-blocker",
+    layers: [{ id: "main", name: "Main" }],
+    mode: "2d",
+    nodes: [
+      { id: "a", layerId: "main", type: "rect", position: [0, 0], size: [100, 80] },
+      { id: "blocker", layerId: "main", type: "rect", position: [180, 0], size: [100, 80] },
+      { id: "c", layerId: "main", type: "rect", position: [360, 0], size: [100, 80] },
+      {
+        id: "naive-edge",
+        layerId: "main",
+        type: "edge",
+        sourceId: "a",
+        targetId: "c",
+        sourcePort: "right",
+        targetPort: "left",
+        routing: "orthogonal",
+        avoidObstacles: false
+      },
+      {
+        id: "gutter-edge",
+        layerId: "main",
+        type: "edge",
+        sourceId: "a",
+        targetId: "c",
+        sourcePort: "right",
+        targetPort: "left",
+        routing: "orthogonal",
+        avoidObstacles: true,
+        obstaclePadding: 16
+      }
+    ]
+  });
+  const graph1 = web.createCanvas2DSceneGraph(scene1);
+  const blockerBox = { minX: 180, minY: 0, maxX: 280, maxY: 80 };
+  const naive = web.resolveCanvas2DEdgeGeometry(
+    scene1.nodes.find((n) => n.id === "naive-edge"),
+    graph1
+  );
+  assert.equal(
+    web.orthogonalSegmentIntersectsBoxInterior(naive.start, naive.end, blockerBox),
+    true,
+    "control check: naive edge must cross blocker"
+  );
+
+  const routed = web.resolveCanvas2DEdgeGeometry(
+    scene1.nodes.find((n) => n.id === "gutter-edge"),
+    graph1
+  );
+  const routedPoints = [routed.start, ...routed.waypoints];
+  assert.deepEqual(routed.start, [100, 40]);
+  assert.deepEqual(routed.end, [360, 40]);
+  assert.ok(routed.waypoints.length >= 4, "gutter route must detour around blocker");
+  assertNoInteriorCrossings(
+    routedPoints,
+    [
+      { minX: 0, minY: 0, maxX: 100, maxY: 80 },
+      blockerBox,
+      { minX: 360, minY: 0, maxX: 460, maxY: 80 }
+    ],
+    "direct-blocker"
+  );
+
+  // 2. Multi-row 2x3 screen grid (dui-style map) with 40px gutters
+  const gridNodes = [];
+  const gridBoxes = [];
+  for (let row = 0; row < 2; row += 1) {
+    for (let col = 0; col < 3; col += 1) {
+      const x = col * 180;
+      const y = row * 140;
+      gridNodes.push({
+        id: `screen-${row}-${col}`,
+        layerId: "main",
+        type: "rect",
+        position: [x, y],
+        size: [140, 100]
+      });
+      gridBoxes.push({ minX: x, minY: y, maxX: x + 140, maxY: y + 100 });
+    }
+  }
+  gridNodes.push({
+    id: "diag-transition",
+    layerId: "main",
+    type: "edge",
+    sourceId: "screen-0-0",
+    targetId: "screen-1-2",
+    sourcePort: "right",
+    targetPort: "left",
+    routing: "orthogonal",
+    avoidObstacles: true,
+    obstaclePadding: 16
+  });
+  const gridScene = core.defineScene({
+    id: "gutter-grid",
+    layers: [{ id: "main", name: "Main" }],
+    mode: "2d",
+    nodes: gridNodes
+  });
+  const gridGraph = web.createCanvas2DSceneGraph(gridScene);
+  const diag = web.resolveCanvas2DEdgeGeometry(
+    gridScene.nodes.find((n) => n.id === "diag-transition"),
+    gridGraph
+  );
+  assertNoInteriorCrossings(
+    [diag.start, ...diag.waypoints],
+    gridBoxes,
+    "2x3-screen-grid"
+  );
+
+  // 3. Narrow 16px gutter when padding is 16 -> threads cleanly down the 8px center.
+  const narrowPts = web.resolveCanvas2DObstacleFreeOrthogonalWaypoints(
+    [50, 0],
+    [50, 220],
+    "bottom",
+    "top",
+    [
+      { minX: 0, minY: 60, maxX: 42, maxY: 160 },
+      { minX: 58, minY: 60, maxX: 100, maxY: 160 }
+    ],
+    { padding: 16 }
+  );
+  assertNoInteriorCrossings(
+    [[50, 0], ...narrowPts],
+    [
+      { minX: 0, minY: 60, maxX: 42, maxY: 160 },
+      { minX: 58, minY: 60, maxX: 100, maxY: 160 }
+    ],
+    "narrow-gutter"
+  );
+});
+
+check("denovo-image-bounds-hit-testing-and-placeholder-draw", () => {
+  const scene = core.defineScene({
+    id: "image-node-scene",
+    layers: [{ id: "main", name: "Main" }],
+    mode: "2d",
+    nodes: [
+      {
+        id: "screen-1",
+        layerId: "main",
+        type: "plugin.denovo.image",
+        position: [30, 40],
+        props: {
+          src: "/screen.png",
+          width: 240,
+          height: 160,
+          cornerRadius: 12,
+          stroke: "#38bdf8",
+          strokeWidth: 2,
+          placeholder: "#1e293b"
+        }
+      }
+    ]
+  });
+  const graph = web.createCanvas2DSceneGraph(scene);
+  const node = scene.nodes[0];
+  assert.deepEqual(web.resolveCanvas2DNodeWorldBounds(node, graph), {
+    minX: 30,
+    minY: 40,
+    maxX: 270,
+    maxY: 200
+  });
+  const ctx = createRecordingContext();
+  assert.equal(web.hitTestSceneGraph(ctx, scene, graph, [150, 120], null)?.node.id, "screen-1");
+  assert.equal(web.hitTestSceneGraph(ctx, scene, graph, [10, 10], null), null);
+
+  web.renderCanvas2DScene(ctx, scene, graph, null, {
+    accent: "#38bdf8",
+    foreground: "#f8fafc"
+  });
+  assert.ok(
+    ctx.fills.some((f) => f.fillStyle === "#1e293b"),
+    "unloaded image node must render its placeholder fill"
+  );
+  assert.ok(ctx.strokeCount >= 1, "stroked image node must draw its stroke");
+});
+
+check("summarize-canvas-image-data-semantics", () => {
+  const empty = web.summarizeCanvasImageData({ data: [], width: 0, height: 0 });
+  assert.equal(empty.nonBlank, false);
+  assert.equal(empty.uniqueColors, 0);
+
+  const blank = web.summarizeCanvasImageData({
+    data: new Uint8ClampedArray([15, 23, 42, 255, 15, 23, 42, 255]),
+    width: 2,
+    height: 1
+  });
+  assert.equal(blank.nonBlank, false);
+  assert.equal(blank.uniqueColors, 1);
+  assert.deepEqual(blank.averageRgba, [15, 23, 42, 255]);
+
+  const drawn = web.summarizeCanvasImageData({
+    data: new Uint8ClampedArray([0, 0, 0, 255, 200, 100, 50, 255]),
+    width: 2,
+    height: 1
+  });
+  assert.equal(drawn.nonBlank, true);
+  assert.equal(drawn.uniqueColors, 2);
+  assert.deepEqual(drawn.averageRgba, [100, 50, 25, 255]);
+});
+
 check("hit-testing-suite", () => {});
 
 report();
 
 function createRecordingContext() {
   return {
+    clipCount: 0,
     fills: [],
     fillStyle: "#000000",
+    font: "",
+    globalAlpha: 1,
+    lineJoin: "miter",
+    lineWidth: 1,
+    strokeCount: 0,
+    strokeStyle: "#000000",
+    textAlign: "left",
+    textBaseline: "alphabetic",
     save() {},
     restore() {},
     transform() {},
+    translate() {},
+    scale() {},
+    beginPath() {},
+    closePath() {},
+    moveTo() {},
+    lineTo() {},
+    arc() {},
+    arcTo() {},
+    rect() {},
+    clip() {
+      this.clipCount += 1;
+    },
+    setLineDash() {},
+    measureText(text) {
+      return { width: String(text).length * 7 };
+    },
+    fill() {
+      this.fills.push({ fillStyle: String(this.fillStyle), alpha: this.globalAlpha });
+    },
+    stroke() {
+      this.strokeCount += 1;
+    },
+    strokeRect() {
+      this.strokeCount += 1;
+    },
+    fillText() {},
     fillRect(x, y, w, h) {
-      this.fills.push({ fillStyle: String(this.fillStyle), x, y, w, h });
+      this.fills.push({ fillStyle: String(this.fillStyle), alpha: this.globalAlpha, x, y, w, h });
     }
   };
 }

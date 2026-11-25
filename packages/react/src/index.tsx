@@ -10,11 +10,11 @@ import {
   type Canvas3DSceneInput,
   type CanvasGeometryStore,
   type CanvasSceneInput
-} from "@denovo/canvas-core";
+} from "@de-novo/canvas-core";
 import {
   createDenovoFieldObject,
   tickDenovoFieldObject
-} from "@denovo/canvas-three";
+} from "@de-novo/canvas-three";
 import {
   createCanvas,
   shallowEqual,
@@ -24,7 +24,7 @@ import {
   type CanvasSelectorEquality,
   type DenovoCanvasCommonConfig,
   type DenovoCanvasRuntime
-} from "@denovo/canvas";
+} from "@de-novo/canvas";
 import { Html, Line, OrbitControls } from "@react-three/drei";
 import {
   Canvas,

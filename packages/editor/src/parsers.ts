@@ -9,7 +9,7 @@ import {
   type CanvasSelectionMode,
   type NodeId,
   type SelectionState
-} from "@denovo/canvas-core";
+} from "@de-novo/canvas-core";
 import { Effect } from "effect";
 import { CanvasEditorError } from "./errors.js";
 import type { EditorEffect } from "./internal-types.js";

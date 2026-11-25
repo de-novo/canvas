@@ -6,7 +6,7 @@ Date: 2026-07-21.
 
 The IndexedDB adapter landed in
 [the previous slice](./2026-07-21-m6-indexed-db-adapter.md) under
-`@denovo/canvas-web/indexed-db`, but the vanilla example — the canonical
+`@de-novo/canvas-web/indexed-db`, but the vanilla example — the canonical
 "simple things simple" demo — had no persistence wired in, so the end-to-end
 save story was not visible anywhere. This slice makes the facade re-export the
 adapter and turns the vanilla app into the first real save demo.
@@ -23,15 +23,15 @@ adapter and turns the vanilla app into the first real save demo.
 
 ### Facade — `packages/canvas/src/indexed-db.ts` (new) + `package.json`
 
-- New `@denovo/canvas/indexed-db` subpath that re-exports
+- New `@de-novo/canvas/indexed-db` subpath that re-exports
   `createIndexedDbDocumentAdapter` and `IndexedDbDocumentAdapterOptions` from
-  `@denovo/canvas-web/indexed-db`.
+  `@de-novo/canvas-web/indexed-db`.
 - Added the `./indexed-db` export and `src/indexed-db.ts` to the tsup build so
   the subpath resolves in ESM and CJS.
 
 ### Vanilla example — `apps/vanilla/src/main.ts`
 
-- Imports `createIndexedDbDocumentAdapter` from `@denovo/canvas/indexed-db`.
+- Imports `createIndexedDbDocumentAdapter` from `@de-novo/canvas/indexed-db`.
 - Creates the adapter and passes it to `connectEditorToCanvas` with
   `storageDebounceMs: 500`, so every persistent editor command now auto-saves
   to IndexedDB (debounced) with conflict reconciliation handled by the existing

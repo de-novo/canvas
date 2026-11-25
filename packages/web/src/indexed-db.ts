@@ -9,8 +9,8 @@ import {
   type DocumentPatchRecord,
   type NodeId,
   type AssetRef
-} from "@denovo/canvas-core";
-import { applyCommandsToStoredDocument } from "@denovo/canvas-editor";
+} from "@de-novo/canvas-core";
+import { applyCommandsToStoredDocument } from "@de-novo/canvas-editor";
 
 const DEFAULT_DB_NAME = "denovo-canvas";
 const DEFAULT_STORE_NAME = "documents";
@@ -41,7 +41,7 @@ export type IndexedDbDocumentAdapterOptions = {
  * filesystem adapters.
  *
  * This module uses the browser IndexedDB API and is meant for browser bundles
- * only; it is published under the `@denovo/canvas-web/indexed-db` export.
+ * only; it is published under the `@de-novo/canvas-web/indexed-db` export.
  */
 export function createIndexedDbDocumentAdapter(
   options: IndexedDbDocumentAdapterOptions = {}
@@ -315,4 +315,4 @@ export function createIndexedDbDocumentAdapter(
   };
 }
 
-export type { CanvasStorageAdapter } from "@denovo/canvas-core";
+export type { CanvasStorageAdapter } from "@de-novo/canvas-core";

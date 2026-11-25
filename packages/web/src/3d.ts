@@ -36,7 +36,7 @@ import {
   type CanvasScenePointResultFor,
   type NodeId,
   type RenderLodOptions
-} from "@denovo/canvas-core";
+} from "@de-novo/canvas-core";
 import {
   INSTANCE_NODE_IDS_USER_DATA_KEY,
   attachDenovoFieldGpuCompute,
@@ -50,7 +50,7 @@ import {
   readDenovoFieldComputeDispatches,
   readDenovoFieldComputeResidentCopies,
   tickDenovoFieldObject
-} from "@denovo/canvas-three";
+} from "@de-novo/canvas-three";
 import {
   PLUGIN_NODE_MARKER_FILL,
   resolveHostPluginNodeCreate3d

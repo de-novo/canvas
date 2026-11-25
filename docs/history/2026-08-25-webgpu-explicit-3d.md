@@ -18,7 +18,7 @@ field, no ThreeUI wrap.
 - `CanvasResolvedBackend` includes `webgpu`. `CanvasImplementedBackend`
   stays the `auto` pair (`canvas2d` | `webgl2`).
   `CanvasUnimplementedBackend` is only `offscreen-canvas2d`.
-- `@denovo/canvas-web` `createCanvas3D` uses Three.js `WebGPURenderer`
+- `@de-novo/canvas-web` `createCanvas3D` uses Three.js `WebGPURenderer`
   when `gpuBackend: "webgpu"`. Init is async on `runtime.ready`. A
   WebGL fallback from Three.js is rejected.
 - Vanilla honors `?backend=webgpu`. Host reports `data-denovo-ready`.

@@ -1,4 +1,4 @@
-import { defineDocument, type CanvasDocument } from "@denovo/canvas";
+import { defineDocument, type CanvasDocument } from "@de-novo/canvas";
 
 export const FIELD_NODE_ID = "field";
 export const FIELD_LAYER_ID = "hero";

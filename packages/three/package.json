@@ -1,6 +1,6 @@
 {
-  "name": "@denovo/canvas-three",
-  "version": "0.1.0",
+  "name": "@de-novo/canvas-three",
+  "version": "0.2.0",
   "license": "Apache-2.0",
   "description": "Three.js performance primitives for Denovo Canvas.",
   "type": "module",
@@ -21,7 +21,7 @@
   ],
   "sideEffects": false,
   "scripts": {
-    "build": "tsup src/index.ts --format esm,cjs --clean --external three --external three-mesh-bvh --external @denovo/canvas-core && tsc --emitDeclarationOnly",
+    "build": "tsup src/index.ts --format esm,cjs --clean --external three --external three-mesh-bvh --external @de-novo/canvas-core && tsc --emitDeclarationOnly",
     "clean": "rm -rf dist .turbo",
     "typecheck": "tsc --noEmit"
   },
@@ -30,7 +30,7 @@
     "three-mesh-bvh": ">=0.9.0"
   },
   "dependencies": {
-    "@denovo/canvas-core": "workspace:*"
+    "@de-novo/canvas-core": "workspace:*"
   },
   "devDependencies": {
     "@types/three": "^0.185.0",

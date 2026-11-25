@@ -12,11 +12,11 @@ Issue: [#11](https://github.com/de-novo/canvas/issues/11).
   specifiers in packed manifests, verify every declared `exports` target exists
   inside its tarball, verify open-source metadata fields, and execute an
   isolated external ESM smoke test against unpacked tarballs (plus checking
-  packed `@denovo/canvas/styles.css` and Three.js-free `@denovo/canvas/2d`).
+  packed `@de-novo/canvas/styles.css` and Three.js-free `@de-novo/canvas/2d`).
 - Wired `pnpm verify:pack-smoke` into `.github/workflows/ci.yml`
   (`static-and-unit` job).
 - Updated `README.md` to document current 2D/3D capabilities, lightweight
-  `@denovo/canvas/2d` and `@denovo/canvas/react/2d` quickstarts, React / Vue /
+  `@de-novo/canvas/2d` and `@de-novo/canvas/react/2d` quickstarts, React / Vue /
   Svelte / Solid / vanilla fine-grained selector usage (`useCanvasSelector`,
   `createCanvasSelectorStore`, `subscribeCanvasSelector`, `shallowEqual`),
   measured performance & bundle impact table, package catalog, verification

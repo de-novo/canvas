@@ -6,15 +6,15 @@
 
 ## Scope
 
-Framework adapters (`@denovo/react-canvas`, `@denovo/vue-canvas`,
-`@denovo/svelte-canvas`, `@denovo/solid-canvas`) and the
-`@denovo/canvas` facade package.
+Framework adapters (`@de-novo/react-canvas`, `@de-novo/vue-canvas`,
+`@de-novo/svelte-canvas`, `@de-novo/solid-canvas`) and the
+`@de-novo/canvas` facade package.
 
 ## Changes
 
 - All four framework view wrappers now mount the facade
   `createCanvas(target, config)` instead of
-  `@denovo/canvas-web`'s three-argument `createCanvas`. Consumers get the
+  `@de-novo/canvas-web`'s three-argument `createCanvas`. Consumers get the
   full facade host contract (`data-denovo-*` attributes, theme variables),
   renderer resolution, plugin setup, and typed backend errors through every
   framework wrapper.
@@ -26,9 +26,9 @@ Framework adapters (`@denovo/react-canvas`, `@denovo/vue-canvas`,
   previously dropped `renderNode` option to the underlying runtime, so
   Canvas2D custom node rendering works through the facade.
 - Dependency direction fixed to adapters → facade:
-  - react/vue/svelte/solid packages declare `@denovo/canvas` as peer
+  - react/vue/svelte/solid packages declare `@de-novo/canvas` as peer
     (+ devDependency for build ordering; svelte/solid ship source).
-  - `@denovo/canvas` keeps `@denovo/react-canvas` as an optional peer only
+  - `@de-novo/canvas` keeps `@de-novo/react-canvas` as an optional peer only
     (devDependency removed). pnpm still links it for the facade's `./react`
     re-export entry, and Turborepo no longer sees a build cycle because it
     ignores peer-only edges.

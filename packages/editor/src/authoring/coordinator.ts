@@ -19,7 +19,7 @@ import {
   type NodeId,
   type Point2,
   type Vector3
-} from "@denovo/canvas-core";
+} from "@de-novo/canvas-core";
 import { CanvasEditorError } from "../errors.js";
 import { dotVector3, snapPointToGrid } from "../grid.js";
 import { vectorLength3 } from "../math/transform.js";

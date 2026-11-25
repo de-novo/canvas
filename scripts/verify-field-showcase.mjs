@@ -27,7 +27,7 @@ const mobileShot = path.resolve(
   "artifacts/verification/field-warp-field-mobile.png"
 );
 
-const server = await startApp("@denovo/canvas-field-example", 5182);
+const server = await startApp("@de-novo/canvas-field-example", 5182);
 
 try {
   await check("field-showcase-desktop-absorbs-and-edits", async () => {

@@ -21,7 +21,7 @@ Issue: [#20](https://github.com/de-novo/canvas/issues/20).
 
 ## Verification
 
-- `pnpm --filter @denovo/canvas-field-example typecheck`
+- `pnpm --filter @de-novo/canvas-field-example typecheck`
 - `pnpm verify:pages` (5/5 checks including `pages-warehouse-digital-twin-3d-and-2d`)
 - `pnpm verify:docs`
 - Ruby `YAML.safe_load` on all `.github/**/*.yml`

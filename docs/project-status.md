@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: 2026-11-23.
+Last updated: 2026-11-25.
 
 This is the canonical project status index. Keep milestone definitions in
 [Vision and Milestones](./vision-and-milestones.md); keep chronological evidence
@@ -52,7 +52,8 @@ product-level extension seam, `CanvasPlugin` is a host bundle, and
 
 - Monorepo scaffold exists with framework-agnostic core/web packages, optional
   React adapter, server, worker, BIM, and examples.
-- `@denovo/canvas` facade package exists as the current public entrypoint.
+- `@de-novo/canvas` facade package exists as the current public entrypoint
+  (npm scope `@de-novo/*`, version `0.2.0`).
 - Public API contract verification exists and passes.
 - Renderer backend vocabulary includes `auto`, `webgpu`, `webgl2`,
   `canvas2d`, `offscreen-canvas2d`, and `custom`. Implemented `auto`
@@ -92,7 +93,7 @@ product-level extension seam, `CanvasPlugin` is a host bundle, and
 - Framework-agnostic camera control options drive the built-in Three.js runtime,
   and desktop/mobile browser checks verify orbit, pan, and zoom changes without
   restarting demand-mode animation-frame scheduling.
-- `@denovo/canvas-editor` is available through explicit facade exports with
+- `@de-novo/canvas-editor` is available through explicit facade exports with
   schema-validated add/update/remove and 2D/3D transform commands, atomic
   transactions, transient selection, serialized async plugin handlers,
   snapshot undo/redo, bounded history, tool/command registries, immutable state,
@@ -167,7 +168,7 @@ product-level extension seam, `CanvasPlugin` is a host bundle, and
   in 2D and 3D: only the X document component changes, preview remains
   transient, and release adds exactly one history entry. Four canvas captures
   record desktop/mobile 2D/3D handle visibility.
-- `@denovo/canvas/styles.css` is static CSS with consumer-first `--dc-*`
+- `@de-novo/canvas/styles.css` is static CSS with consumer-first `--dc-*`
   overrides plus Tailwind v4 and shadcn semantic-token fallbacks. Preset themes
   no longer inject inline token values that prevent consumer overrides.
 - Axis/plane handle colors support generic `--dc-handle-color` and granular
@@ -198,12 +199,12 @@ product-level extension seam, `CanvasPlugin` is a host bundle, and
   documented `unknown` boundaries, schema-derived contracts, and
   positive/negative consumer fixtures for every public type change.
 - React, Vue, Svelte, and Solid view wrappers mount the facade
-  `createCanvas(target, config)` instead of `@denovo/canvas-web`, expose
+  `createCanvas(target, config)` instead of `@de-novo/canvas-web`, expose
   `DenovoCanvasRuntime` through their runtime callbacks, and accept the
   exported `DenovoCanvasCommonConfig` as options. The facade exports
   `DenovoCanvasCommonConfig` and forwards `renderNode`. Adapter → facade is
   the only build-time dependency direction; the facade keeps
-  `@denovo/react-canvas` as an optional peer for its `./react` re-export.
+  `@de-novo/react-canvas` as an optional peer for its `./react` re-export.
   See [2026-08-22 adapter facade mount](./history/2026-08-22-adapter-facade-mount.md).
 
 - Core uses canonical document schema `0.2.0`. Strict legacy `0.1.0` input is
@@ -277,7 +278,7 @@ product-level extension seam, `CanvasPlugin` is a host bundle, and
   [2026-09-07 status hygiene and WebGPU 16 ms](./history/2026-09-07-status-hygiene-webgpu-frame-budget.md).
 - Region/mask document and host-drawer pixels (2026-09-06): mask
   regions are `rect` / `circle` plus `metadata.role`. Host drawers
-  register through `@denovo/canvas/web`. See
+  register through `@de-novo/canvas/web`. See
   [2026-09-06 region-mask and host-drawer pixels](./history/2026-09-06-region-mask-and-host-drawer-pixels.md).
 - Kind colocation, named-operation catalog, and 2D WebGPU host
   drawers (2026-09-06): official kinds live under `kinds/`;
@@ -286,7 +287,7 @@ product-level extension seam, `CanvasPlugin` is a host bundle, and
   [2026-09-06 kind catalog and WebGPU drawers](./history/2026-09-06-kind-catalog-webgpu-drawer.md).
 - Kind drawer seam and kind enumeration (2026-09-06): a host
   `plugin.<org>.<kind>` registers paint and pick on
-  `@denovo/canvas-web`. Missing drawers stay the gray marker.
+  `@de-novo/canvas-web`. Missing drawers stay the gray marker.
   Unregister restores it. `listPluginNodeKinds()` returns readonly
   `{ type, mode }`. The facade does not export the drawer registration.
   See [Kind Drawer Seam](./kind-drawer-seam.md) and
@@ -376,7 +377,7 @@ product-level extension seam, `CanvasPlugin` is a host bundle, and
   `hydrateCanvasGeometryStore`. See
   [2026-08-17 geometry blob persistence](./history/2026-08-17-geometry-blob-persistence.md).
 - Adapter facade mount landed on 2026-08-22: all four framework wrappers
-  mount `@denovo/canvas`, verified with typecheck, uncached build,
+  mount `@de-novo/canvas`, verified with typecheck, uncached build,
   public-api, and the full adapter browser smoke suite. See
   [2026-08-22 adapter facade mount](./history/2026-08-22-adapter-facade-mount.md).
 - BIM multi-model federation landed on 2026-08-23: adapters stage more
@@ -395,7 +396,7 @@ product-level extension seam, `CanvasPlugin` is a host bundle, and
    `plugin.denovo.field`, official `plugin.denovo.sparkline`, official
    `plugin.denovo.shade`, and the
    Warp Field catalog landed. A kind declares `2d`, `3d`, or `both`.
-   Host kinds register a drawer on `@denovo/canvas-web` or stay the
+   Host kinds register a drawer on `@de-novo/canvas-web` or stay the
    gray marker. Do not wrap more ThreeUI
    rooms. Do not wrap Canvas UI rooms. `keycaps` / `hyperspace` stay
    unabsorbed. See
@@ -468,7 +469,7 @@ product-level extension seam, `CanvasPlugin` is a host bundle, and
    [2026-08-23 BIM federated origin](./history/2026-08-23-bim-federated-origin.md).
 7. **Extension surface (drawer seam, kind enumeration, catalog, and
    colocation complete):** `registerPluginNodeDrawer` lives on
-   `@denovo/canvas-web`. `listPluginNodeKinds()` and
+   `@de-novo/canvas-web`. `listPluginNodeKinds()` and
    `listNamedOperations()` are facade reads. Official kinds live under
    `kinds/`. 2D WebGPU stamps host `draw2d` when the atlas has room.
    Do not add `CanvasPluginContext` methods, `pluginState` consumers,
@@ -485,6 +486,16 @@ product-level extension seam, `CanvasPlugin` is a host bundle, and
 - None.
 
 ## Evidence
+
+- 2026-11-25: Published package scope renamed from provisional `@denovo/*` to `@de-novo/*` (GitHub org-aligned; `@denovo` is third-party on npm). All 12 publishable packages bumped to `0.2.0`; official kind IDs (`plugin.denovo.*`) unchanged. Verified by `pnpm typecheck` (36/36), `pnpm build` (25/25), `pnpm verify:public-api`, `pnpm verify:pack-smoke` (12/12 + external ESM smoke), and `pnpm verify:docs`. See [npm scope rename to `@de-novo/*`](./history/2026-11-25-npm-scope-de-novo.md) and `CHANGELOG.md` `[0.2.0]`.
+
+- 2026-11-25: Interactive `v0.2` UI Screen Map & Box-Model Inspector demo (`apps/playground-flow/ui-map.html`, `dist-pages/ui-map/`, Three.js `0 B`, `plugin.denovo.image` screens, obstacle-free gutter routing toggle + undo, clipped UI group card, live DevTools box-model & spacing redlines, `setImageFit`, 6/60/200 screen presets, and `captureCanvas2DSnapshot()`) landed in the multilingual GitHub Pages hub. Verified by `pnpm typecheck` (36/36), `pnpm verify:pages` (7/7, desktop + mobile non-blank), and `pnpm verify:docs`. See [UI Screen Map GitHub Pages demo](./history/2026-11-25-ui-map-pages-demo.md).
+
+- 2026-11-25: 2D WebGPU multi-page `texture_2d_array` atlas (up to 8 `2048×2048` pages in `drawCalls=1`) with octave-quantized zoom-aware image LOD, plus deterministic 2D inspect/snapshot utilities (`inspectCanvas2DRuntime`, `captureCanvas2DSnapshot`, `summarizeCanvasImageData`) landed. Verified by `pnpm typecheck` (36/36), `pnpm build`, `pnpm verify:public-api`, `pnpm verify:hit-testing` (13/13), `pnpm verify:webgpu` (17/17, proving `z1 pages=3 -> z0.2 pages=1` at `drawCalls=1` and GPU-readback PNG snapshots), `pnpm verify:2d-performance`, `pnpm verify:pack-smoke` (12/12), and `pnpm verify:docs`. See [WebGPU multi-page atlas, zoom LOD, and inspect/snapshot](./history/2026-11-25-webgpu-atlas-lod-and-inspect-snapshot.md).
+
+- 2026-11-25: Obstacle-free gutter orthogonal edge routing (`edge.avoidObstacles` / `edge.obstaclePadding`, pure `resolveCanvas2DObstacleFreeOrthogonalWaypoints`) and the official 2D image kind (`plugin.denovo.image`, `AssetRef` `type: "image"` validation, `createImageAssetRef`, `createMemoryImageStore`, `setImageFit` Named Operation — total 23 Named Operations, Canvas2D + 1-drawCall 2D WebGPU rendering) landed. Verified by `pnpm typecheck` (36/36), `pnpm build`, `pnpm verify:document-schema` (48/48), `pnpm verify:public-api`, `pnpm verify:editor-core`, `pnpm verify:hit-testing` (12/12), `pnpm verify:webgpu` (15/15, pixel-verified Canvas2D + 1-drawCall WebGPU readback), `pnpm verify:2d-performance`, `pnpm verify:pack-smoke` (12/12), `pnpm verify:flow-showcase` (2/2), `pnpm verify:network-showcase` (2/2), and `pnpm verify:docs`. See [obstacle-free gutter routing and official 2D image kind](./history/2026-11-25-gutter-routing-and-denovo-image.md).
+
+- 2026-11-25: 2D UI style primitives (`cornerRadius`, `stroke`, `strokeWidth`, `opacity` on `rect`/`circle`; `clip`, `opacity` on 2D `group`, backwards-compatible in `0.2.0`) and ephemeral DevTools-style box-model / spacing redline inspection overlays (`computeCanvas2DRedlines`, `resolveCanvas2DBoxModelRegions`, `runtime.current.setInspectionOverlay`) landed across Canvas2D and single-drawCall 2D WebGPU SDF rendering. Verified by `pnpm typecheck`, `pnpm build`, `pnpm verify:document-schema` (46/46), `pnpm verify:public-api`, `pnpm verify:editor-core`, `pnpm verify:hit-testing` (10/10), `pnpm verify:webgpu` (13/13, pixel-verified Canvas2D + 1-drawCall WebGPU readback), `pnpm verify:2d-performance` (`10k-2d-rects` p50 `0.00ms`, `10k-2d-webgpu` p50 `0.00ms` / `drawCalls=1`), `pnpm verify:pack-smoke` (12/12), `pnpm verify:selectors` (4/4), `pnpm verify:flow-showcase` (2/2), `pnpm verify:network-showcase` (2/2), `pnpm verify:browser-rendering` (desktop + mobile), and `pnpm verify:docs`. See [2D UI styles and inspection overlays](./history/2026-11-25-2d-ui-styles-and-inspection-overlay.md).
 
 - 2026-11-23: Prepared first public open-source release `v0.1.0` for Issue #22: bumped all 12 publishable `packages/*/package.json` manifests from `0.0.0` to `0.1.0`, finalized `CHANGELOG.md` `[0.1.0] - 2026-11-23`, and verified all 12 `0.1.0` tarballs via `pnpm verify:pack-smoke`, `pnpm build`, `pnpm typecheck`, `pnpm verify:public-api`, and `pnpm verify:docs`. See [v0.1.0 release cut](./history/2026-11-23-v0-1-0-release-cut.md).
 
@@ -504,17 +515,17 @@ product-level extension seam, `CanvasPlugin` is a host bundle, and
 
 - 2026-11-23: Incremental O(k) 2D spatial-index updates (`syncCanvas2DSpatialIndex`) and O(visible) smart snap guides (`computeCanvas2DSnapGuides` + `runtime.current.computeSnapGuides`) landed for Issue #14, verified on 10k-node scenes (`lastSyncKind="incremental"`, `lastSyncedNodeCount=1`, O(visible) snap candidate pruning) alongside `verify:public-api`, `verify:hit-testing`, `verify:pack-smoke`, `verify:docs`, `pnpm build`, and `pnpm typecheck`. See [incremental spatial-index and smart snap](./history/2026-11-23-incremental-spatial-index-and-snap.md).
 
-- 2026-11-23: Three.js-free `./2d` entrypoints landed across Vue (`@denovo/vue-canvas/2d`), Svelte (`@denovo/svelte-canvas/2d`), and Solid (`@denovo/solid-canvas/2d`) for Issue #13 (full 4-framework parity with `@denovo/react-canvas/2d`), plus `.github/workflows/release.yml` clean-checkout bootstrap fix. Verified by `pnpm build`, `pnpm typecheck`, `pnpm verify:public-api`, `pnpm verify:pack-smoke`, `pnpm verify:selectors`, and `pnpm verify:docs`. See [framework 2D entrypoints](./history/2026-11-23-framework-2d-entrypoints.md).
+- 2026-11-23: Three.js-free `./2d` entrypoints landed across Vue (`@de-novo/vue-canvas/2d`), Svelte (`@de-novo/svelte-canvas/2d`), and Solid (`@de-novo/solid-canvas/2d`) for Issue #13 (full 4-framework parity with `@de-novo/react-canvas/2d`), plus `.github/workflows/release.yml` clean-checkout bootstrap fix. Verified by `pnpm build`, `pnpm typecheck`, `pnpm verify:public-api`, `pnpm verify:pack-smoke`, `pnpm verify:selectors`, and `pnpm verify:docs`. See [framework 2D entrypoints](./history/2026-11-23-framework-2d-entrypoints.md).
 
 - 2026-11-23: Open-source distribution compliance landed for Issue #12: included root Apache-2.0 `LICENSE` & `NOTICE` in all 12 publishable `packages/*` tarballs (enforced byte-for-byte by `pnpm verify:pack-smoke`), added `.github/ISSUE_TEMPLATE/{bug_report,feature_request,config}.yml`, root `CHANGELOG.md`, and `.github/workflows/release.yml` (npm provenance + `dry_run: true` default). See [open-source distribution compliance](./history/2026-11-23-open-source-distribution-compliance.md).
 
-- 2026-11-23: Open-source release prep landed for Issue #11: standardized `repository`/`homepage`/`bugs`/`publishConfig` across all 12 publishable `packages/*/package.json` manifests, added `pnpm verify:pack-smoke` (12/12 tarball export & zero-`workspace:` checks + external unpacked ESM smoke) wired into `.github/workflows/ci.yml`, and updated `README.md` with current 2D/3D capabilities, `@denovo/canvas/2d` and `@denovo/canvas/react/2d` quickstarts, framework selectors, and verified benchmarks. See [open-source pack smoke and README](./history/2026-11-23-open-source-pack-and-readme.md).
+- 2026-11-23: Open-source release prep landed for Issue #11: standardized `repository`/`homepage`/`bugs`/`publishConfig` across all 12 publishable `packages/*/package.json` manifests, added `pnpm verify:pack-smoke` (12/12 tarball export & zero-`workspace:` checks + external unpacked ESM smoke) wired into `.github/workflows/ci.yml`, and updated `README.md` with current 2D/3D capabilities, `@de-novo/canvas/2d` and `@de-novo/canvas/react/2d` quickstarts, framework selectors, and verified benchmarks. See [open-source pack smoke and README](./history/2026-11-23-open-source-pack-and-readme.md).
 
 - 2026-11-21: GitHub Actions CI workflow (`.github/workflows/ci.yml`) and `--canvas2d-only` Linux CI mode for `verify:2d-performance` landed for Issue #10, running parallel `static-and-unit` and `browser-gates` jobs on `main` pushes and PRs. Local `verify:2d-performance` (both `--canvas2d-only` and full), `verify:document-schema`, `verify:server`, `verify:worker-tasks`, `verify:m4-performance`, `verify:docs`, and YAML syntax checks passed. See [GitHub Actions CI workflow](./history/2026-11-21-github-actions-ci.md).
 
-- 2026-11-21: Three.js/R3F/Drei-free `@denovo/react-canvas/2d` and `@denovo/canvas/react/2d` (`Canvas2DView`, `useCanvasSelector`, `shallowEqual`) landed for Issue #9; Next `MaskHost`, `apps/playground-network`, and `apps/playground-diagram` migrated to 2D-only entrypoints (`playground-network` JS bundle 1,869.85 kB → 351.96 kB, -81.2%). `pnpm verify:public-api`, `pnpm verify:region-mask` (6/6), `pnpm verify:network-showcase` (2/2), `pnpm verify:diagram-rendering`, `pnpm verify:selectors` (4/4), `pnpm typecheck`, `pnpm build`, and `pnpm verify:docs` passed. See [React 2D entrypoint](./history/2026-11-21-react-2d-entrypoint.md).
+- 2026-11-21: Three.js/R3F/Drei-free `@de-novo/react-canvas/2d` and `@de-novo/canvas/react/2d` (`Canvas2DView`, `useCanvasSelector`, `shallowEqual`) landed for Issue #9; Next `MaskHost`, `apps/playground-network`, and `apps/playground-diagram` migrated to 2D-only entrypoints (`playground-network` JS bundle 1,869.85 kB → 351.96 kB, -81.2%). `pnpm verify:public-api`, `pnpm verify:region-mask` (6/6), `pnpm verify:network-showcase` (2/2), `pnpm verify:diagram-rendering`, `pnpm verify:selectors` (4/4), `pnpm typecheck`, `pnpm build`, and `pnpm verify:docs` passed. See [React 2D entrypoint](./history/2026-11-21-react-2d-entrypoint.md).
 
-- 2026-11-21: Lightweight 2D-only `@denovo/canvas/2d` entrypoint (zero Three.js / `three/webgpu` / `three-mesh-bvh` imports) landed for Issue #8 and was adopted by `apps/playground-flow`, reducing its Vite production JS bundle from 1,865.08 kB (513.11 kB gzip) to 361.07 kB (106.43 kB gzip, -80.6% raw / -79.3% gzip). `pnpm verify:public-api`, `pnpm verify:flow-showcase` (2/2), `pnpm verify:2d-performance`, `pnpm typecheck`, `pnpm build`, and `pnpm verify:docs` passed. See [lightweight 2D entrypoint](./history/2026-11-21-2d-lightweight-entrypoint.md).
+- 2026-11-21: Lightweight 2D-only `@de-novo/canvas/2d` entrypoint (zero Three.js / `three/webgpu` / `three-mesh-bvh` imports) landed for Issue #8 and was adopted by `apps/playground-flow`, reducing its Vite production JS bundle from 1,865.08 kB (513.11 kB gzip) to 361.07 kB (106.43 kB gzip, -80.6% raw / -79.3% gzip). `pnpm verify:public-api`, `pnpm verify:flow-showcase` (2/2), `pnpm verify:2d-performance`, `pnpm typecheck`, `pnpm build`, and `pnpm verify:docs` passed. See [lightweight 2D entrypoint](./history/2026-11-21-2d-lightweight-entrypoint.md).
 
 - 2026-11-21: O(1) offscreen 2D minimap cache, HTML overlay diffing in `rebuildObjects()`, and allocation-free `canvas3DNodeEqual()` landed for Issue #7. `pnpm verify:2d-performance` passed (`10k-2d-rects` with minimap `panRender` p50 `0.00 ms` / p95 `0.10 ms`; `1k-2d-overlays` single-card edit invoked `renderNode` 1 time across 1,001 cards), alongside `pnpm verify:browser-rendering`, `pnpm verify:webgpu` (11/11), `pnpm verify:flow-showcase` (2/2), `pnpm verify:network-showcase` (2/2), `pnpm verify:diagram-rendering`, `pnpm verify:hit-testing` (7/7), `pnpm typecheck`, `pnpm build`, and `pnpm verify:docs`. See [minimap cache, HTML diff, and 3D equality](./history/2026-11-21-minimap-cache-html-diff-3d-eq.md).
 
@@ -587,7 +598,7 @@ product-level extension seam, `CanvasPlugin` is a host bundle, and
   the four host-drawer observations plus double-register.
   `pnpm verify:docs` 166 Markdown files, 577/577 local targets.
   2D WebGPU host-drawer pixels unmeasured. No vanilla host-kind page
-  (vanilla must not depend on `@denovo/canvas-web`). See
+  (vanilla must not depend on `@de-novo/canvas-web`). See
   [2026-09-06 kind drawer seam](./history/2026-09-06-kind-drawer-seam.md).
 - Extension surface decision (2026-09-04). Documentation plus JSDoc on
   `CanvasPlugin` and `pluginState`; no export or schema change.
@@ -853,7 +864,7 @@ product-level extension seam, `CanvasPlugin` is a host bundle, and
   399/399 local targets. Previously 125 / 394/394 at identity-only.
   See
   [2026-08-25 product identity](./history/2026-08-25-product-identity.md).
-- `pnpm --filter @denovo/canvas-threeui-example typecheck` and `build`
+- `pnpm --filter @de-novo/canvas-threeui-example typecheck` and `build`
   passed on 2026-08-24 for the Warp Field Denovo host. Browser: custom
   backend, 1408×547 canvas, screenshot
   `artifacts/verification/warp-field-denovo.png`. See

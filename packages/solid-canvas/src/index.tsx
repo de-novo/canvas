@@ -18,8 +18,8 @@ import {
   type CanvasSelectorEquality,
   type DenovoCanvasCommonConfig,
   type DenovoCanvasRuntime
-} from "@denovo/canvas";
-import type { CanvasSceneInput } from "@denovo/canvas-core";
+} from "@de-novo/canvas";
+import type { CanvasSceneInput } from "@de-novo/canvas-core";
 
 type DenovoCanvasBaseProps = {
   /** Options forwarded to `createCanvas`. Only read on mount. */
@@ -49,7 +49,7 @@ export type DenovoCanvasProps = DenovoCanvasBaseProps &
  *
  * @example
  * ```tsx
- * import { DenovoCanvas } from "@denovo/solid-canvas";
+ * import { DenovoCanvas } from "@de-novo/solid-canvas";
  *
  * function App() {
  *   return <DenovoCanvas scene={scene} />;
@@ -150,5 +150,5 @@ export {
   type CanvasSelectorEquality,
   type DenovoCanvasCommonConfig,
   type DenovoCanvasRuntime
-} from "@denovo/canvas";
-export type { CanvasSceneInput } from "@denovo/canvas-core";
+} from "@de-novo/canvas";
+export type { CanvasSceneInput } from "@de-novo/canvas-core";

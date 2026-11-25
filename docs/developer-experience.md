@@ -126,8 +126,8 @@ Escape hatches must be explicit and documented, not accidental internal access.
 ### Vanilla Viewer
 
 ```ts
-import { createCanvas } from "@denovo/canvas";
-import "@denovo/canvas/styles.css";
+import { createCanvas } from "@de-novo/canvas";
+import "@de-novo/canvas/styles.css";
 
 createCanvas("#stage", {
   scene: {
@@ -156,7 +156,7 @@ import {
   createEditor,
   createSelectTool,
   createTransformTool
-} from "@denovo/canvas";
+} from "@de-novo/canvas";
 
 const tools = [
   createSelectTool(),
@@ -173,7 +173,7 @@ const disconnect = connectEditorToCanvas(editor, canvas);
 ### React View
 
 ```tsx
-import { CanvasView } from "@denovo/canvas/react";
+import { CanvasView } from "@de-novo/canvas/react";
 
 export function App() {
   return <CanvasView scene={document.scene} />;

@@ -68,7 +68,7 @@ function startViteServer() {
       "pnpm",
       [
         "--filter",
-        "@denovo/canvas-vanilla-example",
+        "@de-novo/canvas-vanilla-example",
         "exec",
         "vite",
         "--host",
@@ -151,7 +151,7 @@ writeFileSync(
   <div id="host"></div>
   <canvas id="naive" width="1280" height="800" style="width:1280px;height:800px;display:none"></canvas>
   <script type="module">
-    import { createCanvas, defineDocument, createEditor } from "@denovo/canvas";
+    import { createCanvas, defineDocument, createEditor } from "@de-novo/canvas";
 
     const host = document.getElementById("host");
     const naiveCanvas = document.getElementById("naive");

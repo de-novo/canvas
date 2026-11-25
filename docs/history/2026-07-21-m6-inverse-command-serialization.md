@@ -28,7 +28,7 @@ Before this slice:
 
 ## Solution
 
-### 1. Command serializer in `@denovo/canvas-core`
+### 1. Command serializer in `@de-novo/canvas-core`
 
 New module `packages/core/src/serialize.ts`, exported from the core barrel so
 every adapter package can use it without depending on the editor.
@@ -65,7 +65,7 @@ small — it does not embed the full before/after document.
 ### 2. Editor re-export
 
 `packages/editor/src/commands/serialize.ts` is now a thin re-export of the
-core implementation, so consumers importing from `@denovo/canvas-editor` keep
+core implementation, so consumers importing from `@de-novo/canvas-editor` keep
 the same API surface:
 
 ```ts
@@ -76,7 +76,7 @@ export {
   serializeInverseCommandToPatch,
   getCommandAffectedNodeIds,
   type BuildPatchRecordOptions
-} from "@denovo/canvas-core";
+} from "@de-novo/canvas-core";
 ```
 
 ### 3. IndexedDB adapter uses the real patch
@@ -92,8 +92,8 @@ The placeholder patch is gone.
 
 ## Why the serializer lives in core
 
-`@denovo/canvas-web` (which owns the IndexedDB adapter) does **not** depend on
-`@denovo/canvas-editor`. Putting the serializer in core — which every package
+`@de-novo/canvas-web` (which owns the IndexedDB adapter) does **not** depend on
+`@de-novo/canvas-editor`. Putting the serializer in core — which every package
 already depends on, and which already owns the `CanvasCommand` /
 `DocumentPatchRecord` type definitions — avoids a new dependency edge and a
 potential cycle. The editor re-exports it purely for API ergonomics.
@@ -112,7 +112,7 @@ Full workspace build is green: **12/12 packages**, including `tsc
 ### Direct (adapter / server)
 
 ```ts
-import { buildPatchRecord } from "@denovo/canvas-core";
+import { buildPatchRecord } from "@de-novo/canvas-core";
 
 const record = buildPatchRecord({
   id: `patch-${Date.now()}`,

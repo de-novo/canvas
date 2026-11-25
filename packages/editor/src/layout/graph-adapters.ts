@@ -6,7 +6,7 @@ import type {
   CanvasLayoutPlacement,
   JsonValue,
   NodeId
-} from "@denovo/canvas-core";
+} from "@de-novo/canvas-core";
 
 export type TimeGraphLayoutOptions = {
   readonly at?: Readonly<Record<string, number>>;

@@ -32,9 +32,9 @@ jobs:
 
       - name: Bootstrap optional React peer declarations for clean checkout
         run: |
-          pnpm --filter @denovo/canvas-core --filter @denovo/canvas-worker --filter @denovo/canvas-three --filter @denovo/canvas-editor --filter @denovo/canvas-web build
-          pnpm --filter @denovo/canvas build || true
-          pnpm --filter @denovo/react-canvas build
+          pnpm --filter @de-novo/canvas-core --filter @de-novo/canvas-worker --filter @de-novo/canvas-three --filter @de-novo/canvas-editor --filter @de-novo/canvas-web build
+          pnpm --filter @de-novo/canvas build || true
+          pnpm --filter @de-novo/react-canvas build
 
       - name: Build all packages and apps
         run: pnpm build
@@ -94,9 +94,9 @@ jobs:
 
       - name: Bootstrap optional React peer declarations for clean checkout
         run: |
-          pnpm --filter @denovo/canvas-core --filter @denovo/canvas-worker --filter @denovo/canvas-three --filter @denovo/canvas-editor --filter @denovo/canvas-web build
-          pnpm --filter @denovo/canvas build || true
-          pnpm --filter @denovo/react-canvas build
+          pnpm --filter @de-novo/canvas-core --filter @de-novo/canvas-worker --filter @de-novo/canvas-three --filter @de-novo/canvas-editor --filter @de-novo/canvas-web build
+          pnpm --filter @de-novo/canvas build || true
+          pnpm --filter @de-novo/react-canvas build
 
       - name: Build workspace
         run: pnpm build

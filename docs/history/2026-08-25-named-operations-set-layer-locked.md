@@ -12,7 +12,7 @@ list-apply helper. No new playground.
 
 ## Changes
 
-- `@denovo/canvas-editor` and `@denovo/canvas` export
+- `@de-novo/canvas-editor` and `@de-novo/canvas` export
   `setLayerLocked` and `SetLayerLockedInput`.
 - Compiles to one `layer.update` of `locked`. Unknown `layerId` is
   `layer-not-found`. Extra fields and a non-boolean flag fail at the

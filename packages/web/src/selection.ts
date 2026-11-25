@@ -10,7 +10,7 @@ import type {
   CanvasToolPointerInput,
   CanvasToolPointerType,
   Point2
-} from "@denovo/canvas-core";
+} from "@de-novo/canvas-core";
 import type {
   CanvasAuthoringRuntime,
   CanvasHitSelectionTarget,

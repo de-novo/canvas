@@ -10,12 +10,12 @@
 
 | 应用类型 | 推荐导入路径 | 是否打包 Three.js |
 | --- | --- | --- |
-| 2D Vanilla / TypeScript | `@denovo/canvas/2d` + `@denovo/canvas/styles.css` | 否（`0 B`） |
-| 2D React / Next.js | `@denovo/canvas/2d` + `@denovo/canvas/react/2d`（或 `@denovo/react-canvas/2d`） | 否（`0 B`） |
-| 2D Vue 3 | `@denovo/canvas/2d` + `@denovo/vue-canvas/2d` | 否（`0 B`） |
-| 2D Svelte | `@denovo/canvas/2d` + `@denovo/svelte-canvas/2d` | 否（`0 B`） |
-| 2D Solid | `@denovo/canvas/2d` + `@denovo/solid-canvas/2d` | 否（`0 B`） |
-| 3D 或动态 2D/3D | `@denovo/canvas` + 可选 `@denovo/react-canvas` / `vue` / `svelte` / `solid` | 是 |
+| 2D Vanilla / TypeScript | `@de-novo/canvas/2d` + `@de-novo/canvas/styles.css` | 否（`0 B`） |
+| 2D React / Next.js | `@de-novo/canvas/2d` + `@de-novo/canvas/react/2d`（或 `@de-novo/react-canvas/2d`） | 否（`0 B`） |
+| 2D Vue 3 | `@de-novo/canvas/2d` + `@de-novo/vue-canvas/2d` | 否（`0 B`） |
+| 2D Svelte | `@de-novo/canvas/2d` + `@de-novo/svelte-canvas/2d` | 否（`0 B`） |
+| 2D Solid | `@de-novo/canvas/2d` + `@de-novo/solid-canvas/2d` | 否（`0 B`） |
+| 3D 或动态 2D/3D | `@de-novo/canvas` + 可选 `@de-novo/react-canvas` / `vue` / `svelte` / `solid` | 是 |
 
 ## 2. 核心心智模型
 
@@ -37,7 +37,7 @@
 `shallowEqual`：
 
 ```ts
-import { shallowEqual, subscribeCanvasSelector } from "@denovo/canvas/2d";
+import { shallowEqual, subscribeCanvasSelector } from "@de-novo/canvas/2d";
 
 const stop = subscribeCanvasSelector(
   editor,
@@ -80,15 +80,15 @@ const stop = subscribeCanvasSelector(
   合批为 `InstancedMesh`，并启用 BVH 射线拾取。
 - `renderer: "auto"` 会在支持 3D WebGPU 的环境优先使用 WebGPU，不支持时平滑
   回退到 WebGL2；需要严格失败保障时可显式指定 `"webgpu"` 或 `"webgl2"`。
-- 使用 `@denovo/canvas/worker` 将繁重几何转换移出主线程，用
-  `createSceneChunkLoader` 流式加载分块场景，用 `@denovo/canvas-bim` 联邦加载
+- 使用 `@de-novo/canvas/worker` 将繁重几何转换移出主线程，用
+  `createSceneChunkLoader` 流式加载分块场景，用 `@de-novo/canvas-bim` 联邦加载
   多模型 IFC 文件。
 
 ## 6. 主题样式与自定义节点
 
-- 引入 `@denovo/canvas/styles.css` 后，覆盖公开的 `--dc-*` CSS 变量即可定制
+- 引入 `@de-novo/canvas/styles.css` 后，覆盖公开的 `--dc-*` CSS 变量即可定制
   外观（未设置时自动兼容 Tailwind v4 `--color-*` 与 shadcn 语义变量）。
-- 通过 `@denovo/canvas/web` 中的 `registerPluginNodeDrawer` 注册自定义可视节点
+- 通过 `@de-novo/canvas/web` 中的 `registerPluginNodeDrawer` 注册自定义可视节点
   （`plugin.<org>.<kind>`），详情参阅 [Kind Drawer Seam](./kind-drawer-seam.md)
   与 [Public API Contract](./public-api-contract.md)。
 

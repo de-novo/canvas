@@ -1,4 +1,4 @@
-import { setFieldPattern } from "@denovo/canvas";
+import { setFieldPattern } from "@de-novo/canvas";
 
 import { FIELD_NODE_ID } from "./document";
 

@@ -11,7 +11,7 @@ same list-apply helper as hide/lock. No new playground.
 
 ## Changes
 
-- `@denovo/canvas-editor` and `@denovo/canvas` export `removeNode`
+- `@de-novo/canvas-editor` and `@de-novo/canvas` export `removeNode`
   and `RemoveNodeInput`.
 - Compiles to one `node.remove`. Unknown `nodeId` is
   `node-not-found`. An effectively locked node is `locked-target`.

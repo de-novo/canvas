@@ -2,9 +2,9 @@
  * Maps an IFC entity type string (e.g. `"IfcWallStandardCase"`) to a Denovo
  * layer/category. Implemented over type *names* rather than web-ifc's numeric
  * enum constants so this module stays free of a `web-ifc` import — the contract
- * entry (`@denovo/canvas-bim`) must remain importable without the parser dep.
+ * entry (`@de-novo/canvas-bim`) must remain importable without the parser dep.
  *
- * @module @denovo/canvas-bim/web-ifc
+ * @module @de-novo/canvas-bim/web-ifc
  */
 
 export type IfcCategoryEntry = {

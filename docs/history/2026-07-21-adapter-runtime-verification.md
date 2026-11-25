@@ -17,10 +17,10 @@ Previously only the vanilla facade example had a browser-rendering suite
 Two minimal Vite apps that render a 2D and 3D scene through each adapter and
 expose a scene-swap control:
 
-- `apps/playground-react` (`@denovo/canvas-react-example`) — React 19 +
-  `@vitejs/plugin-react`, renders via `@denovo/react-canvas` `CanvasView`.
-- `apps/playground-vue` (`@denovo/canvas-vue-example`) — Vue 3 +
-  `@vitejs/plugin-vue`, renders via `@denovo/vue-canvas` `DenovoCanvas`.
+- `apps/playground-react` (`@de-novo/canvas-react-example`) — React 19 +
+  `@vitejs/plugin-react`, renders via `@de-novo/react-canvas` `CanvasView`.
+- `apps/playground-vue` (`@de-novo/canvas-vue-example`) — Vue 3 +
+  `@vitejs/plugin-vue`, renders via `@de-novo/vue-canvas` `DenovoCanvas`.
 
 Both apps share the same scene data (a 3D sphere scene and a 2D rect/circle
 scene) and expose:
@@ -75,10 +75,10 @@ When `vue-tsc` gains TS 7 support, swap the script back.
 
 ## Verification
 
-- `pnpm --filter @denovo/canvas-react-example typecheck` — pass
-- `pnpm --filter @denovo/canvas-react-example build` — pass
-- `pnpm --filter @denovo/canvas-vue-example typecheck` — pass
-- `pnpm --filter @denovo/canvas-vue-example build` — pass
+- `pnpm --filter @de-novo/canvas-react-example typecheck` — pass
+- `pnpm --filter @de-novo/canvas-react-example build` — pass
+- `pnpm --filter @de-novo/canvas-vue-example typecheck` — pass
+- `pnpm --filter @de-novo/canvas-vue-example build` — pass
 - `pnpm verify:browser-rendering-adapters` — **both adapters pass**: React and
   Vue each render a non-blank canvas (35 distinct quantized colors on initial
   3D render), survive a viewport resize, repaint a non-blank 2D canvas after

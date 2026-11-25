@@ -7,7 +7,7 @@ full milestone complete.
 
 ## Changes
 
-- Added the framework-independent `@denovo/canvas-editor` package and explicit
+- Added the framework-independent `@de-novo/canvas-editor` package and explicit
   facade exports for `createEditor()`, `connectEditorToRuntime()`,
   `CanvasEditorError`, and editor public types.
 - Added strict recursive `CanvasCommandSchema`, `defineCommand()`, and

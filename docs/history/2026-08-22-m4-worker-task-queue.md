@@ -20,7 +20,7 @@ performance optimization.
 
 ## Changes
 
-### `@denovo/canvas-worker`
+### `@de-novo/canvas-worker`
 
 - `createWorkerHandler(tasks)` / `WorkerTaskImplementations` — worker-side
   dispatcher correlating requests to typed implementations; unknown task
@@ -41,7 +41,7 @@ performance optimization.
 
 ### Facade
 
-- New `@denovo/canvas/worker` subpath re-exporting the worker vocabulary;
+- New `@de-novo/canvas/worker` subpath re-exporting the worker vocabulary;
   `scripts/verify-public-api.mjs` now asserts the subpath exists. The
   opt-in entrypoint keeps the facade root lean.
 

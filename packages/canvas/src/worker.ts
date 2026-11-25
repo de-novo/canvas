@@ -18,4 +18,4 @@ export {
   type WorkerTaskMap,
   type WorkerTaskQueue,
   type WorkerTaskQueueOptions
-} from "@denovo/canvas-worker";
+} from "@de-novo/canvas-worker";

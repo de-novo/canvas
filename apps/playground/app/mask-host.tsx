@@ -7,8 +7,8 @@ import {
   listNodes,
   setNodeVisible,
   shallowEqual
-} from "@denovo/canvas/2d";
-import { Canvas2DView, useCanvasSelector } from "@denovo/react-canvas/2d";
+} from "@de-novo/canvas/2d";
+import { Canvas2DView, useCanvasSelector } from "@de-novo/react-canvas/2d";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {

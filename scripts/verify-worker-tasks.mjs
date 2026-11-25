@@ -2,7 +2,7 @@
 /**
  * M4 worker task queue verification.
  *
- * Exercises the @denovo/canvas-worker task vocabulary, handler, and pool
+ * Exercises the @de-novo/canvas-worker task vocabulary, handler, and pool
  * queue through in-process loopback "workers" (deterministic, no real
  * threads). Real cross-thread RTT numbers live in
  * docs/m4-performance-thresholds.md and are captured in the browser.

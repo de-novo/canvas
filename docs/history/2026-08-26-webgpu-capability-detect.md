@@ -12,7 +12,7 @@ WebGPU, no compute, no document `backend` field.
 
 ## Changes
 
-- `@denovo/canvas` exports `detectCanvasBackendCapabilities()`.
+- `@de-novo/canvas` exports `detectCanvasBackendCapabilities()`.
 - Returns `{ canvas2d, webgl2, webgpu, offscreenCanvas2d }`.
 - Vanilla writes `data-denovo-capability-webgpu` from that probe.
 - A true `webgpu` flag is not a device. `runtime.ready` can still

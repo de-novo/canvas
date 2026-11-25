@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Denovo Canvas — UI Screen Map, Gutter Routing & Box-Model Inspector</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: #0b1220;
+        color: #e2e8f0;
+        display: grid;
+        grid-template-rows: auto 1fr;
+        height: 100dvh;
+        overflow: hidden;
+      }
+      header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 10px 14px;
+        background: #0f172a;
+        border-bottom: 1px solid #1e293b;
+      }
+      .title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 14px;
+        font-weight: 600;
+      }
+      .title a {
+        color: #94a3b8;
+        text-decoration: none;
+        font-weight: 500;
+      }
+      .title a:hover { color: #f8fafc; }
+      .badge {
+        font-size: 11px;
+        padding: 2px 8px;
+        border-radius: 999px;
+        background: #172554;
+        color: #7dd3fc;
+        border: 1px solid #1d4ed8;
+      }
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-items: center;
+      }
+      button, select {
+        background: #1e293b;
+        color: #f8fafc;
+        border: 1px solid #334155;
+        border-radius: 6px;
+        padding: 5px 10px;
+        font-size: 12px;
+        cursor: pointer;
+      }
+      button:hover:not(:disabled), select:hover { border-color: #38bdf8; }
+      button:disabled { opacity: 0.45; cursor: not-allowed; }
+      button.active {
+        background: #0284c7;
+        border-color: #38bdf8;
+      }
+      main {
+        position: relative;
+        min-height: 0;
+      }
+      #stage {
+        width: 100%;
+        height: 100%;
+      }
+      .hud {
+        position: absolute;
+        left: 12px;
+        top: 12px;
+        background: rgba(15, 23, 42, 0.92);
+        border: 1px solid #334155;
+        border-radius: 8px;
+        padding: 10px 12px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 12px;
+        line-height: 1.55;
+        pointer-events: none;
+        min-width: 280px;
+        backdrop-filter: blur(8px);
+      }
+      .hud strong { color: #38bdf8; }
+      .hud .ok { color: #4ade80; }
+      .hud .warn { color: #fbbf24; }
+      .snapshot-drawer {
+        position: absolute;
+        right: 12px;
+        top: 12px;
+        width: 240px;
+        background: rgba(15, 23, 42, 0.94);
+        border: 1px solid #334155;
+        border-radius: 10px;
+        padding: 10px;
+        font-size: 11px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        display: none;
+        flex-direction: column;
+        gap: 8px;
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+      }
+      .snapshot-drawer.open { display: flex; }
+      .snapshot-drawer img {
+        width: 100%;
+        border-radius: 6px;
+        border: 1px solid #334155;
+        background: #020617;
+      }
+      .snapshot-drawer .row {
+        display: flex;
+        justify-content: space-between;
+        color: #cbd5e1;
+      }
+      .hint {
+        position: absolute;
+        left: 12px;
+        bottom: 12px;
+        background: rgba(15, 23, 42, 0.86);
+        border: 1px solid #1e293b;
+        border-radius: 6px;
+        padding: 6px 10px;
+        font-size: 12px;
+        color: #94a3b8;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="title">
+        <a href="../">← Hub</a>
+        <span>UI Screen Map &amp; Box-Model Inspector</span>
+        <span class="badge">v0.2 · @de-novo/canvas/2d · Three.js 0B</span>
+      </div>
+      <div class="controls">
+        <select id="screen-preset" aria-label="Screen map size">
+          <option value="6" selected>6 Linked Screens</option>
+          <option value="60">60 Screens (Multi-Page Atlas + LOD)</option>
+          <option value="200">200 Screens (Spatial Culling)</option>
+        </select>
+        <button id="btn-backend" type="button">Backend: Canvas2D</button>
+        <button id="btn-gutters" type="button" class="active">Obstacle-Free Gutters: ON</button>
+        <button id="btn-inspect" type="button" class="active">Box-Model + Redlines: ON</button>
+        <select id="fit-select" aria-label="Selected screen image fit">
+          <option value="fill" selected>Fit: fill</option>
+          <option value="contain">Fit: contain</option>
+          <option value="cover">Fit: cover</option>
+        </select>
+        <button id="btn-fit-view" type="button">Fit View</button>
+        <button id="btn-snapshot" type="button">Capture Snapshot</button>
+        <button id="btn-undo" type="button">Undo</button>
+      </div>
+    </header>
+    <main>
+      <div id="stage"></div>
+      <div id="hud" class="hud">Loading UI screen map…</div>
+      <div id="snapshot-drawer" class="snapshot-drawer" aria-live="polite">
+        <div class="row"><strong>captureCanvas2DSnapshot()</strong><span id="snap-close" style="cursor:pointer;color:#94a3b8;">✕</span></div>
+        <img id="snap-img" alt="Captured canvas snapshot" />
+        <div id="snap-meta"></div>
+      </div>
+      <div class="hint">Click a screen to inspect its box model · Hover another screen for spacing redlines · Scroll/drag to pan &amp; zoom</div>
+    </main>
+    <script type="module" src="/src/ui-map.ts"></script>
+  </body>
+</html>

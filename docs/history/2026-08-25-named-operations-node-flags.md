@@ -11,7 +11,7 @@ unlock a node with the same list-apply helpers. No new playground.
 
 ## Changes
 
-- `@denovo/canvas-editor` and `@denovo/canvas` export
+- `@de-novo/canvas-editor` and `@de-novo/canvas` export
   `setNodeVisible`, `setNodeLocked`, `SetNodeVisibleInput`, and
   `SetNodeLockedInput`.
 - Each compiles to one `node.update` of that field. Unknown `nodeId`

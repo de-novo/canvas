@@ -25,7 +25,7 @@ cap (5000 by default) that bounds JSON size.
 
 ### Phase 1 — `mesh` node foundation (core + renderers)
 
-- **`MeshNodeSchema`** in `@denovo/canvas-core` (flat `positions`/`indices` +
+- **`MeshNodeSchema`** in `@de-novo/canvas-core` (flat `positions`/`indices` +
   optional `normals`/`uvs` + `wireframe`), registered in `Canvas3DNodeSchema`,
   `Canvas3DNodeTypeSchema`, and the legacy migration union. `Canvas3DNode` /
   `Canvas3DNodeType` widen automatically.
@@ -39,7 +39,7 @@ cap (5000 by default) that bounds JSON size.
   vanilla example's demo switch gained a `mesh` case too.
 - `verify:document-schema` extended with a mesh-node fixture round-trip.
 
-### Phase 2 — `WebIfcBimAdapter` (`@denovo/canvas-bim/web-ifc`)
+### Phase 2 — `WebIfcBimAdapter` (`@de-novo/canvas-bim/web-ifc`)
 
 - New opt-in **`./web-ifc`** subpath. The `.` contract entry (`BimAdapter`,
   `BimModelSource`, `BimModelMetadata`, plus new `WebIfcWasmConfig`,
@@ -55,7 +55,7 @@ cap (5000 by default) that bounds JSON size.
     contract entry stays dep-free), and stores `{ ifcGuid, ifcType, ifcName,
     expressID }` under `node.metadata.__bim`.
 - web-ifc is an **optional peer dep** (`peerDependenciesMeta`) + a devDep for
-  typecheck + `--external web-ifc` in tsup — mirroring the `@denovo/canvas`
+  typecheck + `--external web-ifc` in tsup — mirroring the `@de-novo/canvas`
   optional-peer precedent.
 
 ### Phase 4 — example app + smoke verification
@@ -76,8 +76,8 @@ cap (5000 by default) that bounds JSON size.
 All adapter smoke checks passed.
 ```
 
-- `pnpm typecheck` — **29/29** packages (incl. `@denovo/canvas-bim`,
-  `@denovo/canvas-bim-example`).
+- `pnpm typecheck` — **29/29** packages (incl. `@de-novo/canvas-bim`,
+  `@de-novo/canvas-bim-example`).
 - `pnpm build` — **19/19**.
 - `pnpm verify:document-schema` — mesh node round-trips through the schema and
   the legacy migration union.

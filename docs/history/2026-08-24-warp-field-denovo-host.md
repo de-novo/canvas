@@ -16,12 +16,12 @@ named-operation change.
 - The host reads that document and calls the existing ThreeUI engine.
   The `createCanvas` custom-adapter layer was removed; it did not
   shrink the effect.
-- No `warp-field` node type was added to `@denovo/canvas`.
+- No `warp-field` node type was added to `@de-novo/canvas`.
 
 ## Verification
 
-- `pnpm --filter @denovo/canvas-threeui-example typecheck` passed.
-- `pnpm --filter @denovo/canvas-threeui-example build` passed. Warp Field
+- `pnpm --filter @de-novo/canvas-threeui-example typecheck` passed.
+- `pnpm --filter @de-novo/canvas-threeui-example build` passed. Warp Field
   host is a separate `WarpFieldCanvas` chunk.
 - Browser on `127.0.0.1:5180`: Warp Field host
   `data-denovo-backend=custom`, `data-denovo-mode=3d`, canvas 1408×547

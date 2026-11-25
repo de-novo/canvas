@@ -32,18 +32,18 @@ React / Next.js、Vue、Svelte 或 Solid 中共用同一套编辑器与文档模
     （`computeSnapGuides` / `computeCanvas2DSnapGuides`）、O(visible) HTML
     覆盖层 DOM 虚拟化与增量 diff `renderNode`、O(1) 离屏缓存小地图、rAF
     高频输入帧合并，以及带 GPU 常驻顶点/图集缓存的可选 2D WebGPU 渲染器。
-  - 门面包与四大框架适配器均提供零 Three.js 的轻量 2D 入口（`@denovo/canvas/2d`、
-    `@denovo/canvas/react/2d`、`@denovo/react-canvas/2d`、`@denovo/vue-canvas/2d`、
-    `@denovo/svelte-canvas/2d`、`@denovo/solid-canvas/2d`），确保 2D 应用打包体积
+  - 门面包与四大框架适配器均提供零 Three.js 的轻量 2D 入口（`@de-novo/canvas/2d`、
+    `@de-novo/canvas/react/2d`、`@de-novo/react-canvas/2d`、`@de-novo/vue-canvas/2d`、
+    `@de-novo/svelte-canvas/2d`、`@de-novo/solid-canvas/2d`），确保 2D 应用打包体积
     完全不包含 3D 引擎代码。
 - **高性能 3D 查看器、编辑器与 BIM 工作流**
   - 内置 3D 节点：`box`、`sphere`、`mesh`（内联或外部几何资产）、`instances`、
     `group`、`measurement`、`annotation`，以及官方 `plugin.denovo.field`。
   - 自动 `auto` 后端解析（支持时优先 WebGPU，否则 WebGL2）、可选实例化合批
     （`render.batch: true`）与 BVH 射线拾取、基于距离的球体 LOD、剖切平面、
-    包围盒/网格表面贴合放置与测距、Web Worker 几何转换（`@denovo/canvas/worker`）、
+    包围盒/网格表面贴合放置与测距、Web Worker 几何转换（`@de-novo/canvas/worker`）、
     分块场景流式加载（`createSceneChunkLoader`）以及可选多模型 IFC 联邦
-    （`@denovo/canvas-bim`）。
+    （`@de-novo/canvas-bim`）。
 - **细粒度框架状态订阅（悬停零多余重渲染）**
   - 无头 `subscribeCanvasSelector` + `shallowEqual`，并内置 React
     （`useCanvasSelector`，基于 `useSyncExternalStore`）、Vue（`useCanvasSelector`，
@@ -60,7 +60,7 @@ React / Next.js、Vue、Svelte 或 Solid 中共用同一套编辑器与文档模
 
 ## 快速上手
 
-### 1. 轻量 2D 编辑器（`@denovo/canvas/2d` — 零 Three.js）
+### 1. 轻量 2D 编辑器（`@de-novo/canvas/2d` — 零 Three.js）
 
 ```html
 <div id="stage" style="height: 320px"></div>
@@ -75,8 +75,8 @@ import {
   createEditor,
   defineDocument,
   setNodeVisible
-} from "@denovo/canvas/2d";
-import "@denovo/canvas/styles.css";
+} from "@de-novo/canvas/2d";
+import "@de-novo/canvas/styles.css";
 
 const documentModel = defineDocument({
   id: "drawing",
@@ -110,7 +110,7 @@ document.querySelector("#undo")!.addEventListener("click", () => editor.undo());
 
 ### 2. React / Next.js 2D 视图与细粒度选择器
 
-使用 `@denovo/canvas/react/2d`（或 `@denovo/react-canvas/2d`），2D React 应用不会打包
+使用 `@de-novo/canvas/react/2d`（或 `@de-novo/react-canvas/2d`），2D React 应用不会打包
 任何 Three.js、React Three Fiber 或 Drei 代码，工具栏组件在高频指针悬停期间也不会触发
 多余重渲染：
 
@@ -122,9 +122,9 @@ import {
   createEditor,
   defineDocument,
   shallowEqual
-} from "@denovo/canvas/2d";
-import { Canvas2DView, useCanvasSelector } from "@denovo/canvas/react/2d";
-import "@denovo/canvas/styles.css";
+} from "@de-novo/canvas/2d";
+import { Canvas2DView, useCanvasSelector } from "@de-novo/canvas/react/2d";
+import "@de-novo/canvas/styles.css";
 import { useMemo } from "react";
 
 export function Board() {
@@ -177,7 +177,7 @@ export function Board() {
 
 ```ts
 // Vanilla / 任意运行时
-import { shallowEqual, subscribeCanvasSelector } from "@denovo/canvas/2d";
+import { shallowEqual, subscribeCanvasSelector } from "@de-novo/canvas/2d";
 const stop = subscribeCanvasSelector(
   editor,
   (s) => ({ canUndo: s.history.canUndo, canRedo: s.history.canRedo }),
@@ -185,24 +185,24 @@ const stop = subscribeCanvasSelector(
   { equals: shallowEqual }
 );
 
-// Vue 3（@denovo/vue-canvas 或零 Three.js 的 @denovo/vue-canvas/2d）
-import { useCanvasSelector } from "@denovo/vue-canvas/2d";
+// Vue 3（@de-novo/vue-canvas 或零 Three.js 的 @de-novo/vue-canvas/2d）
+import { useCanvasSelector } from "@de-novo/vue-canvas/2d";
 const undoDepth = useCanvasSelector(editor, (s) => s.history.undoDepth);
 
-// Svelte（@denovo/svelte-canvas 或零 Three.js 的 @denovo/svelte-canvas/2d）
-import { createCanvasSelectorStore } from "@denovo/svelte-canvas/2d";
+// Svelte（@de-novo/svelte-canvas 或零 Three.js 的 @de-novo/svelte-canvas/2d）
+import { createCanvasSelectorStore } from "@de-novo/svelte-canvas/2d";
 const selectedId = createCanvasSelectorStore(editor, (s) => s.selection.primaryId);
 
-// Solid（@denovo/solid-canvas 或零 Three.js 的 @denovo/solid-canvas/2d）
-import { useCanvasSelector } from "@denovo/solid-canvas/2d";
+// Solid（@de-novo/solid-canvas 或零 Three.js 的 @de-novo/solid-canvas/2d）
+import { useCanvasSelector } from "@de-novo/solid-canvas/2d";
 const undoDepthSignal = useCanvasSelector(editor, (s) => s.history.undoDepth);
 ```
 
-### 4. 动态 2D + 3D 场景（`@denovo/canvas`）
+### 4. 动态 2D + 3D 场景（`@de-novo/canvas`）
 
 ```ts
-import { createCanvas } from "@denovo/canvas";
-import "@denovo/canvas/styles.css";
+import { createCanvas } from "@de-novo/canvas";
+import "@de-novo/canvas/styles.css";
 
 const canvas = createCanvas("#stage", {
   scene: {
@@ -220,9 +220,9 @@ const canvas = createCanvas("#stage", {
 
 ### 示例应用与在线演示站
 
-- [10k 2D 实时基准测试与智能吸附（`@denovo/canvas/2d`，零 Three.js）](./apps/playground-flow/src/bench-2d.ts)
-- [Release Board（2D 卡片、连线、保存/重置，`@denovo/canvas/2d`）](./apps/playground-flow/src/main.ts)
-- [Service Map（2D 图布局，`@denovo/canvas/2d`）](./apps/playground-network/src/main.ts)
+- [10k 2D 实时基准测试与智能吸附（`@de-novo/canvas/2d`，零 Three.js）](./apps/playground-flow/src/bench-2d.ts)
+- [Release Board（2D 卡片、连线、保存/重置，`@de-novo/canvas/2d`）](./apps/playground-flow/src/main.ts)
+- [Service Map（2D 图布局，`@de-novo/canvas/2d`）](./apps/playground-network/src/main.ts)
 - [Next.js 遮罩编辑器（React `Canvas2DView` + `useCanvasSelector` + shadcn/Tailwind v4）](./apps/playground/app/mask-host.tsx)
 - [Vanilla 2D/3D 编辑工作台](./apps/vanilla/src/main.ts)
 - [3D Warp Field 示例](./apps/playground-field/src/main.ts)
@@ -243,7 +243,7 @@ const canvas = createCanvas("#stage", {
 | 2D 高频滚轮突发（20 次 / tick） | rAF 帧合并 | 20 次事件 → **1 次 Canvas2D 渲染**（完整保留累计位移） |
 | React / Vue / Headless 选择器 | `useCanvasSelector` / `subscribeCanvasSelector` + `shallowEqual` | 100 次悬停更新中无关组件重渲染 **0 次** |
 | 3D `1k-boxes` / `10k-boxes` / `1k-spheres` | `render.batch: true` 实例化 + BVH 拾取（Metal WebGL2） | `drawCalls=1`，`geometries=1`，**8.30 ms p50**（低于 16 ms GPU 门禁） |
-| 2D 专用生产构建（`playground-flow`、`playground-network`） | `@denovo/canvas/2d`（不含 Three.js / WebGPU） | **1.87 MB → 352–361 kB**（**体积减少 80.6%–81.2%**，Three.js 0 B） |
+| 2D 专用生产构建（`playground-flow`、`playground-network`） | `@de-novo/canvas/2d`（不含 Three.js / WebGPU） | **1.87 MB → 352–361 kB**（**体积减少 80.6%–81.2%**，Three.js 0 B） |
 
 *（3D 硬件 GPU 耗时在 macOS Apple Silicon ANGLE Metal 测得；2D Canvas2D 裁剪、增量同步、智能吸附、HTML diff、rAF 合并、选择器隔离及全部浏览器示例均在 GitHub Actions `ubuntu-latest` CI 中持续验证。）*
 
@@ -251,19 +251,19 @@ const canvas = createCanvas("#stage", {
 
 | 包 / 子路径 | 说明 |
 | --- | --- |
-| `@denovo/canvas` | 完整 2D/3D 门面包（`createCanvas`、`createEditor`、工具、命名操作、选择器、`./styles.css`、`./worker`、`./indexed-db`、`./react-query`、`./web`、`./react`、`./react/2d`）。 |
-| `@denovo/canvas/2d` | 轻量 2D 专用门面，零 `three`、`three/webgpu`、`three-mesh-bvh` 导入。 |
-| `@denovo/canvas-core` | 框架无关的 `0.2.0` 文档/场景/命令/存储/插件 Schema 与校验。 |
-| `@denovo/canvas-editor` | 命令分发器、事务、Undo/Redo、工具、命名操作及 `subscribeCanvasSelector` / `shallowEqual`。 |
-| `@denovo/canvas-web` | 浏览器 2D（Canvas2D + 2D WebGPU）与 3D（WebGL2 + WebGPU）运行时、空间索引、智能吸附与覆盖层虚拟化（`./2d`、`./3d`、`./indexed-db`）。 |
-| `@denovo/canvas-three` | Three.js 优化原语（按需渲染、实例化、BVH 射线拾取、官方 Field 绘制器）。 |
-| `@denovo/react-canvas` | React 适配器（`CanvasView`、`CanvasStage3D`、`useCanvasSelector`）及零 Three.js/R3F/Drei 的 `./2d`（`Canvas2DView`、`useCanvasSelector`）。 |
-| `@denovo/vue-canvas` | Vue 3 适配器（`DenovoCanvas`、`useCanvasSelector`）及零 Three.js 的 `./2d`（`DenovoCanvas2D`、`useCanvasSelector`）。 |
-| `@denovo/svelte-canvas` | Svelte 适配器（`DenovoCanvas`、`createCanvasSelectorStore`）及零 Three.js 的 `./2d`（`DenovoCanvas2D`、`createCanvasSelectorStore`）。 |
-| `@denovo/solid-canvas` | Solid 适配器（`DenovoCanvas`、`useCanvasSelector`）及零 Three.js 的 `./2d`（`DenovoCanvas2D`、`useCanvasSelector`）。 |
-| `@denovo/canvas-server` | 服务端场景存储适配器与乐观锁冲突校验持久化。 |
-| `@denovo/canvas-worker` | Web Worker 任务队列与主线程外几何转换。 |
-| `@denovo/canvas-bim` | 可选 BIM 协议及 `./web-ifc` 多模型 IFC 解析适配器。 |
+| `@de-novo/canvas` | 完整 2D/3D 门面包（`createCanvas`、`createEditor`、工具、命名操作、选择器、`./styles.css`、`./worker`、`./indexed-db`、`./react-query`、`./web`、`./react`、`./react/2d`）。 |
+| `@de-novo/canvas/2d` | 轻量 2D 专用门面，零 `three`、`three/webgpu`、`three-mesh-bvh` 导入。 |
+| `@de-novo/canvas-core` | 框架无关的 `0.2.0` 文档/场景/命令/存储/插件 Schema 与校验。 |
+| `@de-novo/canvas-editor` | 命令分发器、事务、Undo/Redo、工具、命名操作及 `subscribeCanvasSelector` / `shallowEqual`。 |
+| `@de-novo/canvas-web` | 浏览器 2D（Canvas2D + 2D WebGPU）与 3D（WebGL2 + WebGPU）运行时、空间索引、智能吸附与覆盖层虚拟化（`./2d`、`./3d`、`./indexed-db`）。 |
+| `@de-novo/canvas-three` | Three.js 优化原语（按需渲染、实例化、BVH 射线拾取、官方 Field 绘制器）。 |
+| `@de-novo/react-canvas` | React 适配器（`CanvasView`、`CanvasStage3D`、`useCanvasSelector`）及零 Three.js/R3F/Drei 的 `./2d`（`Canvas2DView`、`useCanvasSelector`）。 |
+| `@de-novo/vue-canvas` | Vue 3 适配器（`DenovoCanvas`、`useCanvasSelector`）及零 Three.js 的 `./2d`（`DenovoCanvas2D`、`useCanvasSelector`）。 |
+| `@de-novo/svelte-canvas` | Svelte 适配器（`DenovoCanvas`、`createCanvasSelectorStore`）及零 Three.js 的 `./2d`（`DenovoCanvas2D`、`createCanvasSelectorStore`）。 |
+| `@de-novo/solid-canvas` | Solid 适配器（`DenovoCanvas`、`useCanvasSelector`）及零 Three.js 的 `./2d`（`DenovoCanvas2D`、`useCanvasSelector`）。 |
+| `@de-novo/canvas-server` | 服务端场景存储适配器与乐观锁冲突校验持久化。 |
+| `@de-novo/canvas-worker` | Web Worker 任务队列与主线程外几何转换。 |
+| `@de-novo/canvas-bim` | 可选 BIM 协议及 `./web-ifc` 多模型 IFC 解析适配器。 |
 
 ## 开发与验证
 

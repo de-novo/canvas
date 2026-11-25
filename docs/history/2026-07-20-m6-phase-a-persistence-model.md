@@ -6,7 +6,7 @@ Date: 2026-07-20.
 
 M6 connects editing to real applications. Three parallel explorations found the
 persistence layer was effectively dead code: `CanvasStorageAdapter` was fully
-defined in core but had zero callers; `@denovo/canvas-server` defined its own
+defined in core but had zero callers; `@de-novo/canvas-server` defined its own
 incompatible scene-level `SceneStore`; the editor's `persistent` flag meant
 "undoable" not "saved"; and the facade's `loadDocument` was synchronous and
 in-memory only. Before any adapter can be wired end-to-end, the data model

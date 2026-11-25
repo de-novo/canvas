@@ -2,7 +2,7 @@
 
 M0 public API validation starts from the user-facing facade package.
 
-The current package name is `@denovo/canvas`, but the product should treat the
+The current package name is `@de-novo/canvas`, but the product should treat the
 package name as a distribution detail that may change before release. The stable
 contract is the facade shape, export names, subpath roles, document model, and
 runtime behavior.
@@ -92,6 +92,21 @@ The default package must expose:
 - `isDenovoShadeNode`
 - `isDenovoShadeType`
 - `parseDenovoShadeProps`
+- `setImageFit`
+- `DENOVO_IMAGE_NODE_TYPE`
+- `denovoImageSize`
+- `isDenovoImageNode`
+- `isDenovoImageType`
+- `parseDenovoImageProps`
+- `resolveDenovoImageDrawRect`
+- `resolveDenovoImageStyle`
+- `createImageAssetRef`
+- `createMemoryImageStore`
+- `resolveCanvas2DObstacleFreeOrthogonalWaypoints`
+- `orthogonalSegmentIntersectsBoxInterior`
+- `inspectCanvas2DRuntime`
+- `captureCanvas2DSnapshot`
+- `summarizeCanvasImageData`
 - `defineMeshGeometry`
 - `createMemoryGeometryStore`
 - `createMeshGeometryAssetRef`
@@ -115,6 +130,15 @@ The default package must expose:
 - `fitCanvas2DView`
 - `flyCanvas2DViewTo`
 - `getCanvas2DVisibleBounds`
+- `computeCanvas2DSnapGuides`
+- `computeCanvas2DRedlines`
+- `resolveCanvas2DBoxModelRegions`
+- `formatCanvas2DRedlineDistance`
+- `DEFAULT_BOX_MODEL_COLORS`
+- `DEFAULT_REDLINE_COLOR`
+- `Canvas2DCornerRadiusSchema`
+- `Canvas2DOpacitySchema`
+- `Canvas2DClipRectSchema`
 - `createNodeUpdateCommand`
 - `createGroupNodesCommand`
 - `createUngroupNodesCommand`
@@ -144,7 +168,7 @@ The package must also expose:
 - `./2d` for the lightweight 2D-only facade entrypoint (`createCanvas`, `connectEditorToCanvas`, `connectEditorToRuntime`, editor/tools/named-operations/selectors, and 2D camera helpers) with zero `three`, `three/webgpu`, or `three-mesh-bvh` imports;
 - `./styles.css` for the styling contract;
 - `./react` for optional React adapter exports (`CanvasView`, `CanvasStage3D`, `useCanvasSelector`, `shallowEqual`);
-- `./react/2d` for the optional Three.js/R3F/Drei-free React 2D adapter (`Canvas2DView`, `useCanvasSelector`, `shallowEqual`); optional Vue (`@denovo/vue-canvas/2d`), Svelte (`@denovo/svelte-canvas/2d`), and Solid (`@denovo/solid-canvas/2d`) adapters mirror this Three.js-free `./2d` subpath (`DenovoCanvas2D`, selector hook/store, `shallowEqual`);
+- `./react/2d` for the optional Three.js/R3F/Drei-free React 2D adapter (`Canvas2DView`, `useCanvasSelector`, `shallowEqual`); optional Vue (`@de-novo/vue-canvas/2d`), Svelte (`@de-novo/svelte-canvas/2d`), and Solid (`@de-novo/solid-canvas/2d`) adapters mirror this Three.js-free `./2d` subpath (`DenovoCanvas2D`, selector hook/store, `shallowEqual`);
 - `./web` for host kind drawer registration (`registerPluginNodeDrawer`).
   The default import must not export that function or Canvas2D/Three
   types for it.
@@ -157,8 +181,8 @@ facade import.
 The target first-run API is:
 
 ```ts
-import { createCanvas } from "@denovo/canvas";
-import "@denovo/canvas/styles.css";
+import { createCanvas } from "@de-novo/canvas";
+import "@de-novo/canvas/styles.css";
 
 const canvas = createCanvas("#stage", {
   scene: {
@@ -180,7 +204,7 @@ remain the same.
 
 ## Styling Contract
 
-`@denovo/canvas/styles.css` is prebuilt static CSS. It does not require a
+`@de-novo/canvas/styles.css` is prebuilt static CSS. It does not require a
 Tailwind or shadcn runtime import. Consumers can change SDK presentation without
 rebuilding the package by setting public `--dc-*` variables. When a Denovo
 override is absent, the stylesheet consumes Tailwind v4 `--color-*` variables,
@@ -379,7 +403,7 @@ image, glTF/GLB, IFC, or binary assets require later node/loader adapters.
 ## Editor Core Contract
 
 The facade explicitly re-exports the framework-independent editor API
-from `@denovo/canvas-editor`:
+from `@de-novo/canvas-editor`:
 
 ```ts
 const editor = createEditor({ document });
@@ -514,8 +538,20 @@ The official 2D kind `plugin.denovo.shade` is pre-registered. Its
 `props` are `DenovoShadeProps`: `pattern` is `"gradient" | "wave"`,
 `hue` is 0–360, `speed` is 0–40, and `width` / `height` are ranges.
 `setShadePattern` compiles to `node.update`. The official 2D drawer
-reads only those properties. Other 2D plugin kinds still draw as the
-48×48 marker until a host registers a drawer on `@denovo/canvas-web`.
+reads only those properties.
+
+The official 2D kind `plugin.denovo.image` is pre-registered. Its
+`props` are `DenovoImageProps`: `width` and `height` are positive
+finite numbers, at least one of `assetId` (validated against
+`document.assets` with `type: "image"`) or `src` is required, and
+optional `fit` (`"contain" | "cover" | "fill"`, default `"contain"`),
+`cornerRadius`, `opacity`, `stroke`, `strokeWidth`, `placeholder`, and
+`alt` stay JSON-serializable. Pre-decoded session bitmaps pass through
+`createMemoryImageStore()` / `imageStore` without entering the document,
+while URI assets and `src` decode asynchronously and repaint in both
+Canvas2D and single-drawCall 2D WebGPU. `setImageFit` compiles to
+`node.update`. Other 2D plugin kinds still draw as the 48×48 marker
+until a host registers a drawer on `@de-novo/canvas-web`.
 `listPluginNodeKinds()` returns a readonly `{ type, mode }` snapshot.
 The default facade does not export `registerPluginNodeDrawer`. See
 [Kind Drawer Seam](./kind-drawer-seam.md).
@@ -657,6 +693,53 @@ replacement preserves those bindings. Pointer cancel/leave, Escape, tool
 change, disconnect, scene/runtime replacement, and runtime destruction clear
 owned previews and sessions. The web connector restores the host's prior
 `touch-action` value when disconnected.
+
+## 2D UI Styles And Ephemeral Inspection Overlays
+
+Canonical schema `0.2.0` supports backwards-compatible defaulted 2D UI style
+fields on existing built-in 2D nodes:
+
+- `rect`: `cornerRadius` (non-negative finite scalar or `[tl, tr, br, bl]`
+  4-tuple, default `0`), `stroke` (`string | null`, default `null`),
+  `strokeWidth` (non-negative finite number, default `1`), and `opacity`
+  (`[0, 1]`, default `1`). Setting `fill` to `"none"` or `"transparent"` skips
+  fill painting while retaining stroke and hit-testing.
+- `circle`: `stroke` (`string | null`, default `null`), `strokeWidth` (default
+  `1`), and `opacity` (default `1`).
+- 2D `group`: `clip` (`{ x?, y?, width, height, cornerRadius? } | null`,
+  default `null`) and `opacity` (default `1`). Clipped child regions outside
+  the group's rounded clip rectangle are neither painted nor picked.
+- 2D `edge`: `avoidObstacles` (default `false`) and `obstaclePadding` (default
+  `16`). When `routing: "orthogonal"` and `avoidObstacles: true`, the 2D edge
+  router builds an obstacle-free gutter grid (padded edges, centered gap
+  midlines, and outer escape rails) with bend-penalized A\* so segments never
+  cross other visible nodes in the same layer; the pure solver is exported as
+  `resolveCanvas2DObstacleFreeOrthogonalWaypoints`.
+
+Both Canvas2D and explicit 2D WebGPU (`drawCalls=1` SDF shader) share the same
+CSS border-radius clamping, centered stroke semantics, and hit-testing math.
+
+For layout and UI inspection, `Canvas2DRuntime.setInspectionOverlay(overlay |
+null)` renders ephemeral DevTools-style box-model regions (`margin`, `border`,
+`padding`, `content`, and summary labels) and element-to-element spacing
+redlines (`computeCanvas2DRedlines`, `resolveCanvas2DBoxModelRegions`,
+`formatCanvas2DRedlineDistance`) on both Canvas2D and 2D WebGPU without
+mutating the document or editor history.
+
+For automated verification and AI agents, `inspectCanvas2DRuntime(runtime,
+options?)` returns a JSON-serializable `Canvas2DRuntimeSnapshot` (backend,
+viewport, view state, render/spatial-index stats, effective layer/node
+visibility and lock state, world bounds, and exact canvas CSS-pixel screen
+bounds and centers), `summarizeCanvasImageData(image)` computes deterministic
+pixel coverage stats, and `captureCanvas2DSnapshot(runtime, options?)` pairs
+the inspection snapshot with `readPixels()` coverage and an optional PNG data
+URL across both Canvas2D and headless 2D WebGPU.
+
+2D WebGPU packs `plugin.denovo.image`, text, and host-drawer rasters into a
+lazily allocated multi-page `texture_2d_array` atlas (up to 8 `2048×2048`
+pages in 1 draw call) with octave-quantized zoom-aware LOD so zoomed-out
+screenshot maps compact into fewer atlas pages without breaking GPU-resident
+pan caching.
 
 ## Verification
 

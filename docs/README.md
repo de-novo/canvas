@@ -41,7 +41,7 @@ document under `docs/` takes precedence.
   the only product-level extension seam; `CanvasPlugin` is a host bundle;
   `pluginState` is bookkeeping; the plugin taxonomy is superseded.
 - [Kind Drawer Seam](./kind-drawer-seam.md): host `plugin.<org>.<kind>`
-  drawers and hit-testing register on `@denovo/canvas-web`; the facade
+  drawers and hit-testing register on `@de-novo/canvas-web`; the facade
   does not expose Canvas2D or Three.js types for that seam.
 - [M0 Product Contract](./m0-product-contract.md): the first stable public
   contract for packages, documents, commands, storage, extension, styling, and

@@ -1,3 +1,3 @@
-import { createDenovoWorkerHandler } from "@denovo/canvas/worker";
+import { createDenovoWorkerHandler } from "@de-novo/canvas/worker";
 
 self.addEventListener("message", createDenovoWorkerHandler());

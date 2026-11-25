@@ -15,7 +15,7 @@ https://github.com/de-novo/canvas/security/advisories/new
 
 Include:
 
-- the affected package (`@denovo/canvas`, `@denovo/canvas-editor`, and so on);
+- the affected package (`@de-novo/canvas`, `@de-novo/canvas-editor`, and so on);
 - a description of the issue and impact;
 - steps to reproduce, or a proof of concept if you have one;
 - any known workarounds.

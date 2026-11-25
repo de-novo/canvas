@@ -24,8 +24,8 @@ Passed:
 
 ```sh
 pnpm typecheck
-pnpm --filter @denovo/canvas-web build
-pnpm --filter @denovo/canvas-vanilla-example build
+pnpm --filter @de-novo/canvas-web build
+pnpm --filter @de-novo/canvas-vanilla-example build
 pnpm verify:browser-rendering
 ```
 

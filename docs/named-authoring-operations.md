@@ -48,7 +48,7 @@ run operations. It is not a prompt protocol.
 ## Non-Goals
 
 - A new document schema or `0.3.0` bump.
-- A chat panel, prompt protocol, or `@denovo/canvas-agent` package.
+- A chat panel, prompt protocol, or `@de-novo/canvas-agent` package.
 - A fluent `editor.foo().bar()` surface.
 - Public `Effect`, `pipe` from Effect, or a new FP runtime.
 - New gesture tools. Pointer sessions already exist.
@@ -89,31 +89,31 @@ function to `applyNamedOperations` / `editor.apply` is the list path.
 
 | Symbol | Lives in | Facade export |
 |---|---|---|
-| `setLayerVisible` | `@denovo/canvas-editor` | `@denovo/canvas` |
-| `setLayerLocked` | `@denovo/canvas-editor` | `@denovo/canvas` |
-| `setLayerName` | `@denovo/canvas-editor` | `@denovo/canvas` |
-| `stackBox` | `@denovo/canvas-editor` | `@denovo/canvas` |
-| `listNodes` | `@denovo/canvas-editor` | `@denovo/canvas` |
-| `listLayers` | `@denovo/canvas-editor` | `@denovo/canvas` |
-| `listLabels` | `@denovo/canvas-editor` | `@denovo/canvas` |
-| `removeNode` | `@denovo/canvas-editor` | `@denovo/canvas` |
-| `removeEdge` | `@denovo/canvas-editor` | `@denovo/canvas` |
-| `removeLayer` | `@denovo/canvas-editor` | `@denovo/canvas` |
-| `addLayer` | `@denovo/canvas-editor` | `@denovo/canvas` |
-| `reorderLayer` | `@denovo/canvas-editor` | `@denovo/canvas` |
-| `setFieldPattern` | `@denovo/canvas-editor` | `@denovo/canvas` |
-| `setSparklineStyle` | `@denovo/canvas-editor` | `@denovo/canvas` |
-| `setShadePattern` | `@denovo/canvas-editor` | `@denovo/canvas` |
-| `setNodeVisible` | `@denovo/canvas-editor` | `@denovo/canvas` |
-| `setNodeLocked` | `@denovo/canvas-editor` | `@denovo/canvas` |
-| `setNodeLayer` | `@denovo/canvas-editor` | `@denovo/canvas` |
-| `setText` | `@denovo/canvas-editor` | `@denovo/canvas` |
-| `setAnnotationText` | `@denovo/canvas-editor` | `@denovo/canvas` |
-| `applyNamedOperations` | `@denovo/canvas-editor` | `@denovo/canvas` |
-| `CanvasEditor.apply` | `@denovo/canvas-editor` | through the editor instance |
-| `listNamedOperations` | `@denovo/canvas-editor` | `@denovo/canvas` |
+| `setLayerVisible` | `@de-novo/canvas-editor` | `@de-novo/canvas` |
+| `setLayerLocked` | `@de-novo/canvas-editor` | `@de-novo/canvas` |
+| `setLayerName` | `@de-novo/canvas-editor` | `@de-novo/canvas` |
+| `stackBox` | `@de-novo/canvas-editor` | `@de-novo/canvas` |
+| `listNodes` | `@de-novo/canvas-editor` | `@de-novo/canvas` |
+| `listLayers` | `@de-novo/canvas-editor` | `@de-novo/canvas` |
+| `listLabels` | `@de-novo/canvas-editor` | `@de-novo/canvas` |
+| `removeNode` | `@de-novo/canvas-editor` | `@de-novo/canvas` |
+| `removeEdge` | `@de-novo/canvas-editor` | `@de-novo/canvas` |
+| `removeLayer` | `@de-novo/canvas-editor` | `@de-novo/canvas` |
+| `addLayer` | `@de-novo/canvas-editor` | `@de-novo/canvas` |
+| `reorderLayer` | `@de-novo/canvas-editor` | `@de-novo/canvas` |
+| `setFieldPattern` | `@de-novo/canvas-editor` | `@de-novo/canvas` |
+| `setSparklineStyle` | `@de-novo/canvas-editor` | `@de-novo/canvas` |
+| `setShadePattern` | `@de-novo/canvas-editor` | `@de-novo/canvas` |
+| `setNodeVisible` | `@de-novo/canvas-editor` | `@de-novo/canvas` |
+| `setNodeLocked` | `@de-novo/canvas-editor` | `@de-novo/canvas` |
+| `setNodeLayer` | `@de-novo/canvas-editor` | `@de-novo/canvas` |
+| `setText` | `@de-novo/canvas-editor` | `@de-novo/canvas` |
+| `setAnnotationText` | `@de-novo/canvas-editor` | `@de-novo/canvas` |
+| `applyNamedOperations` | `@de-novo/canvas-editor` | `@de-novo/canvas` |
+| `CanvasEditor.apply` | `@de-novo/canvas-editor` | through the editor instance |
+| `listNamedOperations` | `@de-novo/canvas-editor` | `@de-novo/canvas` |
 
-BIM `listBimElements({ modelId })` stays in `@denovo/canvas-bim`.
+BIM `listBimElements({ modelId })` stays in `@de-novo/canvas-bim`.
 Core/editor MUST NOT import `__bim`.
 
 ## Slice 1 — `setLayerVisible`

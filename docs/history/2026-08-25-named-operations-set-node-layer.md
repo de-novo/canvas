@@ -11,7 +11,7 @@ Named authoring slice 15. Document-only helper that compiles to one
 
 ## Changes
 
-- `@denovo/canvas-editor` and `@denovo/canvas` export `setNodeLayer`
+- `@de-novo/canvas-editor` and `@de-novo/canvas` export `setNodeLayer`
   and `SetNodeLayerInput`.
 - Extra fields fail at the helper.
 - An effectively locked node or a locked target layer is

@@ -1,6 +1,6 @@
 {
-  "name": "@denovo/canvas-editor",
-  "version": "0.1.0",
+  "name": "@de-novo/canvas-editor",
+  "version": "0.2.0",
   "license": "Apache-2.0",
   "description": "Framework-agnostic command, transaction, selection, and history runtime for Denovo Canvas.",
   "type": "module",
@@ -21,12 +21,12 @@
   ],
   "sideEffects": false,
   "scripts": {
-    "build": "tsup src/index.ts --format esm,cjs --clean --external effect --external @denovo/canvas-core && tsc --emitDeclarationOnly",
+    "build": "tsup src/index.ts --format esm,cjs --clean --external effect --external @de-novo/canvas-core && tsc --emitDeclarationOnly",
     "clean": "rm -rf dist .turbo",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@denovo/canvas-core": "workspace:*",
+    "@de-novo/canvas-core": "workspace:*",
     "effect": "3.21.4"
   },
   "homepage": "https://github.com/de-novo/canvas#readme",

@@ -8,8 +8,8 @@ import {
   type Canvas2DSceneInput,
   type CanvasDocument,
   type DenovoCanvas2DRuntime
-} from "@denovo/canvas/2d";
-import "@denovo/canvas/styles.css";
+} from "@de-novo/canvas/2d";
+import "@de-novo/canvas/styles.css";
 
 type BenchTelemetry = {
   readonly nodeCount: number;

@@ -7,7 +7,7 @@ import {
   type CanvasNodeTransformPreview,
   type PluginNodeKindMode,
   type PluginNodeType
-} from "@denovo/canvas-core";
+} from "@de-novo/canvas-core";
 
 export const PLUGIN_NODE_MARKER_FILL = "#64748b";
 

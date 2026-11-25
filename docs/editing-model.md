@@ -24,7 +24,7 @@ does not draw, it cannot be edited. See
 ## Implementation Status
 
 M2 Editor Core is verified, and final M3 Authoring Tools verification is
-active. `@denovo/canvas-editor` provides strict recursive command validation,
+active. `@de-novo/canvas-editor` provides strict recursive command validation,
 framework-free editor creation, node and layer command application, transient
 selection and tool sessions, atomic transactions, snapshot-backed undo/redo,
 registries, subscriptions, and hit-to-selection transitions.
@@ -494,16 +494,16 @@ public failures remain `CanvasPluginError` or `CanvasEditorError`.
 
 ## Package Ownership
 
-- `@denovo/canvas-core`: versioned document/node/layer schemas, migration,
+- `@de-novo/canvas-core`: versioned document/node/layer schemas, migration,
   identity, authoring capability values, IDs, and validation.
-- `@denovo/canvas-editor`: commands, history, selection, tools, transactions,
+- `@de-novo/canvas-editor`: commands, history, selection, tools, transactions,
   grid math, hierarchy rules, and effective lock/visibility semantics.
-- `@denovo/canvas-web`: DOM input bridge, scene-point math, transient previews,
+- `@de-novo/canvas-web`: DOM input bridge, scene-point math, transient previews,
   built-in authoring rendering/hit testing, and runtime cleanup.
-- `@denovo/canvas-three`: 3D picking, BVH, instancing, geometry helpers.
-- `@denovo/react-canvas`: React bindings only.
+- `@de-novo/canvas-three`: 3D picking, BVH, instancing, geometry helpers.
+- `@de-novo/react-canvas`: React bindings only.
 
-`@denovo/canvas` explicitly re-exports the public authoring surface and wires
+`@de-novo/canvas` explicitly re-exports the public authoring surface and wires
 structural capabilities across runtime replacement. It does not duplicate core
 schemas or editor state machines. Framework adapters own property and draft UI,
 not private mutation paths.

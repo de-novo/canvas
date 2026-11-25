@@ -22,10 +22,10 @@ import {
   type CanvasSelectorEquality,
   type DenovoCanvas2DCommonConfig,
   type DenovoCanvas2DRuntime
-} from "@denovo/canvas/2d";
+} from "@de-novo/canvas/2d";
 
 /**
- * Lightweight 2D-only Vue 3 canvas component backed by `@denovo/canvas/2d`.
+ * Lightweight 2D-only Vue 3 canvas component backed by `@de-novo/canvas/2d`.
  * Imports zero Three.js or 3D runtime code.
  */
 export const DenovoCanvas2D = defineComponent({
@@ -184,4 +184,4 @@ export {
   type CanvasSelectorEquality,
   type DenovoCanvas2DCommonConfig,
   type DenovoCanvas2DRuntime
-} from "@denovo/canvas/2d";
+} from "@de-novo/canvas/2d";

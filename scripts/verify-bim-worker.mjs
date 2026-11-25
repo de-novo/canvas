@@ -3,7 +3,7 @@
  * M7 BIM worker parsing verification.
  *
  * Runs the real web-ifc tessellation core through the
- * `@denovo/canvas-worker` queue using an in-process loopback worker, against
+ * `@de-novo/canvas-worker` queue using an in-process loopback worker, against
  * the playground's sample.ifc. Proves: parse task correctness (typed arrays,
  * metadata, category layers), document assembly via `createWorkerBimAdapter`,
  * maxElements skipping, property-set reads (best-effort contract),

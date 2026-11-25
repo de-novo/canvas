@@ -14,7 +14,7 @@ Hero catalog case. ThreeUI Warp Field is restated as one official
 - Official drawer now draws a corridor field: additive streaks or
   D/E/N/O/V letter planes. It reads only `DenovoFieldProps`. No vendor
   file.
-- Added `@denovo/canvas-field-example` (`apps/playground-field`).
+- Added `@de-novo/canvas-field-example` (`apps/playground-field`).
 - The document is `createCanvas` + `defineDocument` with one field
   node. The catalog board shows the actual ThreeUI host + engine
   source next to our document, `setFieldPattern` apply path, and
@@ -31,8 +31,8 @@ as a reference.
 
 - `pnpm typecheck`: 35/35
 - `pnpm build`: 24/24
-- `pnpm --filter @denovo/canvas-field-example typecheck`: passed
-- `pnpm --filter @denovo/canvas-field-example build`: passed
+- `pnpm --filter @de-novo/canvas-field-example typecheck`: passed
+- `pnpm --filter @de-novo/canvas-field-example build`: passed
 - `pnpm verify:denovo-field`: 2/2
 - `pnpm verify:field-showcase`: passed 2/2
   - desktop: no iframe, `listed.type === plugin.denovo.field`, field

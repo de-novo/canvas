@@ -27,7 +27,7 @@ not a second status index.
   offset; invalidates stale asynchronous work; and allocates one ID only after
   the pointer-up requery succeeds before dispatching one `node.add` command.
 - Added canonical unit-box analytic ray intersection in
-  `@denovo/canvas-three`. It reports a local box face with an inverse-transpose
+  `@de-novo/canvas-three`. It reports a local box face with an inverse-transpose
   world unit normal and rejects non-finite or singular transforms. The helper
   remains renderer support code and does not own placement or persistence.
 - Added the built-in Three/web surface-point capability and ghost rendering.

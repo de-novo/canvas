@@ -2,8 +2,8 @@
   import {
     type Canvas2DSceneInput,
     type Canvas3DSceneInput
-  } from "@denovo/canvas-core";
-  import { DenovoCanvas } from "@denovo/svelte-canvas";
+  } from "@de-novo/canvas-core";
+  import { DenovoCanvas } from "@de-novo/svelte-canvas";
 
   type DemoMode = "2d" | "3d";
 
@@ -88,7 +88,7 @@
     <p class="eyebrow">Svelte</p>
     <h1>Svelte adapter smoke example</h1>
     <p>
-      Renders 2D and 3D scenes through <code>@denovo/svelte-canvas</code>.
+      Renders 2D and 3D scenes through <code>@de-novo/svelte-canvas</code>.
     </p>
     <div class="controls">
       <button type="button" data-denovo-control="swap" on:click={swapScene}>

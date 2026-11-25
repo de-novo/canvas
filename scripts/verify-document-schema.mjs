@@ -34,19 +34,24 @@ import {
   Canvas2DEdgeNodeSchema,
   createMemoryGeometryStore,
   createMeshGeometryAssetRef,
+  createImageAssetRef,
   define2DEdge,
   defineMeshGeometry,
   resolveCanvasMeshGeometry,
+  resolveDenovoImageDrawRect,
   defineCommand,
   defineDocument,
   definePluginNodeKind,
   denovoFieldInstanceCount,
+  denovoImageSize,
   denovoSparklinePoints,
   denovoShadeSize,
   getPluginNodeKind,
   pluginNodeKindSupportsMode,
   isDenovoFieldNode,
   isDenovoFieldType,
+  isDenovoImageNode,
+  isDenovoImageType,
   isDenovoShadeNode,
   isDenovoShadeType,
   isDenovoSparklineNode,
@@ -796,6 +801,173 @@ check("m8-node-update-roundtrips-edge-text-html", () => {
     type: "node.update"
   });
   assert.equal(htmlUpdate.patch.html, "plain");
+});
+
+check("2d-ui-styles-normalize-and-validate-strictly", () => {
+  const scene = defineScene({
+    id: "ui-styles-scene",
+    layers: [{ id: "ui", name: "UI" }],
+    mode: "2d",
+    nodes: [
+      {
+        id: "default-rect",
+        layerId: "ui",
+        type: "rect"
+      },
+      {
+        id: "styled-rect",
+        layerId: "ui",
+        type: "rect",
+        position: [20, 30],
+        size: [200, 120],
+        fill: "#1e293b",
+        cornerRadius: [16, 16, 4, 4],
+        stroke: "#38bdf8",
+        strokeWidth: 2,
+        opacity: 0.85
+      },
+      {
+        id: "styled-circle",
+        layerId: "ui",
+        type: "circle",
+        radius: 36,
+        stroke: "#f59e0b",
+        strokeWidth: 3,
+        opacity: 0.7
+      },
+      {
+        id: "clip-group",
+        layerId: "ui",
+        type: "group",
+        clip: { width: 320, height: 240, cornerRadius: 12 },
+        opacity: 0.9
+      },
+      {
+        id: "default-group",
+        layerId: "ui",
+        type: "group"
+      }
+    ]
+  });
+
+  const defaultRect = scene.nodes.find((n) => n.id === "default-rect");
+  assert.equal(defaultRect.cornerRadius, 0);
+  assert.equal(defaultRect.stroke, null);
+  assert.equal(defaultRect.strokeWidth, 1);
+  assert.equal(defaultRect.opacity, 1);
+
+  const styledRect = scene.nodes.find((n) => n.id === "styled-rect");
+  assert.deepEqual(styledRect.cornerRadius, [16, 16, 4, 4]);
+  assert.equal(styledRect.stroke, "#38bdf8");
+  assert.equal(styledRect.strokeWidth, 2);
+  assert.equal(styledRect.opacity, 0.85);
+
+  const styledCircle = scene.nodes.find((n) => n.id === "styled-circle");
+  assert.equal(styledCircle.stroke, "#f59e0b");
+  assert.equal(styledCircle.strokeWidth, 3);
+  assert.equal(styledCircle.opacity, 0.7);
+
+  const clipGroup = scene.nodes.find((n) => n.id === "clip-group");
+  assert.deepEqual(clipGroup.clip, {
+    x: 0,
+    y: 0,
+    width: 320,
+    height: 240,
+    cornerRadius: 12
+  });
+  assert.equal(clipGroup.opacity, 0.9);
+
+  const defaultGroup = scene.nodes.find((n) => n.id === "default-group");
+  assert.equal(defaultGroup.clip, null);
+  assert.equal(defaultGroup.opacity, 1);
+
+  const rectUpdate = defineCommand({
+    nodeId: "styled-rect",
+    nodeMode: "2d",
+    nodeType: "rect",
+    patch: { cornerRadius: 8, stroke: null, strokeWidth: 0, opacity: 0.5 },
+    type: "node.update"
+  });
+  assert.equal(rectUpdate.patch.cornerRadius, 8);
+  assert.equal(rectUpdate.patch.stroke, null);
+
+  const groupUpdate = defineCommand({
+    nodeId: "clip-group",
+    nodeMode: "2d",
+    nodeType: "group",
+    patch: {
+      clip: { x: 4, y: 8, width: 200, height: 100, cornerRadius: [8, 8, 0, 0] },
+      opacity: 0.75
+    },
+    type: "node.update"
+  });
+  assert.equal(groupUpdate.patch.opacity, 0.75);
+  assert.deepEqual(groupUpdate.patch.clip.cornerRadius, [8, 8, 0, 0]);
+
+  const invalidScenes = [
+    {
+      id: "neg-radius",
+      layers: [{ id: "ui", name: "UI" }],
+      mode: "2d",
+      nodes: [{ id: "r", layerId: "ui", type: "rect", cornerRadius: -2 }]
+    },
+    {
+      id: "bad-tuple-radius",
+      layers: [{ id: "ui", name: "UI" }],
+      mode: "2d",
+      nodes: [{ id: "r", layerId: "ui", type: "rect", cornerRadius: [4, 4, 4] }]
+    },
+    {
+      id: "opacity-over-one",
+      layers: [{ id: "ui", name: "UI" }],
+      mode: "2d",
+      nodes: [{ id: "r", layerId: "ui", type: "rect", opacity: 1.5 }]
+    },
+    {
+      id: "opacity-negative",
+      layers: [{ id: "ui", name: "UI" }],
+      mode: "2d",
+      nodes: [{ id: "c", layerId: "ui", type: "circle", opacity: -0.1 }]
+    },
+    {
+      id: "neg-stroke-width",
+      layers: [{ id: "ui", name: "UI" }],
+      mode: "2d",
+      nodes: [{ id: "r", layerId: "ui", type: "rect", stroke: "#fff", strokeWidth: -1 }]
+    },
+    {
+      id: "empty-stroke",
+      layers: [{ id: "ui", name: "UI" }],
+      mode: "2d",
+      nodes: [{ id: "r", layerId: "ui", type: "rect", stroke: "" }]
+    },
+    {
+      id: "zero-clip-width",
+      layers: [{ id: "ui", name: "UI" }],
+      mode: "2d",
+      nodes: [{ id: "g", layerId: "ui", type: "group", clip: { width: 0, height: 100 } }]
+    },
+    {
+      id: "extra-clip-field",
+      layers: [{ id: "ui", name: "UI" }],
+      mode: "2d",
+      nodes: [{ id: "g", layerId: "ui", type: "group", clip: { width: 100, height: 100, overflow: "hidden" } }]
+    },
+    {
+      id: "clip-on-3d-group",
+      layers: [{ id: "ui", name: "UI" }],
+      mode: "3d",
+      nodes: [{ id: "g", layerId: "ui", type: "group", clip: { width: 100, height: 100 } }]
+    }
+  ];
+
+  for (const invalid of invalidScenes) {
+    assert.equal(
+      safeDefineScene(invalid).success,
+      false,
+      `Expected scene "${invalid.id}" to fail validation`
+    );
+  }
 });
 
 check("defineDocument-validates-document-shape", () => {
@@ -2298,7 +2470,7 @@ import {
   type CanvasScenePointRuntime,
   type CanvasToolContext,
   type JsonValue
-} from "@denovo/canvas-core";
+} from "@de-novo/canvas-core";
 
 const scene = defineScene({
   id: "typed-scene",
@@ -2350,23 +2522,47 @@ const measurement2d: CanvasNodeForMode<"2d"> = {
 };
 type Rect2D = CanvasNodeByType<"2d", "rect">;
 const rect2d: Rect2D = {
+  cornerRadius: 0,
   fill: "#22c55e",
   id: "rect-typed",
   layerId: "layer-main",
   locked: false,
   metadata: {},
+  opacity: 1,
   parentId: null,
   position: [0, 0],
   rotation: 0,
   scale: [1, 1],
   size: [120, 80],
+  stroke: null,
+  strokeWidth: 1,
   type: "rect",
   visible: true
 };
 const rectPatch: CanvasNodePatchFor<Rect2D> = {
+  cornerRadius: [12, 12, 4, 4],
   fill: "#ffffff",
-  parentId: null
+  opacity: 0.85,
+  parentId: null,
+  stroke: "#38bdf8",
+  strokeWidth: 2
 };
+type Group2D = CanvasNodeByType<"2d", "group">;
+const group2dPatch: CanvasNodePatchFor<Group2D> = {
+  clip: { x: 0, y: 0, width: 320, height: 240, cornerRadius: 8 },
+  opacity: 0.9
+};
+void group2dPatch;
+const invalidRectCornerRadiusPatch: CanvasNodePatchFor<Rect2D> = {
+  // @ts-expect-error Corner radius tuple must have exactly four corner values.
+  cornerRadius: [8, 8, 8]
+};
+void invalidRectCornerRadiusPatch;
+const invalidGroupClipPatch: CanvasNodePatchFor<Group2D> = {
+  // @ts-expect-error Group clip requires finite numeric width and height.
+  clip: { x: 0, y: 0, width: "100%", height: 100, cornerRadius: 0 }
+};
+void invalidGroupClipPatch;
 const rectType: Canvas2DNodeType = "rect";
 const boxType: Canvas3DNodeType = "box";
 const pluginType: Canvas3DNodeType = "plugin.test.marker";
@@ -3097,7 +3293,7 @@ void json;
           moduleResolution: "NodeNext",
           noEmit: true,
           paths: {
-            "@denovo/canvas-core": ["../../packages/core/dist/index.d.ts"]
+            "@de-novo/canvas-core": ["../../packages/core/dist/index.d.ts"]
           },
           strict: true,
           target: "ES2022",
@@ -3567,6 +3763,228 @@ check("official-denovo-shade-parses-without-host-register", () => {
     }
   });
   assert.equal(invalidPattern.success, false);
+});
+
+check("official-denovo-image-parses-without-host-register", () => {
+  assert.equal(isDenovoImageType("plugin.denovo.image"), true);
+  assert.equal(getPluginNodeKind("plugin.denovo.image")?.mode, "2d");
+  assert.deepEqual(
+    denovoImageSize({ src: "/screen.png", width: 390, height: 844 }),
+    [390, 844]
+  );
+
+  const contain = resolveDenovoImageDrawRect(200, 100, 100, 100, "contain");
+  assert.deepEqual(contain, {
+    sx: 0,
+    sy: 0,
+    sw: 200,
+    sh: 100,
+    dx: 0,
+    dy: 25,
+    dw: 100,
+    dh: 50
+  });
+  const cover = resolveDenovoImageDrawRect(200, 100, 100, 100, "cover");
+  assert.deepEqual(cover, {
+    sx: 50,
+    sy: 0,
+    sw: 100,
+    sh: 100,
+    dx: 0,
+    dy: 0,
+    dw: 100,
+    dh: 100
+  });
+  const fill = resolveDenovoImageDrawRect(200, 100, 100, 100, "fill");
+  assert.deepEqual(fill, {
+    sx: 0,
+    sy: 0,
+    sw: 200,
+    sh: 100,
+    dx: 0,
+    dy: 0,
+    dw: 100,
+    dh: 100
+  });
+
+  const asset = createImageAssetRef("screen-home", {
+    uri: "/screens/home.png",
+    mimeType: "image/png",
+    width: 390,
+    height: 844
+  });
+  assert.equal(asset.type, "image");
+  assert.equal(asset.metadata.width, 390);
+
+  const document = defineDocument({
+    id: "official-image-doc",
+    assets: [asset],
+    scene: {
+      id: "official-image-scene",
+      layers: [{ id: "main", name: "Main" }],
+      mode: "2d",
+      nodes: [
+        {
+          id: "img-asset",
+          layerId: "main",
+          type: "plugin.denovo.image",
+          props: {
+            assetId: "screen-home",
+            width: 390,
+            height: 844,
+            fit: "cover",
+            cornerRadius: [16, 16, 8, 8],
+            stroke: "#38bdf8",
+            strokeWidth: 2,
+            opacity: 0.95
+          }
+        },
+        {
+          id: "img-src",
+          layerId: "main",
+          type: "plugin.denovo.image",
+          props: {
+            src: "data:image/png;base64,iVBORw0KGgo=",
+            width: 120,
+            height: 80
+          }
+        }
+      ]
+    }
+  });
+  const imgNode = document.scene.nodes[0];
+  assert.ok(imgNode && isDenovoImageNode(imgNode));
+  assert.equal(imgNode.props.assetId, "screen-home");
+  assert.equal(imgNode.props.fit, "cover");
+
+  // Round-trip JSON stability
+  assert.deepEqual(defineDocument(JSON.parse(JSON.stringify(document))), document);
+
+  // Rejects missing image asset in document.assets
+  assertParseFails(
+    safeDefineDocument({
+      id: "missing-image-asset-doc",
+      scene: {
+        id: "missing-image-asset-scene",
+        layers: [{ id: "main", name: "Main" }],
+        mode: "2d",
+        nodes: [
+          {
+            id: "img-missing",
+            layerId: "main",
+            type: "plugin.denovo.image",
+            props: { assetId: "nope", width: 100, height: 100 }
+          }
+        ]
+      }
+    }),
+    /Missing image asset: nope/
+  );
+
+  // Rejects wrong AssetRef type
+  assertParseFails(
+    safeDefineDocument({
+      id: "wrong-image-asset-kind-doc",
+      assets: [{ id: "bad-kind", type: "binary" }],
+      scene: {
+        id: "wrong-image-asset-kind-scene",
+        layers: [{ id: "main", name: "Main" }],
+        mode: "2d",
+        nodes: [
+          {
+            id: "img-wrong-kind",
+            layerId: "main",
+            type: "plugin.denovo.image",
+            props: { assetId: "bad-kind", width: 100, height: 100 }
+          }
+        ]
+      }
+    }),
+    /Image asset must have type/
+  );
+
+  // Rejects missing both assetId and src, 3D scene placement, and invalid fit
+  for (const invalid of [
+    {
+      id: "no-src-or-asset",
+      scene: {
+        id: "s1",
+        layers: [{ id: "main", name: "Main" }],
+        mode: "2d",
+        nodes: [{ id: "i", layerId: "main", type: "plugin.denovo.image", props: { width: 100, height: 100 } }]
+      }
+    },
+    {
+      id: "image-in-3d",
+      scene: {
+        id: "s2",
+        layers: [{ id: "main", name: "Main" }],
+        mode: "3d",
+        nodes: [{ id: "i", layerId: "main", type: "plugin.denovo.image", props: { src: "/a.png", width: 100, height: 100 } }]
+      }
+    },
+    {
+      id: "bad-image-fit",
+      scene: {
+        id: "s3",
+        layers: [{ id: "main", name: "Main" }],
+        mode: "2d",
+        nodes: [{ id: "i", layerId: "main", type: "plugin.denovo.image", props: { src: "/a.png", width: 100, height: 100, fit: "stretch" } }]
+      }
+    }
+  ]) {
+    assert.equal(safeDefineDocument(invalid).success, false, `Expected ${invalid.id} to fail`);
+  }
+});
+
+check("edge-avoid-obstacles-schema-defaults-and-validation", () => {
+  const defaultEdge = define2DEdge({
+    id: "e-default",
+    layerId: "main",
+    sourceId: "a",
+    targetId: "b",
+    routing: "orthogonal",
+    type: "edge"
+  });
+  assert.equal(defaultEdge.avoidObstacles, false);
+  assert.equal(defaultEdge.obstaclePadding, 16);
+
+  const gutterEdge = define2DEdge({
+    id: "e-gutter",
+    layerId: "main",
+    sourceId: "a",
+    targetId: "b",
+    routing: "orthogonal",
+    avoidObstacles: true,
+    obstaclePadding: 24,
+    type: "edge"
+  });
+  assert.equal(gutterEdge.avoidObstacles, true);
+  assert.equal(gutterEdge.obstaclePadding, 24);
+
+  const edgeUpdate = defineCommand({
+    nodeId: "e-default",
+    nodeMode: "2d",
+    nodeType: "edge",
+    patch: { avoidObstacles: true, obstaclePadding: 20 },
+    type: "node.update"
+  });
+  assert.equal(edgeUpdate.patch.avoidObstacles, true);
+  assert.equal(edgeUpdate.patch.obstaclePadding, 20);
+
+  assert.equal(
+    safeDefineScene({
+      id: "neg-obstacle-pad",
+      layers: [{ id: "main", name: "Main" }],
+      mode: "2d",
+      nodes: [
+        { id: "a", layerId: "main", type: "rect" },
+        { id: "b", layerId: "main", type: "rect" },
+        { id: "e", layerId: "main", type: "edge", sourceId: "a", targetId: "b", avoidObstacles: true, obstaclePadding: -4 }
+      ]
+    }).success,
+    false
+  );
 });
 
 report();

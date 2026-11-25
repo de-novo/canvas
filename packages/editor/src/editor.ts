@@ -24,7 +24,7 @@ import {
   type NodeId,
   type SelectionState,
   type SelectionStateInput
-} from "@denovo/canvas-core";
+} from "@de-novo/canvas-core";
 import { Cause, Effect, Either, Option } from "effect";
 import { CanvasEditorError } from "./errors.js";
 import type {

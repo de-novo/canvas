@@ -88,7 +88,7 @@ await check("webgpu-node-resolution-stays-explicit", () => {
   );
 });
 
-const server = await startApp("@denovo/canvas-vanilla-example", 5191);
+const server = await startApp("@de-novo/canvas-vanilla-example", 5191);
 /** @type {{ desktop?: string, mobile?: string }} */
 const outcomes = {};
 
@@ -288,6 +288,285 @@ try {
       assert.equal(value.backend, "webgpu");
       assert.equal(value.verdict.clipOn, true, "section plane must attach one clipping plane");
       assert.equal(value.verdict.clipOff, true, "clearing the section plane must drop clipping planes");
+    } finally {
+      await browser.close();
+    }
+  });
+
+  await check("webgpu-2d-ui-styles-clip-and-inspection", async () => {
+    const browser = await launchWebGpuChromium();
+    try {
+      const page = await browser.newPage({
+        viewport: { height: 600, width: 800 }
+      });
+      /** @type {string[]} */
+      const pageErrors = [];
+      page.on("pageerror", (error) => pageErrors.push(String(error)));
+      await page.goto(`${server.url}/2d-ui-styles-bench.html?backend=webgpu`, {
+        waitUntil: "networkidle"
+      });
+      await page.waitForFunction(
+        () => Boolean(window.__uiStylesResult) || Boolean(window.__uiStylesError),
+        undefined,
+        { timeout: 60_000 }
+      );
+      const error = await page.evaluate(() => window.__uiStylesError);
+      assert.equal(error ?? null, null, `webgpu 2d-ui-styles errored: ${error}`);
+      const result = await page.evaluate(() => window.__uiStylesResult);
+      assert.equal(result.backend, "webgpu");
+      assert.equal(result.drawCalls, 1, `2D WebGPU SDF must stay 1 drawCall, got ${result.drawCalls}`);
+      assert.equal(result.cardCenterGreen, true, `webgpu card center must be green: ${JSON.stringify(result.samples.cardCenter)}`);
+      assert.equal(result.cardTopStrokeRed, true, `webgpu card top stroke must be red: ${JSON.stringify(result.samples.cardTopStroke)}`);
+      assert.equal(result.cardCutCornerBg, true, `webgpu rounded corner must show bg: ${JSON.stringify(result.samples.cardCutCorner)}`);
+      assert.equal(result.clipInsideBlue, true, `webgpu clipped child inside must be blue: ${JSON.stringify(result.samples.clipInside)}`);
+      assert.equal(result.clipOverflowBg, true, `webgpu clipped overflow must show bg: ${JSON.stringify(result.samples.clipOverflow)}`);
+      assert.equal(result.clipCutCornerBg, true, `webgpu rounded clip corner must show bg: ${JSON.stringify(result.samples.clipCutCorner)}`);
+      assert.equal(result.circleOpacityBlended, true, `webgpu semi-transparent circle must blend: ${JSON.stringify(result.samples.circleCenter)}`);
+      assert.equal(result.hitCardCenterOk, true);
+      assert.equal(result.hitCardCutCornerEmpty, true);
+      assert.equal(result.hitClipInsideOk, true);
+      assert.equal(result.hitClipOverflowEmpty, true);
+      assert.equal(result.overlayMarginPainted, true, `webgpu box-model margin must paint: ${JSON.stringify(result.samples.marginPixel)}`);
+      assert.equal(result.overlayRedlinePainted, true, `webgpu redline must paint: ${JSON.stringify(result.samples.redlinePixel)}`);
+      assert.equal(result.documentUnchanged, true);
+      await page.evaluate(() => {
+        const img = window.__uiStylesOverlayImage;
+        if (!img) return;
+        const preview = document.createElement("canvas");
+        preview.width = img.width;
+        preview.height = img.height;
+        preview.style.cssText = "position:fixed;inset:0;width:100%;height:100%;z-index:1;pointer-events:none;";
+        preview.getContext("2d")?.putImageData(img, 0, 0);
+        document.body.appendChild(preview);
+      });
+      mkdirSync(path.dirname(desktopShot), { recursive: true });
+      await page.screenshot({
+        path: path.resolve(root, "artifacts/verification/2d-ui-styles-webgpu.png")
+      });
+      assert.deepEqual(pageErrors, []);
+    } finally {
+      await browser.close();
+    }
+  });
+
+  await check("canvas2d-ui-styles-clip-and-inspection", async () => {
+    const browser = await launchPixelChromium();
+    try {
+      const page = await browser.newPage({
+        viewport: { height: 600, width: 800 }
+      });
+      /** @type {string[]} */
+      const pageErrors = [];
+      page.on("pageerror", (error) => pageErrors.push(String(error)));
+      await page.goto(`${server.url}/2d-ui-styles-bench.html?backend=canvas2d`, {
+        waitUntil: "networkidle"
+      });
+      await page.waitForFunction(
+        () => Boolean(window.__uiStylesResult) || Boolean(window.__uiStylesError),
+        undefined,
+        { timeout: 60_000 }
+      );
+      const error = await page.evaluate(() => window.__uiStylesError);
+      assert.equal(error ?? null, null, `canvas2d 2d-ui-styles errored: ${error}`);
+      const result = await page.evaluate(() => window.__uiStylesResult);
+      assert.equal(result.backend, "canvas2d");
+      assert.equal(result.cardCenterGreen, true, `canvas2d card center must be green: ${JSON.stringify(result.samples.cardCenter)}`);
+      assert.equal(result.cardTopStrokeRed, true, `canvas2d card top stroke must be red: ${JSON.stringify(result.samples.cardTopStroke)}`);
+      assert.equal(result.cardCutCornerBg, true, `canvas2d rounded corner must show bg: ${JSON.stringify(result.samples.cardCutCorner)}`);
+      assert.equal(result.clipInsideBlue, true, `canvas2d clipped child inside must be blue: ${JSON.stringify(result.samples.clipInside)}`);
+      assert.equal(result.clipOverflowBg, true, `canvas2d clipped overflow must show bg: ${JSON.stringify(result.samples.clipOverflow)}`);
+      assert.equal(result.clipCutCornerBg, true, `canvas2d rounded clip corner must show bg: ${JSON.stringify(result.samples.clipCutCorner)}`);
+      assert.equal(result.circleOpacityBlended, true, `canvas2d semi-transparent circle must blend: ${JSON.stringify(result.samples.circleCenter)}`);
+      assert.equal(result.hitCardCenterOk, true);
+      assert.equal(result.hitCardCutCornerEmpty, true);
+      assert.equal(result.hitClipInsideOk, true);
+      assert.equal(result.hitClipOverflowEmpty, true);
+      assert.equal(result.overlayMarginPainted, true, `canvas2d box-model margin must paint: ${JSON.stringify(result.samples.marginPixel)}`);
+      assert.equal(result.overlayRedlinePainted, true, `canvas2d redline must paint: ${JSON.stringify(result.samples.redlinePixel)}`);
+      assert.equal(result.documentUnchanged, true);
+      mkdirSync(path.dirname(desktopShot), { recursive: true });
+      await page.screenshot({
+        path: path.resolve(root, "artifacts/verification/2d-ui-styles-canvas2d.png")
+      });
+      assert.deepEqual(pageErrors, []);
+    } finally {
+      await browser.close();
+    }
+  });
+
+  await check("webgpu-2d-image-and-obstacle-routing", async () => {
+    const browser = await launchWebGpuChromium();
+    try {
+      const page = await browser.newPage({
+        viewport: { height: 520, width: 700 }
+      });
+      /** @type {string[]} */
+      const pageErrors = [];
+      page.on("pageerror", (error) => pageErrors.push(String(error)));
+      await page.goto(`${server.url}/2d-image-and-routing-bench.html?backend=webgpu`, {
+        waitUntil: "networkidle"
+      });
+      await page.waitForFunction(
+        () => Boolean(window.__imageRoutingResult) || Boolean(window.__imageRoutingError),
+        undefined,
+        { timeout: 60_000 }
+      );
+      const error = await page.evaluate(() => window.__imageRoutingError);
+      assert.equal(error ?? null, null, `webgpu image/routing errored: ${error}`);
+      const result = await page.evaluate(() => window.__imageRoutingResult);
+      assert.equal(result.backend, "webgpu");
+      assert.equal(result.drawCalls, 1, `2D WebGPU image+routing must stay 1 drawCall, got ${result.drawCalls}`);
+      assert.equal(result.screenALeftCyan, true, `webgpu image left half must be cyan: ${JSON.stringify(result.samples.screenALeft)}`);
+      assert.equal(result.screenARightMagenta, true, `webgpu image right half must be magenta: ${JSON.stringify(result.samples.screenARight)}`);
+      assert.equal(result.screenACutCornerBg, true, `webgpu image rounded corner must clip to bg: ${JSON.stringify(result.samples.screenACutCorner)}`);
+      assert.equal(result.screenCAsyncGreen, true, `webgpu async src image must render green: ${JSON.stringify(result.samples.screenCCenter)}`);
+      assert.equal(result.blockerCenterSlate, true, `webgpu blocker interior must stay slate: ${JSON.stringify(result.samples.blockerCenter)}`);
+      assert.equal(result.zeroAmberInsideBlocker, true, `webgpu edge must not cross blocker: amber=${result.samples.amberInsideBlocker}`);
+      assert.equal(result.amberRoutedInGutter, true, `webgpu edge must paint in gutter: amber=${result.samples.amberInGutter}`);
+      assert.equal(result.hitScreenAOk, true);
+      assert.equal(result.hitBlockerOk, true);
+      await page.evaluate(() => {
+        const img = window.__imageRoutingOverlayImage;
+        if (!img) return;
+        const preview = document.createElement("canvas");
+        preview.width = img.width;
+        preview.height = img.height;
+        preview.style.cssText = "position:fixed;inset:0;width:100%;height:100%;z-index:1;pointer-events:none;";
+        preview.getContext("2d")?.putImageData(img, 0, 0);
+        document.body.appendChild(preview);
+      });
+      mkdirSync(path.dirname(desktopShot), { recursive: true });
+      await page.screenshot({
+        path: path.resolve(root, "artifacts/verification/2d-image-routing-webgpu.png")
+      });
+      assert.deepEqual(pageErrors, []);
+    } finally {
+      await browser.close();
+    }
+  });
+
+  await check("canvas2d-image-and-obstacle-routing", async () => {
+    const browser = await launchPixelChromium();
+    try {
+      const page = await browser.newPage({
+        viewport: { height: 520, width: 700 }
+      });
+      /** @type {string[]} */
+      const pageErrors = [];
+      page.on("pageerror", (error) => pageErrors.push(String(error)));
+      await page.goto(`${server.url}/2d-image-and-routing-bench.html?backend=canvas2d`, {
+        waitUntil: "networkidle"
+      });
+      await page.waitForFunction(
+        () => Boolean(window.__imageRoutingResult) || Boolean(window.__imageRoutingError),
+        undefined,
+        { timeout: 60_000 }
+      );
+      const error = await page.evaluate(() => window.__imageRoutingError);
+      assert.equal(error ?? null, null, `canvas2d image/routing errored: ${error}`);
+      const result = await page.evaluate(() => window.__imageRoutingResult);
+      assert.equal(result.backend, "canvas2d");
+      assert.equal(result.screenALeftCyan, true, `canvas2d image left half must be cyan: ${JSON.stringify(result.samples.screenALeft)}`);
+      assert.equal(result.screenARightMagenta, true, `canvas2d image right half must be magenta: ${JSON.stringify(result.samples.screenARight)}`);
+      assert.equal(result.screenACutCornerBg, true, `canvas2d image rounded corner must clip to bg: ${JSON.stringify(result.samples.screenACutCorner)}`);
+      assert.equal(result.screenCAsyncGreen, true, `canvas2d async src image must render green: ${JSON.stringify(result.samples.screenCCenter)}`);
+      assert.equal(result.blockerCenterSlate, true, `canvas2d blocker interior must stay slate: ${JSON.stringify(result.samples.blockerCenter)}`);
+      assert.equal(result.zeroAmberInsideBlocker, true, `canvas2d edge must not cross blocker: amber=${result.samples.amberInsideBlocker}`);
+      assert.equal(result.amberRoutedInGutter, true, `canvas2d edge must paint in gutter: amber=${result.samples.amberInGutter}`);
+      assert.equal(result.hitScreenAOk, true);
+      assert.equal(result.hitBlockerOk, true);
+      mkdirSync(path.dirname(desktopShot), { recursive: true });
+      await page.screenshot({
+        path: path.resolve(root, "artifacts/verification/2d-image-routing-canvas2d.png")
+      });
+      assert.deepEqual(pageErrors, []);
+    } finally {
+      await browser.close();
+    }
+  });
+
+  await check("webgpu-2d-multipage-atlas-lod-and-snapshot", async () => {
+    const browser = await launchWebGpuChromium();
+    try {
+      const page = await browser.newPage({
+        viewport: { height: 700, width: 700 }
+      });
+      /** @type {string[]} */
+      const pageErrors = [];
+      page.on("pageerror", (error) => pageErrors.push(String(error)));
+      await page.goto(`${server.url}/2d-webgpu-atlas-lod-bench.html?backend=webgpu`, {
+        waitUntil: "networkidle"
+      });
+      await page.waitForFunction(
+        () => Boolean(window.__atlasLodResult) || Boolean(window.__atlasLodError),
+        undefined,
+        { timeout: 60_000 }
+      );
+      const error = await page.evaluate(() => window.__atlasLodError);
+      assert.equal(error ?? null, null, `webgpu atlas-lod errored: ${error}`);
+      const result = await page.evaluate(() => window.__atlasLodResult);
+      assert.equal(result.backend, "webgpu");
+      assert.equal(result.drawCallsZoom1, 1, `multi-page WebGPU atlas must stay 1 drawCall, got ${result.drawCallsZoom1}`);
+      assert.ok(result.texturesZoom1 >= 3, `36x 480px cards at zoom=1 must allocate >= 3 atlas layers, got ${result.texturesZoom1}`);
+      assert.equal(result.drawCallsZoomOut, 1);
+      assert.equal(result.texturesZoomOut, 1, `zoom-LOD at zoom=0.2 must compact all 36 cards into 1 atlas layer, got ${result.texturesZoomOut}`);
+      assert.equal(result.lastCardYellowAtZoom1, true, `card #35 on atlas page >=2 must paint yellow: ${JSON.stringify(result.samples.lastCardCenterPixel)}`);
+      assert.equal(result.lastCardYellowAtZoomOut, true, `card #35 at zoom=0.2 LOD must paint yellow: ${JSON.stringify(result.samples.lastCardZoomOutPixel)}`);
+      assert.equal(result.hitLastViaInspectOk, true, "inspectCanvas2DRuntime screenCenter must hit screen-35");
+      assert.equal(result.zoomOutVisibleCount, 36);
+      assert.equal(result.snapshotZoom1NonBlank, true);
+      assert.equal(result.snapshotZoomOutNonBlank, true);
+      assert.equal(result.pngDataUrlValid, true);
+      assert.equal(result.jsonSerializableCount, 36);
+      await page.evaluate(() => {
+        const dataUrl = window.__atlasLodOverlayPng;
+        if (!dataUrl) return;
+        const img = document.createElement("img");
+        img.src = dataUrl;
+        img.style.cssText = "position:fixed;inset:0;width:100%;height:100%;z-index:1;pointer-events:none;";
+        document.body.appendChild(img);
+      });
+      await page.waitForTimeout(100);
+      mkdirSync(path.dirname(desktopShot), { recursive: true });
+      await page.screenshot({
+        path: path.resolve(root, "artifacts/verification/2d-atlas-lod-webgpu.png")
+      });
+      assert.deepEqual(pageErrors, []);
+    } finally {
+      await browser.close();
+    }
+  });
+
+  await check("canvas2d-inspect-and-capture-snapshot", async () => {
+    const browser = await launchPixelChromium();
+    try {
+      const page = await browser.newPage({
+        viewport: { height: 700, width: 700 }
+      });
+      /** @type {string[]} */
+      const pageErrors = [];
+      page.on("pageerror", (error) => pageErrors.push(String(error)));
+      await page.goto(`${server.url}/2d-webgpu-atlas-lod-bench.html?backend=canvas2d`, {
+        waitUntil: "networkidle"
+      });
+      await page.waitForFunction(
+        () => Boolean(window.__atlasLodResult) || Boolean(window.__atlasLodError),
+        undefined,
+        { timeout: 60_000 }
+      );
+      const error = await page.evaluate(() => window.__atlasLodError);
+      assert.equal(error ?? null, null, `canvas2d inspect-snapshot errored: ${error}`);
+      const result = await page.evaluate(() => window.__atlasLodResult);
+      assert.equal(result.backend, "canvas2d");
+      assert.equal(result.lastCardYellowAtZoom1, true);
+      assert.equal(result.lastCardYellowAtZoomOut, true);
+      assert.equal(result.hitLastViaInspectOk, true);
+      assert.equal(result.zoomOutVisibleCount, 36);
+      assert.equal(result.snapshotZoom1NonBlank, true);
+      assert.equal(result.snapshotZoomOutNonBlank, true);
+      assert.equal(result.pngDataUrlValid, true);
+      assert.equal(result.jsonSerializableCount, 36);
+      assert.deepEqual(pageErrors, []);
     } finally {
       await browser.close();
     }

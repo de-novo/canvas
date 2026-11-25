@@ -6,8 +6,8 @@ import {
   type Canvas3DSceneInput,
   type CanvasDocument,
   type DenovoCanvasRuntime
-} from "@denovo/canvas";
-import "@denovo/canvas/styles.css";
+} from "@de-novo/canvas";
+import "@de-novo/canvas/styles.css";
 
 // Realistic Industrial Fulfillment Center Layout:
 // 6 wide AGV corridors flanked by 12 steel pallet-rack rows (paired back-to-back),

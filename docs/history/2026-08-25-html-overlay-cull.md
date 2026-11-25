@@ -21,7 +21,7 @@ culling and orthogonal port stubs.
 
 ## Verification
 
-- `pnpm --filter @denovo/canvas-web build`: passed
+- `pnpm --filter @de-novo/canvas-web build`: passed
 - `pnpm verify:hit-testing`: ok, including stacked orthogonal stubs
   staying inside a 36-unit gap
 - `pnpm verify:network-showcase`: 2/2, including an API card whose

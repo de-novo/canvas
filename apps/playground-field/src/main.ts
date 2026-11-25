@@ -6,8 +6,8 @@ import {
   isDenovoFieldNode,
   listNodes,
   type ListedNode
-} from "@denovo/canvas";
-import "@denovo/canvas/styles.css";
+} from "@de-novo/canvas";
+import "@de-novo/canvas/styles.css";
 
 import { applyFieldPatternOps } from "./apply-pattern";
 import { mountCompareBoard } from "./compare";

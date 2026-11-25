@@ -4,7 +4,7 @@ import {
   type CanvasDocument,
   type CanvasSaveResult,
   type NodeId
-} from "@denovo/canvas-core";
+} from "@de-novo/canvas-core";
 import { applyCommandEffect, createInitialSnapshot } from "./handlers.js";
 import { cloneCommand, runEditorEffect } from "../runtime.js";
 

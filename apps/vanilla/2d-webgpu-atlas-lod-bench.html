@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>2d-webgpu-atlas-lod-bench</title>
+  </head>
+  <body style="margin:0;background:#0f172a;color:#e2e8f0;font:14px sans-serif;">
+    <div id="status" style="position:fixed;z-index:2;left:12px;bottom:12px;padding:6px 10px;border-radius:6px;background:#020617cc;">
+      starting
+    </div>
+    <div id="stage" style="width:100vw;height:100vh;"></div>
+    <script type="module">
+      import {
+        captureCanvas2DSnapshot,
+        createCanvas,
+        createImageAssetRef,
+        createMemoryImageStore,
+        defineDocument,
+        DENOVO_IMAGE_NODE_TYPE,
+        inspectCanvas2DRuntime
+      } from "@de-novo/canvas/2d";
+
+      const COLS = 6;
+      const ROWS = 6;
+      const COUNT = COLS * ROWS; // 36 cards of 480x480 -> > 2 atlas pages at zoom=1, 1 page at zoom=0.2
+      const CARD_SIZE = 480;
+      const GAP = 40;
+      const LAST_COLOR_HEX = "#facc15"; // vivid yellow on card #35 (layer >= 2 at zoom=1)
+      const LAST_COLOR_RGB = [250, 204, 21];
+
+      const imageStore = createMemoryImageStore();
+      const assets = [];
+      const nodes = [];
+
+      for (let i = 0; i < COUNT; i += 1) {
+        const col = i % COLS;
+        const row = Math.floor(i / COLS);
+        const assetId = `tile-${i}`;
+        const tile = document.createElement("canvas");
+        tile.width = 128;
+        tile.height = 128;
+        const ctx = tile.getContext("2d");
+        if (i === COUNT - 1) {
+          ctx.fillStyle = LAST_COLOR_HEX;
+        } else {
+          const hue = (i * 37) % 360;
+          ctx.fillStyle = `hsl(${hue} 78% 52%)`;
+        }
+        ctx.fillRect(0, 0, 128, 128);
+        ctx.fillStyle = "#0f172a";
+        ctx.fillRect(14, 14, 24, 24);
+        imageStore.set(assetId, tile);
+
+        assets.push(
+          createImageAssetRef(assetId, {
+            mimeType: "image/png",
+            width: 128,
+            height: 128
+          })
+        );
+        nodes.push({
+          id: `screen-${i}`,
+          layerId: "screens",
+          type: DENOVO_IMAGE_NODE_TYPE,
+          position: [col * (CARD_SIZE + GAP), row * (CARD_SIZE + GAP)],
+          props: {
+            assetId,
+            width: CARD_SIZE,
+            height: CARD_SIZE,
+            fit: "fill",
+            cornerRadius: 16,
+            placeholder: "#1e293b",
+            stroke: "#475569",
+            strokeWidth: 4
+          }
+        });
+      }
+
+      const documentModel = defineDocument({
+        id: "atlas-lod-bench",
+        assets,
+        scene: {
+          background: "#0f172a",
+          id: "atlas-lod-scene",
+          layers: [{ id: "screens", name: "Screens" }],
+          mode: "2d",
+          nodes
+        }
+      });
+
+      function samplePixel(image, rect, cssX, cssY) {
+        const scaleX = image.width / Math.max(1, rect.width);
+        const scaleY = image.height / Math.max(1, rect.height);
+        const px = Math.min(image.width - 1, Math.max(0, Math.round(cssX * scaleX)));
+        const py = Math.min(image.height - 1, Math.max(0, Math.round(cssY * scaleY)));
+        const idx = (py * image.width + px) * 4;
+        return [image.data[idx], image.data[idx + 1], image.data[idx + 2], image.data[idx + 3]];
+      }
+
+      function nearColor(actual, expected, tolerance = 28) {
+        return (
+          Math.abs(actual[0] - expected[0]) <= tolerance &&
+          Math.abs(actual[1] - expected[1]) <= tolerance &&
+          Math.abs(actual[2] - expected[2]) <= tolerance
+        );
+      }
+
+      const host = document.getElementById("stage");
+      try {
+        const requestedBackend = new URLSearchParams(window.location.search).get(
+          "backend"
+        );
+        const runtime = createCanvas(host, {
+          devicePixelRatio: 1,
+          document: documentModel,
+          imageStore,
+          renderer: requestedBackend === "webgpu" ? "webgpu" : "canvas2d"
+        });
+        await runtime.ready;
+
+        // Phase 1: zoom = 1.0 focused on the last card (screen-35), forcing multi-page atlas (>= 3 pages on WebGPU)
+        const lastCol = COLS - 1;
+        const lastRow = ROWS - 1;
+        const lastX = lastCol * (CARD_SIZE + GAP);
+        const lastY = lastRow * (CARD_SIZE + GAP);
+        runtime.current.setViewState({
+          offset: [120 - lastX, 80 - lastY],
+          zoom: 1
+        });
+        runtime.render();
+
+        const snapshotZoom1 = await captureCanvas2DSnapshot(runtime);
+        const statsZoom1 = runtime.getRenderStats();
+        const inspectedLast = snapshotZoom1.inspection.nodes.find(
+          (n) => n.id === `screen-${COUNT - 1}`
+        );
+        const hitLastViaInspect = inspectedLast
+          ? runtime.hitTest({ point: inspectedLast.screenCenter })
+          : null;
+
+        const rect = runtime.canvas.getBoundingClientRect();
+        const pixelsZoom1 = await runtime.readPixels();
+        const lastCardCenterPixel = inspectedLast
+          ? samplePixel(
+              pixelsZoom1,
+              rect,
+              inspectedLast.screenCenter[0],
+              inspectedLast.screenCenter[1]
+            )
+          : [0, 0, 0, 0];
+
+        // Phase 2: zoom out to 0.2 so all 36 cards fit on screen; LOD compresses stamps to 1 atlas page!
+        runtime.current.setViewState({
+          offset: [20, 20],
+          zoom: 0.2
+        });
+        runtime.render();
+
+        const snapshotZoomOut = await captureCanvas2DSnapshot(runtime, {
+          onlyInViewport: true
+        });
+        const statsZoomOut = runtime.getRenderStats();
+        const inspectedZoomOutLast = snapshotZoomOut.inspection.nodes.find(
+          (n) => n.id === `screen-${COUNT - 1}`
+        );
+        const pixelsZoomOut = await runtime.readPixels();
+        const lastCardZoomOutPixel = inspectedZoomOutLast
+          ? samplePixel(
+              pixelsZoomOut,
+              rect,
+              inspectedZoomOutLast.screenCenter[0],
+              inspectedZoomOutLast.screenCenter[1]
+            )
+          : [0, 0, 0, 0];
+
+        // Verify inspectCanvas2DRuntime standalone JSON serializability
+        const jsonRoundTrip = JSON.parse(
+          JSON.stringify(inspectCanvas2DRuntime(runtime, { includeMetadata: true }))
+        );
+
+        window.__atlasLodOverlayPng = snapshotZoomOut.pngDataUrl;
+        window.__atlasLodResult = {
+          backend: snapshotZoom1.inspection.backend,
+          drawCallsZoom1: statsZoom1?.drawCalls ?? 0,
+          texturesZoom1: statsZoom1?.textures ?? 0,
+          drawCallsZoomOut: statsZoomOut?.drawCalls ?? 0,
+          texturesZoomOut: statsZoomOut?.textures ?? 0,
+          lastCardYellowAtZoom1: nearColor(lastCardCenterPixel, LAST_COLOR_RGB),
+          lastCardYellowAtZoomOut: nearColor(lastCardZoomOutPixel, LAST_COLOR_RGB),
+          hitLastViaInspectOk:
+            hitLastViaInspect?.kind === "node" &&
+            hitLastViaInspect.nodeId === `screen-${COUNT - 1}`,
+          zoomOutVisibleCount: snapshotZoomOut.inspection.nodes.length,
+          snapshotZoom1NonBlank: snapshotZoom1.pixels.nonBlank,
+          snapshotZoomOutNonBlank: snapshotZoomOut.pixels.nonBlank,
+          pngDataUrlValid:
+            typeof snapshotZoom1.pngDataUrl === "string" &&
+            snapshotZoom1.pngDataUrl.startsWith("data:image/png;base64,") &&
+            typeof snapshotZoomOut.pngDataUrl === "string" &&
+            snapshotZoomOut.pngDataUrl.startsWith("data:image/png;base64,"),
+          jsonSerializableCount: jsonRoundTrip.nodes.length,
+          samples: {
+            lastCardCenterPixel,
+            lastCardZoomOutPixel
+          }
+        };
+        host.setAttribute("data-denovo-ready", "true");
+        document.getElementById("status").textContent =
+          `${window.__atlasLodResult.backend} · z1 pages=${statsZoom1?.textures ?? "n/a"} · z0.2 pages=${statsZoomOut?.textures ?? "n/a"} · drawCalls=${statsZoomOut?.drawCalls ?? 0}`;
+      } catch (error) {
+        window.__atlasLodError = String(error);
+        host.setAttribute("data-denovo-ready", "true");
+        document.getElementById("status").textContent = String(error);
+      }
+    </script>
+  </body>
+</html>

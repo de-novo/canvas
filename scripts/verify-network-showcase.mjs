@@ -27,7 +27,7 @@ const mobileShot = path.resolve(
   "artifacts/verification/network-service-map-mobile.png"
 );
 
-const server = await startApp("@denovo/canvas-network-example", 5183);
+const server = await startApp("@de-novo/canvas-network-example", 5183);
 
 try {
   await check("network-showcase-desktop-absorbs-and-layouts", async () => {

@@ -62,6 +62,7 @@ await check("build-pages-static-bundle", () => {
     "index.html",
     ".nojekyll",
     "bench-2d/index.html",
+    "ui-map/index.html",
     "flow/index.html",
     "network/index.html",
     "field/index.html",
@@ -70,16 +71,18 @@ await check("build-pages-static-bundle", () => {
   ]) {
     assert.ok(existsSync(path.join(distDir, rel)), `missing dist-pages/${rel}`);
   }
-  // Confirm bench-2d bundle contains zero Three.js WebGLRenderer code.
-  const benchAssets = path.join(distDir, "bench-2d", "assets");
-  const jsFiles = readdirSync(benchAssets).filter((f) => f.endsWith(".js"));
-  assert.ok(jsFiles.length > 0, "expected bench-2d JS assets");
-  for (const file of jsFiles) {
-    const code = readFileSync(path.join(benchAssets, file), "utf8");
-    assert.ok(
-      !code.includes("WebGLRenderer"),
-      `bench-2d asset ${file} must remain Three.js-free`
-    );
+  // Confirm bench-2d and ui-map bundles contain zero Three.js WebGLRenderer code.
+  for (const twoDApp of ["bench-2d", "ui-map"]) {
+    const assetsDir = path.join(distDir, twoDApp, "assets");
+    const jsFiles = readdirSync(assetsDir).filter((f) => f.endsWith(".js"));
+    assert.ok(jsFiles.length > 0, `expected ${twoDApp} JS assets`);
+    for (const file of jsFiles) {
+      const code = readFileSync(path.join(assetsDir, file), "utf8");
+      assert.ok(
+        !code.includes("WebGLRenderer"),
+        `${twoDApp} asset ${file} must remain Three.js-free`
+      );
+    }
   }
 });
 
@@ -198,6 +201,90 @@ try {
     assert.equal(st.wireframe, true);
     assert.deepEqual(errors, [], `flower had errors: ${errors.join("; ")}`);
     await page.close();
+  });
+
+  await check("pages-ui-map-v02-showcase-interactions", async () => {
+    const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+    const errors = [];
+    page.on("pageerror", (e) => errors.push(String(e)));
+    page.on("console", (m) => {
+      if (m.type() === "error") errors.push(m.text());
+    });
+    await page.goto(`${url}/ui-map/`, { waitUntil: "networkidle" });
+    await page.waitForFunction(
+      () => Boolean(window.__uiMapDemo && window.__uiMapDemo.getState().drawCalls > 0),
+      undefined,
+      { timeout: 10_000 }
+    );
+    const initial = await page.evaluate(() => window.__uiMapDemo.getState());
+    assert.equal(initial.screenCount, 6);
+    assert.equal(initial.avoidObstacles, true);
+    assert.equal(initial.inspectEnabled, true);
+    assert.ok(initial.activeRedlineCount >= 1, "initial box-model + redline inspector must compute >= 1 redline");
+
+    // Capture a live screenshot of the initial UI Screen Map showcase
+    await page.screenshot({
+      path: path.join(root, "artifacts/verification/pages-ui-map-desktop.png")
+    });
+
+    // Toggle obstacle-free gutters OFF -> undo depth grows; undo restores ON
+    await page.click("#btn-gutters");
+    await page.waitForFunction(
+      () => window.__uiMapDemo.getState().avoidObstacles === false && window.__uiMapDemo.getState().undoDepth === 1,
+      undefined,
+      { timeout: 5_000 }
+    );
+    await page.click("#btn-undo");
+    await page.waitForFunction(
+      () => window.__uiMapDemo.getState().avoidObstacles === true && window.__uiMapDemo.getState().undoDepth === 0,
+      undefined,
+      { timeout: 5_000 }
+    );
+
+    // Apply setImageFit Named Operation -> cover
+    await page.selectOption("#fit-select", "cover");
+    await page.waitForFunction(
+      () => window.__uiMapDemo.getState().selectedFit === "cover" && window.__uiMapDemo.getState().undoDepth === 1,
+      undefined,
+      { timeout: 5_000 }
+    );
+
+    // Capture snapshot via captureCanvas2DSnapshot()
+    await page.click("#btn-snapshot");
+    await page.waitForFunction(
+      () => window.__uiMapDemo.getState().lastSnapshotNonBlank === true && (window.__uiMapDemo.getState().lastSnapshotPngBytes ?? 0) > 1000,
+      undefined,
+      { timeout: 10_000 }
+    );
+
+    // Switch to 60-screen map
+    await page.selectOption("#screen-preset", "60");
+    await page.waitForFunction(
+      () => window.__uiMapDemo.getState().screenCount === 60 && window.__uiMapDemo.getState().drawCalls > 0,
+      undefined,
+      { timeout: 10_000 }
+    );
+    assert.deepEqual(errors, [], `ui-map had errors: ${errors.join("; ")}`);
+    await page.close();
+
+    // Mobile viewport smoke (390x844)
+    const mobilePage = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    const mobileErrors = [];
+    mobilePage.on("pageerror", (e) => mobileErrors.push(String(e)));
+    mobilePage.on("console", (m) => {
+      if (m.type() === "error") mobileErrors.push(m.text());
+    });
+    await mobilePage.goto(`${url}/ui-map/`, { waitUntil: "networkidle" });
+    await mobilePage.waitForFunction(
+      () => Boolean(window.__uiMapDemo && window.__uiMapDemo.getState().drawCalls > 0),
+      undefined,
+      { timeout: 10_000 }
+    );
+    await mobilePage.evaluate(() => window.__uiMapDemo.captureNow());
+    const mobileState = await mobilePage.evaluate(() => window.__uiMapDemo.getState());
+    assert.equal(mobileState.lastSnapshotNonBlank, true, "mobile ui-map snapshot must be non-blank");
+    assert.deepEqual(mobileErrors, [], `mobile ui-map had errors: ${mobileErrors.join("; ")}`);
+    await mobilePage.close();
   });
 
   await check("pages-subapps-flow-and-network-load-cleanly", async () => {

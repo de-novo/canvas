@@ -94,8 +94,8 @@ for (const forbidden of [
   "\"three\"",
   "\"three/webgpu\"",
   "\"three-mesh-bvh\"",
-  "\"@denovo/canvas-three\"",
-  "\"@denovo/canvas-web\""
+  "\"@de-novo/canvas-three\"",
+  "\"@de-novo/canvas-web\""
 ]) {
   assert.ok(
     !facade2dDist.includes(forbidden),
@@ -110,8 +110,8 @@ for (const forbidden of [
   "\"three\"",
   "\"@react-three/fiber\"",
   "\"@react-three/drei\"",
-  "\"@denovo/canvas-three\"",
-  "\"@denovo/canvas\""
+  "\"@de-novo/canvas-three\"",
+  "\"@de-novo/canvas\""
 ]) {
   assert.ok(
     !react2dDist.includes(forbidden),
@@ -129,9 +129,9 @@ for (const [label, filePath] of [
     "\"three\"",
     "\"three/webgpu\"",
     "\"three-mesh-bvh\"",
-    "\"@denovo/canvas-three\"",
-    "\"@denovo/canvas-web\"",
-    "\"@denovo/canvas\""
+    "\"@de-novo/canvas-three\"",
+    "\"@de-novo/canvas-web\"",
+    "\"@de-novo/canvas\""
   ]) {
     assert.ok(
       !source.includes(forbidden),
@@ -157,7 +157,7 @@ for (const appName of ["playground-flow", "playground-network", "playground-diag
   }
 }
 assert.equal(
-  facadePackage.dependencies?.["@denovo/react-canvas"],
+  facadePackage.dependencies?.["@de-novo/react-canvas"],
   undefined,
   "React adapter must not be a default dependency of the facade package"
 );
@@ -168,12 +168,12 @@ assert.equal(
 );
 assert.ok(editorPackage.exports?.["."], "editor must export the package root");
 assert.equal(
-  editorPackage.dependencies?.["@denovo/canvas-core"],
+  editorPackage.dependencies?.["@de-novo/canvas-core"],
   "workspace:*",
   "editor must depend on the framework-agnostic core contract"
 );
 assert.equal(
-  facadePackage.peerDependenciesMeta?.["@denovo/react-canvas"]?.optional,
+  facadePackage.peerDependenciesMeta?.["@de-novo/react-canvas"]?.optional,
   true,
   "React adapter peer dependency must remain optional"
 );
@@ -231,7 +231,7 @@ assert.doesNotMatch(
 );
 assertIncludes(
   facadeSource,
-  'from "@denovo/canvas-editor"',
+  'from "@de-novo/canvas-editor"',
   "facade source"
 );
 assert.doesNotMatch(
@@ -288,12 +288,12 @@ assert.equal(
   "vanilla example must depend on the current facade package name"
 );
 assert.equal(
-  vanillaPackage.dependencies?.["@denovo/canvas-web"],
+  vanillaPackage.dependencies?.["@de-novo/canvas-web"],
   undefined,
   "vanilla example must not depend directly on the web runtime"
 );
 assert.equal(
-  vanillaPackage.dependencies?.["@denovo/canvas-core"],
+  vanillaPackage.dependencies?.["@de-novo/canvas-core"],
   undefined,
   "vanilla example must not depend directly on core"
 );
@@ -601,12 +601,18 @@ assert.ok(
   ),
   "listPluginNodeKinds must include official sparkline"
 );
-assert.ok(
-  listedPluginKinds.some(
-    (kind) => kind.type === "plugin.denovo.shade" && kind.mode === "2d"
-  ),
-  "listPluginNodeKinds must include official shade"
-);
+  assert.ok(
+    listedPluginKinds.some(
+      (kind) => kind.type === "plugin.denovo.shade" && kind.mode === "2d"
+    ),
+    "listPluginNodeKinds must include official shade"
+  );
+  assert.ok(
+    listedPluginKinds.some(
+      (kind) => kind.type === "plugin.denovo.image" && kind.mode === "2d"
+    ),
+    "listPluginNodeKinds must include official image"
+  );
 assert.ok(
   listedPluginKinds.every(
     (kind) =>
@@ -2352,7 +2358,7 @@ writeFileSync(
   type WebCanvasRuntime
 } from "${facadeName}";
 import { CanvasView, type CanvasStage3DProps } from "${facadeName}/react";
-import { parseSceneEffect } from "@denovo/canvas-core/effect";
+import { parseSceneEffect } from "@de-novo/canvas-core/effect";
 
 const backend: CanvasBackend = "auto";
 const implementedBackend: CanvasImplementedBackend = "webgl2";
@@ -2871,28 +2877,40 @@ void writableListedOps;
 const invalidOperationName: NamedOperationName = "setColor";
 void invalidOperationName;
 const typedRect: CanvasNodeByType<"2d", "rect"> = {
+  cornerRadius: 0,
   fill: "#22c55e",
   id: "typed-rect",
   layerId: "main",
   locked: false,
   metadata: {},
+  opacity: 1,
   parentId: null,
   position: [0, 0],
   rotation: 0,
   scale: [1, 1],
   size: [40, 20],
+  stroke: null,
+  strokeWidth: 1,
   type: "rect",
   visible: true
 };
 const preciseRectUpdate = createNodeUpdateCommand(typedRect, {
+  cornerRadius: [12, 12, 4, 4],
   fill: "#ffffff",
-  size: [80, 40]
+  opacity: 0.9,
+  size: [80, 40],
+  stroke: "#38bdf8",
+  strokeWidth: 2
 });
 const preciseRectIdentity: CanvasNodeIdentity = preciseRectUpdate;
 const preciseRectMode: "2d" = preciseRectUpdate.nodeMode;
 const preciseRectType: "rect" = preciseRectUpdate.nodeType;
 // @ts-expect-error rect updates cannot use circle-only properties.
 createNodeUpdateCommand(typedRect, { radius: 10 });
+// @ts-expect-error cornerRadius rejects 3-element tuples.
+createNodeUpdateCommand(typedRect, { cornerRadius: [4, 4, 4] });
+// @ts-expect-error opacity must be a number.
+createNodeUpdateCommand(typedRect, { opacity: "0.5" });
 const typedMesh: CanvasNodeByType<"3d", "mesh"> = {
   color: "#9ca3af",
   id: "typed-mesh",
@@ -3463,7 +3481,7 @@ writeFileSync(
   type SetNodeVisibleInput,
   type SetTextInput,
   type StackBoxInput
-} from "@denovo/canvas-editor";
+} from "@de-novo/canvas-editor";
 
 const editor: CanvasEditor = createEditor({
   activeToolId: "select",
@@ -3768,7 +3786,7 @@ writeFileSync(
   `import {
   createWorkerClient,
   type WorkerTaskDefinition
-} from "@denovo/canvas-worker";
+} from "@de-novo/canvas-worker";
 
 type GeometryWorkerTasks = {
   "geometry.bounds": WorkerTaskDefinition<
@@ -3798,7 +3816,7 @@ writeFileSync(
   BimElementProperties,
   BimElementRef,
   BimModelMetadata
-} from "@denovo/canvas-bim";
+} from "@de-novo/canvas-bim";
 
 declare const adapter: BimAdapter;
 const metadata: BimModelMetadata = await adapter.loadModel({
@@ -3896,14 +3914,14 @@ import {
 } from "${facadeName}/react";
 import {
   useCanvasSelector as useVueCanvasSelector
-} from "@denovo/vue-canvas";
+} from "@de-novo/vue-canvas";
 import {
   createCanvasSelectorStore,
   type CanvasReadableStore
-} from "@denovo/svelte-canvas";
+} from "@de-novo/svelte-canvas";
 import {
   useCanvasSelector as useSolidCanvasSelector
-} from "@denovo/solid-canvas";
+} from "@de-novo/solid-canvas";
 
 const doc = defineDocument({
   id: "selector-smoke",
@@ -4002,17 +4020,43 @@ writeFileSync(
   path.join(tmpDir, "facade-2d-smoke.ts"),
   `import {
   alignNodes,
+  captureCanvas2DSnapshot,
+  computeCanvas2DRedlines,
   computeCanvas2DSnapGuides,
   connectEditorToCanvas,
   createCanvas,
   createEditor,
+  createImageAssetRef,
+  createMemoryImageStore,
+  DEFAULT_BOX_MODEL_COLORS,
+  DEFAULT_REDLINE_COLOR,
+  define2DEdge,
   defineDocument,
+  DENOVO_IMAGE_NODE_TYPE,
   distributeNodes,
+  formatCanvas2DRedlineDistance,
+  inspectCanvas2DRuntime,
+  orthogonalSegmentIntersectsBoxInterior,
+  resolveCanvas2DBoxModelRegions,
+  resolveCanvas2DObstacleFreeOrthogonalWaypoints,
+  setImageFit,
   shallowEqual,
   subscribeCanvasSelector,
+  summarizeCanvasImageData,
+  type Canvas2DBoxModelOverlay,
+  type Canvas2DCapturedSnapshot,
+  type Canvas2DClipRect,
+  type Canvas2DCornerRadius,
+  type Canvas2DInspectionOverlay,
+  type Canvas2DObstacleRouteOptions,
+  type Canvas2DRedlineOverlay,
+  type Canvas2DRuntimeSnapshot,
   type Canvas2DSnapResult,
   type Canvas2DSpatialIndexStats,
-  type DenovoCanvas2DRuntime
+  type CanvasImageStore,
+  type CanvasPixelSummary,
+  type DenovoCanvas2DRuntime,
+  type DenovoImageProps
 } from "${facadeName}/2d";
 
 import {
@@ -4024,18 +4068,18 @@ import {
 import {
   DenovoCanvas2D as VueCanvas2D,
   useCanvasSelector as useVue2DSelector
-} from "@denovo/vue-canvas/2d";
+} from "@de-novo/vue-canvas/2d";
 
 import {
   DenovoCanvas2D as SvelteCanvas2D,
   createCanvasSelectorStore as createSvelte2DSelectorStore
-} from "@denovo/svelte-canvas/2d";
+} from "@de-novo/svelte-canvas/2d";
 
 import {
   DenovoCanvas2D as SolidCanvas2D,
   useCanvasSelector as useSolid2DSelector,
   type DenovoCanvas2DProps as SolidCanvas2DProps
-} from "@denovo/solid-canvas/2d";
+} from "@de-novo/solid-canvas/2d";
 
 const doc2d = defineDocument({
   id: "smoke-2d-doc",
@@ -4076,6 +4120,97 @@ const snapRuntime: Canvas2DSnapResult = runtime.current.computeSnapGuides(
 const spatialStats: Canvas2DSpatialIndexStats = runtime.current.getSpatialIndexStats();
 runtime.current.setSnapGuides(snapRuntime.guides);
 runtime.current.setSnapGuides([]);
+const boxModelOverlay: Canvas2DBoxModelOverlay = {
+  bounds: { minX: 10, minY: 20, maxX: 110, maxY: 80 },
+  margin: { top: 8, right: 8, bottom: 8, left: 8 },
+  border: { top: 2, right: 2, bottom: 2, left: 2 },
+  padding: { top: 12, right: 16, bottom: 12, left: 16 },
+  label: "card · 100 × 60"
+};
+const boxRegions = resolveCanvas2DBoxModelRegions(boxModelOverlay);
+const redlines: readonly Canvas2DRedlineOverlay[] = computeCanvas2DRedlines(
+  { minX: 10, minY: 20, maxX: 110, maxY: 80 },
+  { minX: 150, minY: 20, maxX: 250, maxY: 80 },
+  { unit: "px" }
+);
+const inspectionOverlay: Canvas2DInspectionOverlay = {
+  boxModels: [boxModelOverlay],
+  redlines
+};
+runtime.current.setInspectionOverlay(inspectionOverlay);
+runtime.current.setInspectionOverlay(null);
+const styledCorner: Canvas2DCornerRadius = [12, 12, 4, 4];
+const styledClip: Canvas2DClipRect = { x: 0, y: 0, width: 200, height: 120, cornerRadius: styledCorner };
+const redlineDistText: string = formatCanvas2DRedlineDistance(24, "px");
+void boxRegions;
+void styledClip;
+void redlineDistText;
+void DEFAULT_BOX_MODEL_COLORS;
+void DEFAULT_REDLINE_COLOR;
+// @ts-expect-error computeCanvas2DRedlines unit must be a string.
+computeCanvas2DRedlines({ minX: 0, minY: 0, maxX: 10, maxY: 10 }, { minX: 20, minY: 0, maxX: 30, maxY: 10 }, { unit: 123 });
+// @ts-expect-error setInspectionOverlay boxModel margin edges must be numeric.
+runtime.current.setInspectionOverlay({ boxModels: [{ bounds: { minX: 0, minY: 0, maxX: 10, maxY: 10 }, margin: { top: "8px", right: 0, bottom: 0, left: 0 } }] });
+const imageAsset = createImageAssetRef("shot-1", { uri: "/shot.png", width: 390, height: 844 });
+const imageStore: CanvasImageStore = createMemoryImageStore();
+const imageProps: DenovoImageProps = { assetId: "shot-1", width: 390, height: 844, fit: "cover", cornerRadius: 12 };
+const imageDoc = defineDocument({
+  id: "smoke-image-doc",
+  assets: [imageAsset],
+  scene: {
+    id: "smoke-image-scene",
+    mode: "2d",
+    layers: [{ id: "board", name: "Board" }],
+    nodes: [
+      { id: "img-1", layerId: "board", type: DENOVO_IMAGE_NODE_TYPE, props: imageProps },
+      { id: "img-2", layerId: "board", type: DENOVO_IMAGE_NODE_TYPE, position: [500, 0], props: { src: "/b.png", width: 200, height: 120 } },
+      define2DEdge({
+        id: "edge-gutter",
+        layerId: "board",
+        sourceId: "img-1",
+        targetId: "img-2",
+        sourcePort: "right",
+        targetPort: "left",
+        routing: "orthogonal",
+        avoidObstacles: true,
+        obstaclePadding: 20,
+        type: "edge"
+      })
+    ]
+  }
+});
+const imageRuntime = createCanvas("#stage", { document: imageDoc, imageStore });
+const fitOp = setImageFit({ nodeId: "img-1", fit: "contain" });
+const routeOptions: Canvas2DObstacleRouteOptions = { padding: 16 };
+const gutterPoints = resolveCanvas2DObstacleFreeOrthogonalWaypoints(
+  [100, 40],
+  [360, 40],
+  "right",
+  "left",
+  [{ minX: 180, minY: 0, maxX: 280, maxY: 80 }],
+  routeOptions
+);
+const hitsBox: boolean = orthogonalSegmentIntersectsBoxInterior([0, 40], [400, 40], { minX: 180, minY: 0, maxX: 280, maxY: 80 });
+void imageRuntime;
+void fitOp;
+void gutterPoints;
+void hitsBox;
+// @ts-expect-error setImageFit only accepts contain | cover | fill.
+setImageFit({ nodeId: "img-1", fit: "stretch" });
+// @ts-expect-error define2DEdge avoidObstacles must be boolean.
+define2DEdge({ id: "bad-e", layerId: "board", sourceId: "img-1", targetId: "img-2", avoidObstacles: "yes", type: "edge" });
+// @ts-expect-error imageStore must satisfy CanvasImageStore.
+createCanvas("#stage", { document: imageDoc, imageStore: "invalid" });
+const inspected: Canvas2DRuntimeSnapshot = inspectCanvas2DRuntime(runtime, { onlyInViewport: true });
+const capturedPromise: Promise<Canvas2DCapturedSnapshot> = captureCanvas2DSnapshot(runtime, { includePngDataUrl: true });
+const pixelSummary: CanvasPixelSummary = summarizeCanvasImageData({ data: new Uint8ClampedArray(16), width: 2, height: 2 });
+void inspected;
+void capturedPromise;
+void pixelSummary;
+// @ts-expect-error inspectCanvas2DRuntime onlyInViewport must be boolean.
+inspectCanvas2DRuntime(runtime, { onlyInViewport: "yes" });
+// @ts-expect-error captureCanvas2DSnapshot includePngDataUrl must be boolean.
+captureCanvas2DSnapshot(runtime, { includePngDataUrl: 1 });
 const alignOp = alignNodes({ nodeIds: ["r1"], alignment: "center" });
 const distOp = distributeNodes({ nodeIds: ["r1"], axis: "horizontal" });
 // @ts-expect-error computeCanvas2DSnapGuides threshold must be a number.
@@ -4100,13 +4235,13 @@ unsub();
 disconnect();
 
 createCanvas("#stage", {
-  // @ts-expect-error @denovo/canvas/2d rejects 3D scenes at compile time.
+  // @ts-expect-error @de-novo/canvas/2d rejects 3D scenes at compile time.
   scene: { id: "bad-3d", mode: "3d", layers: [{ id: "default", name: "Default" }], nodes: [] }
 });
 
 createCanvas("#stage", {
   document: doc2d,
-  // @ts-expect-error @denovo/canvas/2d rejects WebGL2/Three backends at compile time.
+  // @ts-expect-error @de-novo/canvas/2d rejects WebGL2/Three backends at compile time.
   renderer: "webgl2"
 });
 
@@ -4186,8 +4321,8 @@ writeFileSync(
       extends: "../../tsconfig.base.json",
       compilerOptions: {
         paths: {
-          "@denovo/canvas-core/effect": ["../../packages/core/dist/effect.d.ts"],
-          "@denovo/canvas-editor": ["../../packages/editor/dist/index.d.ts"],
+          "@de-novo/canvas-core/effect": ["../../packages/core/dist/effect.d.ts"],
+          "@de-novo/canvas-editor": ["../../packages/editor/dist/index.d.ts"],
           [facadeName]: ["../../packages/canvas/dist/index.d.ts"],
           [`${facadeName}/react`]: ["../../packages/canvas/dist/react.d.ts"],
           [`${facadeName}/web`]: ["../../packages/canvas/dist/web.d.ts"]
@@ -4210,8 +4345,8 @@ writeFileSync(
         lib: ["ES2022"],
         noEmit: true,
         paths: {
-          "@denovo/canvas-core": ["../../packages/core/dist/index.d.ts"],
-          "@denovo/canvas-editor": ["../../packages/editor/dist/index.d.ts"]
+          "@de-novo/canvas-core": ["../../packages/core/dist/index.d.ts"],
+          "@de-novo/canvas-editor": ["../../packages/editor/dist/index.d.ts"]
         },
         types: ["node"]
       },
@@ -4230,7 +4365,7 @@ writeFileSync(
       compilerOptions: {
         noEmit: true,
         paths: {
-          "@denovo/canvas-worker": ["../../packages/worker/dist/index.d.ts"]
+          "@de-novo/canvas-worker": ["../../packages/worker/dist/index.d.ts"]
         }
       },
       include: ["worker-smoke.ts"]
@@ -4269,8 +4404,8 @@ writeFileSync(
         lib: ["ES2022"],
         noEmit: true,
         paths: {
-          "@denovo/canvas-bim": ["../../packages/bim/dist/index.d.ts"],
-          "@denovo/canvas-core": ["../../packages/core/dist/index.d.ts"]
+          "@de-novo/canvas-bim": ["../../packages/bim/dist/index.d.ts"],
+          "@de-novo/canvas-core": ["../../packages/core/dist/index.d.ts"]
         }
       },
       include: ["bim-smoke.ts"]
@@ -4291,10 +4426,10 @@ writeFileSync(
         paths: {
           [facadeName]: ["../../packages/canvas/dist/index.d.ts"],
           [`${facadeName}/react`]: ["../../packages/canvas/dist/react.d.ts"],
-          "@denovo/react-canvas": ["../../packages/react/dist/index.d.ts"],
-          "@denovo/vue-canvas": ["../../packages/vue-canvas/dist/index.d.ts"],
-          "@denovo/svelte-canvas": ["../../packages/svelte-canvas/dist/index.d.ts"],
-          "@denovo/solid-canvas": ["../../packages/solid-canvas/dist/index.d.ts"]
+          "@de-novo/react-canvas": ["../../packages/react/dist/index.d.ts"],
+          "@de-novo/vue-canvas": ["../../packages/vue-canvas/dist/index.d.ts"],
+          "@de-novo/svelte-canvas": ["../../packages/svelte-canvas/dist/index.d.ts"],
+          "@de-novo/solid-canvas": ["../../packages/solid-canvas/dist/index.d.ts"]
         }
       },
       include: ["selectors-smoke.ts"]
@@ -4315,10 +4450,10 @@ writeFileSync(
         paths: {
           [`${facadeName}/2d`]: ["../../packages/canvas/dist/2d.d.ts"],
           [`${facadeName}/react/2d`]: ["../../packages/canvas/dist/react-2d.d.ts"],
-          "@denovo/react-canvas/2d": ["../../packages/react/dist/2d.d.ts"],
-          "@denovo/vue-canvas/2d": ["../../packages/vue-canvas/dist/2d.d.ts"],
-          "@denovo/svelte-canvas/2d": ["../../packages/svelte-canvas/dist/2d.d.ts"],
-          "@denovo/solid-canvas/2d": ["../../packages/solid-canvas/dist/2d.d.ts"]
+          "@de-novo/react-canvas/2d": ["../../packages/react/dist/2d.d.ts"],
+          "@de-novo/vue-canvas/2d": ["../../packages/vue-canvas/dist/2d.d.ts"],
+          "@de-novo/svelte-canvas/2d": ["../../packages/svelte-canvas/dist/2d.d.ts"],
+          "@de-novo/solid-canvas/2d": ["../../packages/solid-canvas/dist/2d.d.ts"]
         }
       },
       include: ["facade-2d-smoke.ts"]

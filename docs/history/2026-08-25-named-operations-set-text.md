@@ -11,7 +11,7 @@ Named authoring slice 16. Document-only helper that compiles to one
 
 ## Changes
 
-- `@denovo/canvas-editor` and `@denovo/canvas` export `setText` and
+- `@de-novo/canvas-editor` and `@de-novo/canvas` export `setText` and
   `SetTextInput`.
 - Extra fields and a non-string `text` fail at the helper.
 - A non-text node is `invalid-command`.

@@ -19,13 +19,14 @@ import type {
   CanvasStore,
   CanvasToolDefinition,
   CanvasToolInput
-} from "@denovo/canvas-core";
+} from "@de-novo/canvas-core";
 import type {
   Canvas2DRectBounds,
   Canvas2DViewState,
   Canvas2DViewStateInput
 } from "./view2d";
-import type { Canvas2DNode } from "@denovo/canvas-core";
+import type { Canvas2DNode } from "@de-novo/canvas-core";
+import type { CanvasImageStore } from "./2d/image-cache";
 
 export type CanvasTarget = HTMLElement | HTMLCanvasElement;
 
@@ -161,6 +162,16 @@ export type CreateCanvasOptions = {
    * out of the document JSON; the runtime looks up buffers here.
    */
   geometryStore?: CanvasGeometryStore;
+  /**
+   * Session decoded 2D image sources keyed by `AssetRef.id` for
+   * `plugin.denovo.image` (`props.assetId`). Keeps bitmaps/elements out of JSON.
+   */
+  imageStore?: CanvasImageStore;
+  /**
+   * Optional `AssetRef.id -> uri` map extracted from `document.assets` for
+   * `plugin.denovo.image` nodes using `props.assetId`.
+   */
+  imageAssetUris?: ReadonlyMap<string, string>;
   onFrame?: (
     frame: CanvasFrame,
     runtime: WebCanvasRuntime<CanvasMode>

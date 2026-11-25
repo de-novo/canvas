@@ -15,13 +15,13 @@ body:
     attributes:
       label: Affected package / surface
       options:
-        - "@denovo/canvas (root facade)"
-        - "@denovo/canvas/2d (lightweight 2D)"
-        - "@denovo/canvas/react/2d or @denovo/react-canvas"
-        - "@denovo/vue-canvas / @denovo/svelte-canvas / @denovo/solid-canvas"
-        - "@denovo/canvas-core / @denovo/canvas-editor"
-        - "@denovo/canvas-web / @denovo/canvas-three"
-        - "@denovo/canvas-server / @denovo/canvas-worker / @denovo/canvas-bim"
+        - "@de-novo/canvas (root facade)"
+        - "@de-novo/canvas/2d (lightweight 2D)"
+        - "@de-novo/canvas/react/2d or @de-novo/react-canvas"
+        - "@de-novo/vue-canvas / @de-novo/svelte-canvas / @de-novo/solid-canvas"
+        - "@de-novo/canvas-core / @de-novo/canvas-editor"
+        - "@de-novo/canvas-web / @de-novo/canvas-three"
+        - "@de-novo/canvas-server / @de-novo/canvas-worker / @de-novo/canvas-bim"
     validations:
       required: true
   - type: input

@@ -6,7 +6,7 @@ M0 verification item 1: public API contract.
 
 ## Changes
 
-- Added the `@denovo/canvas` facade package as the current public entrypoint.
+- Added the `@de-novo/canvas` facade package as the current public entrypoint.
 - Added backend vocabulary to the facade types:
   - `CanvasBackend`
   - `CanvasRendererConfig`

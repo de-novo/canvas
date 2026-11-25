@@ -1,4 +1,4 @@
-import { canvasScreenPointRadius } from "@denovo/canvas-editor";
+import { canvasScreenPointRadius } from "@de-novo/canvas-editor";
 
 import type { Canvas2DViewState } from "../view2d";
 

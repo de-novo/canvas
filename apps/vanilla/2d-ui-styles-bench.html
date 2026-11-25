@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>2d-ui-styles-bench</title>
+  </head>
+  <body style="margin:0;background:#0f172a;color:#e2e8f0;font:14px sans-serif;">
+    <div id="status" style="position:fixed;z-index:2;left:12px;bottom:12px;padding:6px 10px;border-radius:6px;background:#020617cc;">
+      starting
+    </div>
+    <div id="stage" style="width:100vw;height:100vh;"></div>
+    <script type="module">
+      import {
+        computeCanvas2DRedlines,
+        createCanvas,
+        defineDocument
+      } from "@de-novo/canvas/2d";
+
+      const BG = [15, 23, 42];
+      const GREEN = [34, 197, 94];
+      const RED = [239, 68, 68];
+      const BLUE = [59, 130, 246];
+      const AMBER = [245, 158, 11];
+
+      const documentModel = defineDocument({
+        id: "ui-styles-bench",
+        scene: {
+          background: "#0f172a",
+          id: "ui-styles-bench-scene",
+          layers: [{ id: "ui", name: "UI" }],
+          mode: "2d",
+          nodes: [
+            {
+              id: "ui-card",
+              layerId: "ui",
+              type: "rect",
+              position: [40, 40],
+              size: [160, 120],
+              fill: "#22c55e",
+              cornerRadius: [36, 36, 8, 8],
+              stroke: "#ef4444",
+              strokeWidth: 8,
+              opacity: 1
+            },
+            {
+              id: "clip-frame",
+              layerId: "ui",
+              type: "group",
+              position: [280, 40],
+              clip: { x: 0, y: 0, width: 120, height: 120, cornerRadius: 28 },
+              opacity: 1
+            },
+            {
+              id: "overflow-child",
+              layerId: "ui",
+              parentId: "clip-frame",
+              type: "rect",
+              position: [0, 0],
+              size: [220, 220],
+              fill: "#3b82f6"
+            },
+            {
+              id: "semi-circle",
+              layerId: "ui",
+              type: "circle",
+              position: [120, 280],
+              radius: 44,
+              fill: "#f59e0b",
+              stroke: "#ef4444",
+              strokeWidth: 6,
+              opacity: 0.5
+            }
+          ]
+        }
+      });
+
+      function samplePixel(image, rect, cssX, cssY) {
+        const scaleX = image.width / Math.max(1, rect.width);
+        const scaleY = image.height / Math.max(1, rect.height);
+        const px = Math.min(image.width - 1, Math.max(0, Math.round(cssX * scaleX)));
+        const py = Math.min(image.height - 1, Math.max(0, Math.round(cssY * scaleY)));
+        const idx = (py * image.width + px) * 4;
+        return [image.data[idx], image.data[idx + 1], image.data[idx + 2], image.data[idx + 3]];
+      }
+
+      function nearColor(actual, expected, tolerance = 28) {
+        return (
+          Math.abs(actual[0] - expected[0]) <= tolerance &&
+          Math.abs(actual[1] - expected[1]) <= tolerance &&
+          Math.abs(actual[2] - expected[2]) <= tolerance
+        );
+      }
+
+      const host = document.getElementById("stage");
+      try {
+        const requestedBackend = new URLSearchParams(window.location.search).get(
+          "backend"
+        );
+        const runtime = createCanvas(host, {
+          devicePixelRatio: 1,
+          document: documentModel,
+          renderer: requestedBackend === "webgpu" ? "webgpu" : "canvas2d"
+        });
+        await runtime.ready;
+        runtime.render();
+
+        const rect = runtime.canvas.getBoundingClientRect();
+        const baseImage = await runtime.readPixels();
+
+        // 1. Rounded & stroked rect pixel checks
+        const cardCenter = samplePixel(baseImage, rect, 120, 100);
+        const cardTopStroke = samplePixel(baseImage, rect, 120, 40);
+        const cardCutCorner = samplePixel(baseImage, rect, 42, 42);
+
+        // 2. Clipped group pixel checks (child overflows to x=500, clipped at x=400 & radius 28)
+        const clipInside = samplePixel(baseImage, rect, 340, 100);
+        const clipOverflow = samplePixel(baseImage, rect, 430, 100);
+        const clipCutCorner = samplePixel(baseImage, rect, 282, 42);
+
+        // 3. Semi-transparent circle (50% amber blended over #0f172a -> ~(130, 90, 26))
+        const circleCenter = samplePixel(baseImage, rect, 120, 280);
+        const expectedBlend = [
+          Math.round(AMBER[0] * 0.5 + BG[0] * 0.5),
+          Math.round(AMBER[1] * 0.5 + BG[1] * 0.5),
+          Math.round(AMBER[2] * 0.5 + BG[2] * 0.5)
+        ];
+
+        // 4. Hit testing matches rounded corner & group clip
+        const hitCardCenter = runtime.hitTest({ point: [120, 100] });
+        const hitCardCutCorner = runtime.hitTest({ point: [42, 42] });
+        const hitClipInside = runtime.hitTest({ point: [340, 100] });
+        const hitClipOverflow = runtime.hitTest({ point: [430, 100] });
+
+        // 5. Ephemeral box-model & redline inspection overlay
+        const cardBounds = { minX: 40, minY: 40, maxX: 200, maxY: 160 };
+        const frameBounds = { minX: 280, minY: 40, maxX: 400, maxY: 160 };
+        const redlines = computeCanvas2DRedlines(cardBounds, frameBounds, {
+          unit: "px"
+        });
+        const beforeDocJson = JSON.stringify(runtime.getDocument());
+        runtime.current.setInspectionOverlay({
+          boxModels: [
+            {
+              bounds: cardBounds,
+              margin: { top: 18, right: 18, bottom: 18, left: 18 },
+              border: { top: 4, right: 4, bottom: 4, left: 4 },
+              padding: { top: 12, right: 12, bottom: 12, left: 12 },
+              label: "ui-card · 160 × 120"
+            }
+          ],
+          redlines
+        });
+        runtime.render();
+        const overlayImage = await runtime.readPixels();
+
+        // Margin band above ui-card at (120, 30) must change from BG to warm orange tint.
+        const marginPixel = samplePixel(overlayImage, rect, 120, 30);
+        // Redline line segment between card (x=200) and clip-frame (x=280) at (220, 100) must change from BG.
+        const redlinePixel = samplePixel(overlayImage, rect, 220, 100);
+
+        const afterDocJson = JSON.stringify(runtime.getDocument());
+        window.__uiStylesOverlayImage = overlayImage;
+
+        const stats = runtime.getRenderStats();
+        window.__uiStylesResult = {
+          backend: host.getAttribute("data-denovo-backend"),
+          drawCalls: stats?.drawCalls ?? 0,
+          cardCenterGreen: nearColor(cardCenter, GREEN),
+          cardTopStrokeRed: nearColor(cardTopStroke, RED),
+          cardCutCornerBg: nearColor(cardCutCorner, BG),
+          clipInsideBlue: nearColor(clipInside, BLUE),
+          clipOverflowBg: nearColor(clipOverflow, BG),
+          clipCutCornerBg: nearColor(clipCutCorner, BG),
+          circleOpacityBlended: nearColor(circleCenter, expectedBlend, 32),
+          hitCardCenterOk: hitCardCenter.kind === "node" && hitCardCenter.nodeId === "ui-card",
+          hitCardCutCornerEmpty: hitCardCutCorner.kind === "empty",
+          hitClipInsideOk: hitClipInside.kind === "node" && hitClipInside.nodeId === "overflow-child",
+          hitClipOverflowEmpty: hitClipOverflow.kind === "empty",
+          overlayMarginPainted: !nearColor(marginPixel, BG, 10) && marginPixel[0] > marginPixel[2],
+          overlayRedlinePainted: !nearColor(redlinePixel, BG, 10) && redlinePixel[0] > redlinePixel[2],
+          documentUnchanged: beforeDocJson === afterDocJson,
+          samples: {
+            cardCenter,
+            cardTopStroke,
+            cardCutCorner,
+            clipInside,
+            clipOverflow,
+            clipCutCorner,
+            circleCenter,
+            marginPixel,
+            redlinePixel
+          }
+        };
+        host.setAttribute("data-denovo-ready", "true");
+        document.getElementById("status").textContent =
+          `${window.__uiStylesResult.backend} ready · drawCalls=${window.__uiStylesResult.drawCalls}`;
+      } catch (error) {
+        window.__uiStylesError = String(error);
+        host.setAttribute("data-denovo-ready", "true");
+        document.getElementById("status").textContent = String(error);
+      }
+    </script>
+  </body>
+</html>

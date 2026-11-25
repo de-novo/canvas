@@ -7,7 +7,7 @@ import {
   type CanvasPluginCommandHandler,
   type CanvasPluginCommandType,
   type CanvasToolDefinition
-} from "@denovo/canvas-core";
+} from "@de-novo/canvas-core";
 import { Cause, Effect, Either, Option } from "effect";
 import { CanvasEditorError, PluginPayloadValidationFailure } from "./errors.js";
 import type {

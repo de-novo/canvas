@@ -3,7 +3,7 @@ import {
   type Canvas2DNode,
   type Canvas2DScene,
   type CanvasNodeTransformPreview
-} from "@denovo/canvas-core";
+} from "@de-novo/canvas-core";
 
 import type { Canvas2DRectBounds } from "../view2d";
 import {
@@ -39,6 +39,7 @@ import {
 
 export type Canvas2DSpatialDrawableEntry = {
   readonly bounds: Canvas2DRectBounds;
+  readonly hasStyledAncestor: boolean;
   readonly isIdentityParent: boolean;
   readonly node: Canvas2DDrawableNode;
   readonly order: number;
@@ -163,10 +164,12 @@ function computeConservativeDrawableBounds(
           scale: node.scale
         })
       );
-      const minX = Math.min(0, node.size[0]);
-      const maxX = Math.max(0, node.size[0]);
-      const minY = Math.min(0, node.size[1]);
-      const maxY = Math.max(0, node.size[1]);
+      const halfStroke =
+        node.stroke !== null && node.strokeWidth > 0 ? node.strokeWidth * 0.5 : 0;
+      const minX = Math.min(0, node.size[0]) - halfStroke;
+      const maxX = Math.max(0, node.size[0]) + halfStroke;
+      const minY = Math.min(0, node.size[1]) - halfStroke;
+      const maxY = Math.max(0, node.size[1]) + halfStroke;
       return expandBounds(transformedRectBounds(world, minX, minY, maxX, maxY), 2);
     }
     case "circle": {
@@ -178,7 +181,9 @@ function computeConservativeDrawableBounds(
           scale: node.scale
         })
       );
-      const r = node.radius + 2;
+      const halfStroke =
+        node.stroke !== null && node.strokeWidth > 0 ? node.strokeWidth * 0.5 : 0;
+      const r = node.radius + halfStroke + 2;
       return transformedRectBounds(world, -r, -r, r, r);
     }
     case "html": {
@@ -378,7 +383,11 @@ export function createCanvas2DSpatialIndex(
   const entryIndexByNodeId = new Map<string, number>();
   let htmlEntryCount = 0;
 
-  function visitNode(node: Canvas2DNode, parentWorldTransform: Canvas2DMatrix) {
+  function visitNode(
+    node: Canvas2DNode,
+    parentWorldTransform: Canvas2DMatrix,
+    styledAncestor: boolean
+  ) {
     if (!node.visible) {
       return;
     }
@@ -396,8 +405,10 @@ export function createCanvas2DSpatialIndex(
           scale: node.scale
         })
       );
+      const childStyledAncestor =
+        styledAncestor || node.clip !== null || node.opacity < 1;
       for (const child of getCanvas2DGroupChildren(sceneGraph, node.id)) {
-        visitNode(child, worldTransform);
+        visitNode(child, worldTransform, childStyledAncestor);
       }
       return;
     }
@@ -416,6 +427,7 @@ export function createCanvas2DSpatialIndex(
     }
     entries.push({
       bounds,
+      hasStyledAncestor: node.type !== "edge" && styledAncestor,
       isIdentityParent: isIdentityMatrix(effectiveParent),
       node,
       order,
@@ -428,7 +440,7 @@ export function createCanvas2DSpatialIndex(
       continue;
     }
     for (const root of getCanvas2DLayerRoots(sceneGraph, layer.id)) {
-      visitNode(root, CANVAS_2D_IDENTITY_MATRIX);
+      visitNode(root, CANVAS_2D_IDENTITY_MATRIX, false);
     }
   }
 
@@ -724,6 +736,7 @@ export function createCanvas2DSpatialIndex(
 
     const affectedDrawableIds = new Set<string>();
     const affectedGroupIds = new Set<string>();
+    const affectedObstacleLayers = new Set<string>();
     const stack: Canvas2DNode[] = [...changedNodes];
 
     while (stack.length > 0) {
@@ -738,11 +751,28 @@ export function createCanvas2DSpatialIndex(
         }
       } else {
         affectedDrawableIds.add(node.id);
+        if (node.type !== "edge") {
+          affectedObstacleLayers.add(node.layerId);
+        }
       }
       const incidentEdges = nextSceneGraph.edgesByEndpointId.get(node.id);
       if (incidentEdges) {
         for (let i = 0; i < incidentEdges.length; i += 1) {
           affectedDrawableIds.add(incidentEdges[i]!.id);
+        }
+      }
+    }
+
+    if (affectedObstacleLayers.size > 0) {
+      for (let i = 0; i < nextScene.nodes.length; i += 1) {
+        const candidate = nextScene.nodes[i]!;
+        if (
+          candidate.type === "edge" &&
+          candidate.routing === "orthogonal" &&
+          candidate.avoidObstacles &&
+          affectedObstacleLayers.has(candidate.layerId)
+        ) {
+          affectedDrawableIds.add(candidate.id);
         }
       }
     }
@@ -779,8 +809,15 @@ export function createCanvas2DSpatialIndex(
         removeEntryCells(entryIndex);
         insertEntryCells(entryIndex, nextBounds);
       }
+      const hasStyledAncestor =
+        nextNode.type !== "edge" &&
+        nextNode.parentId !== null &&
+        getCanvas2DAncestors(nextNode, nextSceneGraph).some(
+          (ancestor) => ancestor.clip !== null || ancestor.opacity < 1
+        );
       entries[entryIndex] = {
         bounds: nextBounds,
+        hasStyledAncestor,
         isIdentityParent: isIdentityMatrix(effectiveParent),
         node: nextNode,
         order: entryIndex,
@@ -945,6 +982,31 @@ function sameOptionalRecord(
   return true;
 }
 
+function sameCornerRadius(
+  a: number | readonly [number, number, number, number],
+  b: number | readonly [number, number, number, number]
+): boolean {
+  if (typeof a === "number" || typeof b === "number") {
+    return a === b;
+  }
+  return a[0] === b[0] && a[1] === b[1] && a[2] === b[2] && a[3] === b[3];
+}
+
+function sameClipRect(
+  a: { readonly x: number; readonly y: number; readonly width: number; readonly height: number; readonly cornerRadius: number | readonly [number, number, number, number] } | null,
+  b: { readonly x: number; readonly y: number; readonly width: number; readonly height: number; readonly cornerRadius: number | readonly [number, number, number, number] } | null
+): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  return (
+    a.x === b.x &&
+    a.y === b.y &&
+    a.width === b.width &&
+    a.height === b.height &&
+    sameCornerRadius(a.cornerRadius, b.cornerRadius)
+  );
+}
+
 function isSameCanvas2DNodeValue(a: Canvas2DNode, b: Canvas2DNode): boolean {
   if (a.locked !== b.locked || !sameOptionalRecord(a.metadata, b.metadata)) {
     return false;
@@ -957,7 +1019,11 @@ function isSameCanvas2DNodeValue(a: Canvas2DNode, b: Canvas2DNode): boolean {
         sameVec2(a.size, b.size) &&
         a.rotation === b.rotation &&
         sameVec2(a.scale, b.scale) &&
-        a.fill === b.fill
+        a.fill === b.fill &&
+        sameCornerRadius(a.cornerRadius, b.cornerRadius) &&
+        a.stroke === b.stroke &&
+        a.strokeWidth === b.strokeWidth &&
+        a.opacity === b.opacity
       );
     case "circle":
       return (
@@ -966,14 +1032,19 @@ function isSameCanvas2DNodeValue(a: Canvas2DNode, b: Canvas2DNode): boolean {
         a.radius === b.radius &&
         a.rotation === b.rotation &&
         sameVec2(a.scale, b.scale) &&
-        a.fill === b.fill
+        a.fill === b.fill &&
+        a.stroke === b.stroke &&
+        a.strokeWidth === b.strokeWidth &&
+        a.opacity === b.opacity
       );
     case "group":
       return (
         b.type === "group" &&
         sameVec2(a.position, b.position) &&
         a.rotation === b.rotation &&
-        sameVec2(a.scale, b.scale)
+        sameVec2(a.scale, b.scale) &&
+        a.opacity === b.opacity &&
+        sameClipRect(a.clip, b.clip)
       );
     case "html":
       return (
@@ -1027,6 +1098,8 @@ function isSameCanvas2DNodeValue(a: Canvas2DNode, b: Canvas2DNode): boolean {
         sameVec2(a.targetAnchor, b.targetAnchor) &&
         a.curve === b.curve &&
         a.routing === b.routing &&
+        a.avoidObstacles === b.avoidObstacles &&
+        a.obstaclePadding === b.obstaclePadding &&
         a.curveOffset === b.curveOffset &&
         a.lineStyle === b.lineStyle &&
         a.stroke === b.stroke &&

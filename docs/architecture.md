@@ -23,7 +23,7 @@
   which are plumbing (host bundles and adapters), and which are not allowed
   to carry a visual (`pluginState`).
 - [Kind Drawer Seam](./kind-drawer-seam.md) is the host-kind paint and
-  pick registration on `@denovo/canvas-web`.
+  pick registration on `@de-novo/canvas-web`.
 - [Developer Experience](./developer-experience.md) defines how the SDK hides
   low-level rendering/editor complexity while preserving escape hatches.
 - [Dependency Strategy](./dependency-strategy.md) defines how proven libraries
@@ -33,17 +33,17 @@
 
 ## Package Layers
 
-- Facade package: `@denovo/canvas` is the default user-facing package. It owns
+- Facade package: `@de-novo/canvas` is the default user-facing package. It owns
   quick setup, CSS variables, theme hooks, plugin registration, and re-exported
   adapter entrypoints.
 - Core runtime: TypeScript, Zod, and Zustand vanilla store. No framework
   dependency.
 - Editor core: command dispatcher, selection, history, tools, transactions.
-  This is owned by the framework-free `@denovo/canvas-editor` package and is
+  This is owned by the framework-free `@de-novo/canvas-editor` package and is
   re-exported explicitly through the facade.
 - Web runtime: DOM, native 2D Canvas, and Three.js. Usable from plain HTML,
   Astro, Vue, Svelte, Solid, React, or any web framework. The IndexedDB
-  adapter applies stored commands through `@denovo/canvas-editor`.
+  adapter applies stored commands through `@de-novo/canvas-editor`.
 - 3D primitives: Three.js plus `three-mesh-bvh` acceleration helpers.
 - Framework adapters: React/R3F first, then Vue/Svelte/Solid adapters can be
   added without changing core contracts.
@@ -115,4 +115,4 @@ default path stays general.
 - `@xeokit/xeokit-sdk` is AGPL-3.0, so it must remain optional.
 - `web-ifc` is MPL-2.0 and should only be loaded for IFC workflows.
 - BIM-specific packages should depend on adapter contracts from
-  `@denovo/canvas-bim` rather than coupling the base runtime to BIM engines.
+  `@de-novo/canvas-bim` rather than coupling the base runtime to BIM engines.

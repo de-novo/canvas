@@ -10,8 +10,8 @@ import {
   type CanvasSaveResult,
   type CanvasStorageAdapter,
   type NodeId
-} from "@denovo/canvas-core";
-import { applyCommandsToStoredDocument } from "@denovo/canvas-editor";
+} from "@de-novo/canvas-core";
+import { applyCommandsToStoredDocument } from "@de-novo/canvas-editor";
 import {
   storeUploadedAsset,
   storedAssetRecord,
@@ -255,4 +255,4 @@ export {
   type CanvasDocumentSummary,
   type CanvasSaveResult,
   type CanvasStorageAdapter
-} from "@denovo/canvas-core";
+} from "@de-novo/canvas-core";

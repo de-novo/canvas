@@ -54,6 +54,19 @@ import {
   isDenovoShadeType,
   parseDenovoShadeProps
 } from "./kinds/shade.js";
+import {
+  DENOVO_IMAGE_NODE_TYPE,
+  DenovoImageFitSchema,
+  DenovoImagePropsSchema,
+  createImageAssetRef,
+  denovoImageKind,
+  denovoImageSize,
+  isDenovoImageNode,
+  isDenovoImageType,
+  parseDenovoImageProps,
+  resolveDenovoImageDrawRect,
+  resolveDenovoImageStyle
+} from "./kinds/image.js";
 
 export const CANVAS_DOCUMENT_SCHEMA_VERSION = "0.2.0";
 export const CANVAS_LEGACY_DOCUMENT_SCHEMA_VERSION = "0.1.0";
@@ -140,18 +153,49 @@ const CanvasNodeCommonSchemaShape = {
   parentId: NodeIdSchema.nullable().default(null)
 };
 
+const Canvas2DNonNegativeFiniteSchema = z.number().finite().nonnegative();
+
+export const Canvas2DCornerRadiusSchema = z.union([
+  Canvas2DNonNegativeFiniteSchema,
+  z.tuple([
+    Canvas2DNonNegativeFiniteSchema,
+    Canvas2DNonNegativeFiniteSchema,
+    Canvas2DNonNegativeFiniteSchema,
+    Canvas2DNonNegativeFiniteSchema
+  ])
+]);
+
+export const Canvas2DOpacitySchema = z.number().finite().min(0).max(1);
+
+export const Canvas2DClipRectSchema = z
+  .object({
+    x: z.number().finite().default(0),
+    y: z.number().finite().default(0),
+    width: z.number().finite().positive(),
+    height: z.number().finite().positive(),
+    cornerRadius: Canvas2DCornerRadiusSchema.default(0)
+  })
+  .strict();
+
 export const RectNodeSchema = Node2DTransformSchema.extend({
   ...CanvasNodeCommonSchemaShape,
   type: z.literal("rect"),
   fill: z.string().min(1).default("#22c55e"),
-  size: Point2Schema.default([120, 80])
+  size: Point2Schema.default([120, 80]),
+  cornerRadius: Canvas2DCornerRadiusSchema.default(0),
+  stroke: z.string().min(1).nullable().default(null),
+  strokeWidth: Canvas2DNonNegativeFiniteSchema.default(1),
+  opacity: Canvas2DOpacitySchema.default(1)
 }).strict();
 
 export const CircleNodeSchema = Node2DTransformSchema.extend({
   ...CanvasNodeCommonSchemaShape,
   type: z.literal("circle"),
   fill: z.string().min(1).default("#38bdf8"),
-  radius: z.number().positive().default(48)
+  radius: z.number().positive().default(48),
+  stroke: z.string().min(1).nullable().default(null),
+  strokeWidth: Canvas2DNonNegativeFiniteSchema.default(1),
+  opacity: Canvas2DOpacitySchema.default(1)
 }).strict();
 
 export const BoxNodeSchema = NodeTransformSchema.extend({
@@ -240,7 +284,9 @@ export const InstancesNodeSchema = NodeTransformSchema.extend({
 
 export const Canvas2DGroupNodeSchema = Node2DTransformSchema.extend({
   ...CanvasNodeCommonSchemaShape,
-  type: z.literal("group")
+  type: z.literal("group"),
+  clip: Canvas2DClipRectSchema.nullable().default(null),
+  opacity: Canvas2DOpacitySchema.default(1)
 }).strict();
 
 export const Canvas3DGroupNodeSchema = NodeTransformSchema.extend({
@@ -322,6 +368,14 @@ export const Canvas2DEdgeNodeSchema = z
     targetAnchor: Point2Schema.default([0, 0]),
     curve: z.enum(["straight", "curved"]).default("straight"),
     routing: z.enum(["straight", "curved", "orthogonal"]).default("straight"),
+    /**
+     * When `routing: "orthogonal"` and `avoidObstacles: true`, the 2D edge
+     * router routes through obstacle-free gutters around other nodes in the
+     * same layer instead of cutting straight across them.
+     */
+    avoidObstacles: z.boolean().default(false),
+    /** Gutter clearance in scene units around obstacle boxes (used with `avoidObstacles`). */
+    obstaclePadding: Canvas2DNonNegativeFiniteSchema.default(16),
     curveOffset: z.number().default(0),
     lineStyle: z.enum(["solid", "dashed", "dotted"]).default("solid"),
     stroke: z.string().min(1).default("#94a3b8"),
@@ -762,6 +816,33 @@ export const CanvasDocumentSchema = z
       }
 
       assetsById.set(asset.id, asset);
+    }
+
+    if (document.scene.mode === "2d") {
+      for (const [nodeIndex, node] of document.scene.nodes.entries()) {
+        if (!isDenovoImageNode(node) || node.props.assetId === undefined) {
+          continue;
+        }
+
+        const asset = assetsById.get(node.props.assetId);
+
+        if (asset === undefined) {
+          context.addIssue({
+            code: "custom",
+            message: `Missing image asset: ${node.props.assetId}`,
+            path: ["scene", "nodes", nodeIndex, "props", "assetId"]
+          });
+          continue;
+        }
+
+        if (asset.type !== "image") {
+          context.addIssue({
+            code: "custom",
+            message: `Image asset must have type "image": ${node.props.assetId}`,
+            path: ["scene", "nodes", nodeIndex, "props", "assetId"]
+          });
+        }
+      }
     }
 
     if (document.scene.mode === "3d") {
@@ -1593,6 +1674,10 @@ export type CanvasMeasurementUnit = z.output<
 export type Camera = z.output<typeof CameraSchema>;
 export type RenderOptions = z.output<typeof RenderOptionsSchema>;
 export type RenderLodOptions = z.output<typeof RenderLodOptionsSchema>;
+export type Canvas2DCornerRadius = z.output<typeof Canvas2DCornerRadiusSchema>;
+export type Canvas2DOpacity = z.output<typeof Canvas2DOpacitySchema>;
+export type Canvas2DClipRect = z.output<typeof Canvas2DClipRectSchema>;
+export type Canvas2DClipRectInput = z.input<typeof Canvas2DClipRectSchema>;
 export type Canvas2DGroupNode = z.output<typeof Canvas2DGroupNodeSchema>;
 export type Canvas3DGroupNode = z.output<typeof Canvas3DGroupNodeSchema>;
 export type Canvas2DMeasurementNode = z.output<
@@ -3022,6 +3107,19 @@ function tryDefineDocumentIncremental(input: unknown): CanvasDocument | null {
     assetsById.set(asset.id, asset);
   }
 
+  if (sceneFast.mode === "2d") {
+    for (let i = 0; i < sceneFast.nodes.length; i += 1) {
+      const node = sceneFast.nodes[i]!;
+      if (!isDenovoImageNode(node) || node.props.assetId === undefined) {
+        continue;
+      }
+      const asset = assetsById.get(node.props.assetId);
+      if (!asset || asset.type !== "image") {
+        return null;
+      }
+    }
+  }
+
   if (sceneFast.mode === "3d") {
     for (let i = 0; i < sceneFast.nodes.length; i += 1) {
       const node = sceneFast.nodes[i]!;
@@ -3279,18 +3377,24 @@ export function isCanvas3DNode(node: CanvasNode): node is Canvas3DNode {
 
 export {
   DENOVO_FIELD_NODE_TYPE,
+  DENOVO_IMAGE_NODE_TYPE,
   DENOVO_SHADE_NODE_TYPE,
   DENOVO_SPARKLINE_NODE_TYPE,
   DenovoFieldPatternSchema,
   DenovoFieldPropsSchema,
+  DenovoImageFitSchema,
+  DenovoImagePropsSchema,
   DenovoShadePatternSchema,
   DenovoShadePropsSchema,
   DenovoSparklinePropsSchema,
   DenovoSparklineStyleSchema,
   PluginNodeTypeSchema,
+  createImageAssetRef,
   definePluginNodeKind,
   denovoFieldInstanceCount,
   denovoFieldKind,
+  denovoImageKind,
+  denovoImageSize,
   denovoShadeHex,
   denovoShadeGradientStops,
   denovoShadeKind,
@@ -3304,6 +3408,8 @@ export {
   listPluginNodeKinds,
   isDenovoFieldNode,
   isDenovoFieldType,
+  isDenovoImageNode,
+  isDenovoImageType,
   isDenovoShadeNode,
   isDenovoShadeType,
   isDenovoSparklineNode,
@@ -3311,11 +3417,14 @@ export {
   isCanvas2DPluginNode,
   isPluginNodeType,
   parseDenovoFieldProps,
+  parseDenovoImageProps,
   parseDenovoShadeProps,
   parseDenovoSparklineProps,
   parsePluginNodeProps,
   pluginNodeKindSupportsMode,
-  registerPluginNodeKind
+  registerPluginNodeKind,
+  resolveDenovoImageDrawRect,
+  resolveDenovoImageStyle
 };
 export type {
   CanvasPluginNodeKind,
@@ -3325,6 +3434,13 @@ export type {
   PluginSceneMode
 } from "./plugin-nodes.js";
 export type { DenovoFieldPattern, DenovoFieldProps } from "./kinds/field.js";
+export type {
+  CreateImageAssetRefOptions,
+  DenovoImageDrawRect,
+  DenovoImageFit,
+  DenovoImageProps,
+  ResolvedDenovoImageStyle
+} from "./kinds/image.js";
 export type {
   DenovoShadePattern,
   DenovoShadeProps

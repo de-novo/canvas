@@ -1,29 +1,29 @@
-# Lightweight @denovo/canvas/2d entrypoint (zero Three.js bundle)
+# Lightweight @de-novo/canvas/2d entrypoint (zero Three.js bundle)
 
 Issue: [#8](https://github.com/de-novo/canvas/issues/8).
 
 ## Summary
 
-Added a dedicated 2D-only facade subpath `@denovo/canvas/2d` backed exclusively
-by `@denovo/canvas-web/2d`, `@denovo/canvas-core`, and `@denovo/canvas-editor`
+Added a dedicated 2D-only facade subpath `@de-novo/canvas/2d` backed exclusively
+by `@de-novo/canvas-web/2d`, `@de-novo/canvas-core`, and `@de-novo/canvas-editor`
 so pure 2D applications never bundle Three.js, `three/webgpu`, `three-mesh-bvh`,
-or `@denovo/canvas-three`:
+or `@de-novo/canvas-three`:
 
-- `@denovo/canvas-web/2d` (`packages/web/src/2d.ts`): re-exports 2D-safe
+- `@de-novo/canvas-web/2d` (`packages/web/src/2d.ts`): re-exports 2D-safe
   `connectCanvasSelection`, `connectCanvasToolInput`, `view2d` camera helpers,
   `createSceneChunkLoader`, and `CanvasReadPixelsUnsupportedError` without
   pulling `./3d`.
-- `@denovo/canvas/2d` (`packages/canvas/src/2d.ts`, `packages/canvas/package.json`):
+- `@de-novo/canvas/2d` (`packages/canvas/src/2d.ts`, `packages/canvas/package.json`):
   exposes strict 2D-only `createCanvas`, `connectEditorToCanvas`,
   `connectEditorToRuntime`, `createEditor`, `subscribeCanvasSelector`,
   `shallowEqual`, 2D tools, named operations, core schemas, and 2D camera
   helpers. 3D scenes and WebGL2/Three backends are rejected at both TypeScript
   compile time and runtime.
-- Adopted `@denovo/canvas/2d` in `apps/playground-flow`.
+- Adopted `@de-novo/canvas/2d` in `apps/playground-flow`.
 
 ## Before / After Bundle Size (`apps/playground-flow` Vite production build)
 
-| Metric | Before (`@denovo/canvas`) | After (`@denovo/canvas/2d`) | Reduction |
+| Metric | Before (`@de-novo/canvas`) | After (`@de-novo/canvas/2d`) | Reduction |
 | --- | --- | --- | --- |
 | `three.webgpu` chunk | 664.84 kB (187.32 kB gzip) | 0.00 kB | -100% |
 | Main JS chunk | 1,200.24 kB (325.79 kB gzip) | 361.07 kB (106.43 kB gzip) | -70.0% |
@@ -31,7 +31,7 @@ or `@denovo/canvas-three`:
 
 ## Compatibility And Declarations
 
-Purely additive subpath (`@denovo/canvas/2d`). The default `@denovo/canvas`
+Purely additive subpath (`@de-novo/canvas/2d`). The default `@de-novo/canvas`
 root entrypoint and all existing subpaths remain unchanged; no migration is
 required. `packages/canvas/dist/2d.d.ts` contains zero explicit `any` and zero
 `three` references. Positive and `@ts-expect-error` negative consumer fixtures
@@ -52,4 +52,4 @@ plus static Three.js-free bundle assertions run in `pnpm verify:public-api`.
 
 - Other 2D-only showcase apps (`apps/playground-network`,
   `apps/playground-diagram`) were left on the root facade for this slice and
-  can migrate to `@denovo/canvas/2d` in follow-up work if desired.
+  can migrate to `@de-novo/canvas/2d` in follow-up work if desired.

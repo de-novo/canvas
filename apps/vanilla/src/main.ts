@@ -40,9 +40,9 @@ import {
   type JsonValue,
   type NodeId,
   type SelectionState
-} from "@denovo/canvas";
-import { createIndexedDbDocumentAdapter } from "@denovo/canvas/indexed-db";
-import "@denovo/canvas/styles.css";
+} from "@de-novo/canvas";
+import { createIndexedDbDocumentAdapter } from "@de-novo/canvas/indexed-db";
+import "@de-novo/canvas/styles.css";
 import "./styles.css";
 
 function requireElement<TElement extends Element>(selector: string): TElement {

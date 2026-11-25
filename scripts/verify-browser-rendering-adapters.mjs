@@ -1,7 +1,7 @@
 // Adapter smoke-rendering verification.
 //
-// Loads the React (@denovo/canvas-react-example) and Vue
-// (@denovo/canvas-vue-example) example apps in a real browser via Playwright
+// Loads the React (@de-novo/canvas-react-example) and Vue
+// (@de-novo/canvas-vue-example) example apps in a real browser via Playwright
 // and confirms each adapter actually paints pixels:
 //   - page loads with no console/page errors
 //   - a <canvas> exists with non-zero size
@@ -779,12 +779,12 @@ async function verifyDiagramMobileConnector(browser, server) {
 async function main() {
   /** @type {AppTarget[]} */
   const allTargets = [
-    { label: "React", filter: "@denovo/canvas-react-example", port: 5174 },
-    { label: "Vue", filter: "@denovo/canvas-vue-example", port: 5175 },
-    { label: "Svelte", filter: "@denovo/canvas-svelte-example", port: 5176 },
-    { label: "Solid", filter: "@denovo/canvas-solid-example", port: 5177 },
-    { label: "Bim", filter: "@denovo/canvas-bim-example", port: 5178, canvasWaitMs: 90_000 },
-    { label: "Diagram", filter: "@denovo/canvas-diagram-example", port: 5179, canvasWaitMs: 30_000 }
+    { label: "React", filter: "@de-novo/canvas-react-example", port: 5174 },
+    { label: "Vue", filter: "@de-novo/canvas-vue-example", port: 5175 },
+    { label: "Svelte", filter: "@de-novo/canvas-svelte-example", port: 5176 },
+    { label: "Solid", filter: "@de-novo/canvas-solid-example", port: 5177 },
+    { label: "Bim", filter: "@de-novo/canvas-bim-example", port: 5178, canvasWaitMs: 90_000 },
+    { label: "Diagram", filter: "@de-novo/canvas-diagram-example", port: 5179, canvasWaitMs: 30_000 }
   ];
   const onlyEnv = process.env.ADAPTER_ONLY;
   const targets = onlyEnv

@@ -8,11 +8,11 @@ const repoRoot = path.resolve(appRoot, "../..");
 export default defineConfig({
   optimizeDeps: {
     exclude: [
-      "@denovo/canvas",
-      "@denovo/canvas/web",
-      "@denovo/canvas-core",
-      "@denovo/canvas-editor",
-      "@denovo/canvas-web"
+      "@de-novo/canvas",
+      "@de-novo/canvas/web",
+      "@de-novo/canvas-core",
+      "@de-novo/canvas-editor",
+      "@de-novo/canvas-web"
     ]
   },
   server: {

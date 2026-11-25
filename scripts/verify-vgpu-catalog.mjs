@@ -35,7 +35,7 @@ await check("official-shade-props-are-closed", () => {
   assert.match(core.denovoShadeGradientStops(props)[0], /^#[0-9a-f]{6}$/u);
 });
 
-const server = await startApp("@denovo/canvas-vanilla-example", 5194);
+const server = await startApp("@de-novo/canvas-vanilla-example", 5194);
 try {
   await check("vgpu-catalog-gradient-is-shade-not-marker", async () => {
     const result = await openCatalog(server.url, "gradient");

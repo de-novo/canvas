@@ -2,8 +2,8 @@
 import {
   type Canvas2DSceneInput,
   type Canvas3DSceneInput
-} from "@denovo/canvas-core";
-import { DenovoCanvas } from "@denovo/vue-canvas";
+} from "@de-novo/canvas-core";
+import { DenovoCanvas } from "@de-novo/vue-canvas";
 import { computed, ref } from "vue";
 
 type DemoMode = "2d" | "3d";
@@ -95,7 +95,7 @@ function createTwoScene(): Canvas2DSceneInput {
       <p class="eyebrow">Vue</p>
       <h1>Vue adapter smoke example</h1>
       <p>
-        Renders 2D and 3D scenes through <code>@denovo/vue-canvas</code>.
+        Renders 2D and 3D scenes through <code>@de-novo/vue-canvas</code>.
       </p>
       <div class="controls">
         <button

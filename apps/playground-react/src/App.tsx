@@ -1,8 +1,8 @@
 import {
   type Canvas2DSceneInput,
   type Canvas3DSceneInput
-} from "@denovo/canvas-core";
-import { CanvasView } from "@denovo/react-canvas";
+} from "@de-novo/canvas-core";
+import { CanvasView } from "@de-novo/react-canvas";
 import { useMemo, useState } from "react";
 
 type DemoMode = "2d" | "3d";
@@ -27,7 +27,7 @@ export function App() {
         <p className="eyebrow">React</p>
         <h1>React adapter smoke example</h1>
         <p>
-          Renders 2D and 3D scenes through <code>@denovo/react-canvas</code>.
+          Renders 2D and 3D scenes through <code>@de-novo/react-canvas</code>.
         </p>
         <div className="controls">
           <button

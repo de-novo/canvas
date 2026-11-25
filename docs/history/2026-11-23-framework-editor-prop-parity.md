@@ -6,13 +6,13 @@ Issue: [#21](https://github.com/de-novo/canvas/issues/21).
 
 - Added one-line `editor` prop support (`auto-connect` on `ready`, automatic
   `disconnect` on unmount) across every framework adapter component:
-  - React `@denovo/react-canvas`: `<CanvasView editor={editor} />` (matching
+  - React `@de-novo/react-canvas`: `<CanvasView editor={editor} />` (matching
     `<Canvas2DView editor={editor} />`)
-  - Vue `@denovo/vue-canvas` & `./2d`: `<DenovoCanvas :editor="editor" />` &
+  - Vue `@de-novo/vue-canvas` & `./2d`: `<DenovoCanvas :editor="editor" />` &
     `<DenovoCanvas2D :editor="editor" />`
-  - Svelte `@denovo/svelte-canvas` & `./2d`: `<DenovoCanvas {editor} />` &
+  - Svelte `@de-novo/svelte-canvas` & `./2d`: `<DenovoCanvas {editor} />` &
     `<DenovoCanvas2D {editor} />`
-  - Solid `@denovo/solid-canvas` & `./2d`: `<DenovoCanvas editor={editor} />` &
+  - Solid `@de-novo/solid-canvas` & `./2d`: `<DenovoCanvas editor={editor} />` &
     `<DenovoCanvas2D editor={editor} />`
 - Added consumer type fixtures in `scripts/verify-public-api.mjs`.
 

@@ -193,7 +193,7 @@ await check("region-mask-host-reports-unknown-kinds-without-inventing", () => {
   assert.equal(raster.pixelCount, 0);
 });
 
-const server = await startApp("@denovo/canvas-vanilla-example", 5195);
+const server = await startApp("@de-novo/canvas-vanilla-example", 5195);
 try {
   await check("region-mask-hides-with-setNodeVisible", async () => {
     const browser = await launchPixelChromium();
@@ -395,7 +395,7 @@ function startNext(port) {
       "pnpm",
       [
         "--filter",
-        "@denovo/canvas-next-playground",
+        "@de-novo/canvas-next-playground",
         "exec",
         "next",
         "dev",

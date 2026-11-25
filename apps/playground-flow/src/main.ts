@@ -16,8 +16,8 @@ import {
   type CanvasEditor,
   type ListedNode,
   type NamedOperation
-} from "@denovo/canvas/2d";
-import "@denovo/canvas/styles.css";
+} from "@de-novo/canvas/2d";
+import "@de-novo/canvas/styles.css";
 
 import { encodeFlowCard, FLOW_CARD_STATUSES, readFlowCard, renderFlowCard } from "./cards";
 import {

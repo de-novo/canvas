@@ -6,7 +6,7 @@ Issue: [#17](https://github.com/de-novo/canvas/issues/17).
 
 - Added a Three.js-free interactive 10k 2D live benchmark & smart-snap/layout
   demo (`apps/playground-flow/bench-2d.html`, `apps/playground-flow/src/bench-2d.ts`)
-  built on `@denovo/canvas/2d` with live `drawCalls`, O(k) incremental move
+  built on `@de-novo/canvas/2d` with live `drawCalls`, O(k) incremental move
   telemetry, O(visible) `computeSnapGuides` + `setSnapGuides` overlay painting,
   and `alignNodes` / `distributeNodes` + `undo` controls.
 - Added `scripts/build-pages-site.mjs` (`pnpm build:pages`) generating a
@@ -22,7 +22,7 @@ Issue: [#17](https://github.com/de-novo/canvas/issues/17).
 
 ## Verification
 
-- `pnpm --filter @denovo/canvas-flow-example typecheck`: passed
+- `pnpm --filter @de-novo/canvas-flow-example typecheck`: passed
 - `pnpm verify:pages`: passed (4/4 checks: static build & Three.js-free check,
   EN/KO/ZH hub switcher, 10k live benchmark incremental move + smart snap +
   align/distribute, flow & network sub-apps)

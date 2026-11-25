@@ -21,7 +21,7 @@ operation.
 
 Ran 2026-08-25:
 
-- `pnpm --filter @denovo/canvas-vanilla-example typecheck` — ok
+- `pnpm --filter @de-novo/canvas-vanilla-example typecheck` — ok
 - `pnpm verify:named-operations` — 3/3, including vanilla hide then
   lock after Stack +Y
 - `pnpm verify:docs` — 152 Markdown files, 489/489 local targets

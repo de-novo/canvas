@@ -221,7 +221,7 @@ import {
   setNodeVisible,
   shallowEqual
 } from "../../../packages/canvas/dist/index.js";
-import { useCanvasSelector } from "@denovo/react-canvas";
+import { useCanvasSelector } from "@de-novo/react-canvas";
 
 const editor = createEditor({
   document: defineDocument({
@@ -333,7 +333,7 @@ const flush = () =>
 `
   );
 
-  const server = await startViteServer("@denovo/canvas-react-example", port);
+  const server = await startViteServer("@de-novo/canvas-react-example", port);
   const browser = await launchPixelChromium();
   try {
     const page = await browser.newPage({ viewport: { width: 800, height: 600 } });

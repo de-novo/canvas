@@ -15,7 +15,7 @@ No hero catalog app.
 - `props` are closed: `pattern` is `streaks` | `letters`; `brightness`
   0–2; `density` 0–1; `hue` 0–360; `speed` 0–40.
 - The official drawer is our InstancedMesh field in
-  `@denovo/canvas-three`. It reads only those properties. No vendor
+  `@de-novo/canvas-three`. It reads only those properties. No vendor
   file.
 - Other plugin kinds still draw as the unit-box marker.
 - `setFieldPattern({ nodeId, pattern })` compiles to `node.update`.

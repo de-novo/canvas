@@ -249,7 +249,7 @@ performance features available on WebGL2 where possible.
 
 Short term:
 
-- keep `@denovo/canvas` as the default entrypoint;
+- keep `@de-novo/canvas` as the default entrypoint;
 - keep `backend: "auto"` deterministic: Canvas2D for 2D, WebGPU then
   WebGL2 for 3D;
 - keep Three.js WebGL2 as the 3D compatibility path;

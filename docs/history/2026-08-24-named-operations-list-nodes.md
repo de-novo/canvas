@@ -13,7 +13,7 @@ see what is in the document before they call `setLayerVisible` or
 
 ## Changes
 
-- `@denovo/canvas-editor` and `@denovo/canvas` export `listNodes`,
+- `@de-novo/canvas-editor` and `@de-novo/canvas` export `listNodes`,
   `ListedNode`, and `ListNodesOptions`.
 - `listNodes(document)` lists every node. `listNodes(document, {
   layerId })` filters. Unknown `layerId` is `layer-not-found`. An empty

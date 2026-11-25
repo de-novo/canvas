@@ -16,7 +16,7 @@ bridge that works after 2D/3D runtime canvas replacement.
   pixel ratio.
 - Added Canvas2D reverse-draw-order picking with inverse translation, rotation,
   and scale for rectangles and circles.
-- Added a reusable `@denovo/canvas-three` Raycaster helper with nearest-hit,
+- Added a reusable `@de-novo/canvas-three` Raycaster helper with nearest-hit,
   parent-to-document-ID resolution, camera matrix refresh, world hit points, and
   Three.js `instanceId` to public `instanceIndex` mapping.
 - Added built-in runtime and facade `hitTest()` forwarding while preserving hit

@@ -5,7 +5,7 @@ import type {
   CanvasPluginCommandHandler,
   NodeId,
   SelectionState
-} from "@denovo/canvas-core";
+} from "@de-novo/canvas-core";
 import type { CanvasEditorError } from "./errors.js";
 
 /**

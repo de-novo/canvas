@@ -7,7 +7,7 @@ Issue: [#10](https://github.com/de-novo/canvas/issues/10).
 - Added `.github/workflows/ci.yml` running two parallel jobs on `push` to
   `main` and on `pull_request` (with concurrency cancellation):
   - `static-and-unit`: clean checkout bootstrap for the optional
-    `@denovo/react-canvas` peer declaration cycle, `pnpm build`,
+    `@de-novo/react-canvas` peer declaration cycle, `pnpm build`,
     `pnpm typecheck`, `pnpm verify:docs`, `pnpm verify:public-api`,
     `pnpm verify:document-schema`, `pnpm verify:editor-core`,
     `pnpm verify:hit-testing`, `pnpm verify:server`, `pnpm verify:worker-tasks`,

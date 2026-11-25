@@ -1,6 +1,6 @@
 {
-  "name": "@denovo/canvas-web",
-  "version": "0.1.0",
+  "name": "@de-novo/canvas-web",
+  "version": "0.2.0",
   "license": "Apache-2.0",
   "description": "Framework-agnostic 2D/3D DOM canvas runtime for Denovo Canvas.",
   "type": "module",
@@ -36,14 +36,14 @@
   ],
   "sideEffects": false,
   "scripts": {
-    "build": "tsup src/index.ts src/2d.ts src/3d.ts src/indexed-db.ts --format esm,cjs --clean --external three --external three/webgpu --external three-mesh-bvh --external @denovo/canvas-core --external @denovo/canvas-three --external @denovo/canvas-editor && tsc --emitDeclarationOnly",
+    "build": "tsup src/index.ts src/2d.ts src/3d.ts src/indexed-db.ts --format esm,cjs --clean --external three --external three/webgpu --external three-mesh-bvh --external @de-novo/canvas-core --external @de-novo/canvas-three --external @de-novo/canvas-editor && tsc --emitDeclarationOnly",
     "clean": "rm -rf dist .turbo",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@denovo/canvas-core": "workspace:*",
-    "@denovo/canvas-editor": "workspace:*",
-    "@denovo/canvas-three": "workspace:*",
+    "@de-novo/canvas-core": "workspace:*",
+    "@de-novo/canvas-editor": "workspace:*",
+    "@de-novo/canvas-three": "workspace:*",
     "three": "^0.185.1",
     "three-mesh-bvh": "^0.9.10"
   },

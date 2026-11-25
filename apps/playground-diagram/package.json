@@ -1,5 +1,5 @@
 {
-  "name": "@denovo/canvas-diagram-example",
+  "name": "@de-novo/canvas-diagram-example",
   "version": "0.0.0",
   "license": "Apache-2.0",
   "private": true,
@@ -12,9 +12,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@denovo/canvas": "workspace:*",
-    "@denovo/canvas-editor": "workspace:*",
-    "@denovo/canvas-web": "workspace:*"
+    "@de-novo/canvas": "workspace:*",
+    "@de-novo/canvas-editor": "workspace:*",
+    "@de-novo/canvas-web": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^7.0.2",

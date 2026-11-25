@@ -6,6 +6,7 @@ export type NamedOperationFieldKind =
   | "create-id"
   | "distribute-2d-axis"
   | "field-pattern"
+  | "image-fit"
   | "layer-id"
   | "layer-id-or-null"
   | "node-id"
@@ -21,6 +22,7 @@ export type NamedOperationFieldName =
   | "axis"
   | "createId"
   | "face"
+  | "fit"
   | "index"
   | "layerId"
   | "locked"
@@ -53,6 +55,7 @@ export type NamedOperationName =
   | "reorderLayer"
   | "setAnnotationText"
   | "setFieldPattern"
+  | "setImageFit"
   | "setLayerLocked"
   | "setLayerName"
   | "setLayerVisible"
@@ -151,6 +154,14 @@ const NAMED_OPERATION_MANIFEST: readonly NamedOperationManifestEntry[] = [
       { kind: "field-pattern", name: "pattern", required: true }
     ],
     name: "setFieldPattern",
+    role: "write"
+  },
+  {
+    fields: [
+      { kind: "node-id", name: "nodeId", required: true },
+      { kind: "image-fit", name: "fit", required: true }
+    ],
+    name: "setImageFit",
     role: "write"
   },
   {

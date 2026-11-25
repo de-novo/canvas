@@ -16,13 +16,13 @@ import {
   type CanvasScenePointRequestFor,
   type CanvasScenePointResultFor,
   type CanvasStorageAdapter
-} from "@denovo/canvas-core";
+} from "@de-novo/canvas-core";
 import {
   connectEditorToRuntime,
   connectEditorToStorage,
   type CanvasEditor,
   type ConnectEditorToStorageOptions
-} from "@denovo/canvas-editor";
+} from "@de-novo/canvas-editor";
 import {
   CanvasReadPixelsUnsupportedError,
   connectCanvasSelection,
@@ -36,9 +36,9 @@ import {
   type CanvasRuntimeChangeListener,
   type CanvasTarget,
   type CreateCanvasOptions
-} from "@denovo/canvas-web/2d";
+} from "@de-novo/canvas-web/2d";
 
-export * from "@denovo/canvas-core";
+export * from "@de-novo/canvas-core";
 export {
   CanvasEditorError,
   addLayer,
@@ -74,6 +74,7 @@ export {
   removeNode,
   reorderLayer,
   setAnnotationText,
+  setImageFit,
   setLayerLocked,
   setLayerName,
   setLayerVisible,
@@ -87,7 +88,7 @@ export {
   snapPointToGrid,
   subscribeCanvasSelector,
   validateGridWorkPlaneCompatibility
-} from "@denovo/canvas-editor";
+} from "@de-novo/canvas-editor";
 export type {
   AddLayerInput,
   AlignNodesInput,
@@ -145,6 +146,7 @@ export type {
   RemoveNodeInput,
   ReorderLayerInput,
   SetAnnotationTextInput,
+  SetImageFitInput,
   SetLayerLockedInput,
   SetLayerNameInput,
   SetLayerVisibleInput,
@@ -156,34 +158,59 @@ export type {
   SetTextInput,
   SubscribeCanvasSelectorOptions,
   TimeGraphLayoutOptions
-} from "@denovo/canvas-editor";
+} from "@de-novo/canvas-editor";
 export {
   CanvasReadPixelsUnsupportedError,
   CanvasSceneChunkCancelledError,
   canvasToScenePoint,
+  captureCanvas2DSnapshot,
+  computeCanvas2DRedlines,
   computeCanvas2DSnapGuides,
   connectCanvasSelection,
   connectCanvasToolInput,
   createCanvas2D,
+  createMemoryImageStore,
   createSceneChunkLoader,
+  DEFAULT_BOX_MODEL_COLORS,
+  DEFAULT_REDLINE_COLOR,
   defineCanvas2DViewState,
   fitCanvas2DView,
   flyCanvas2DViewTo,
+  formatCanvas2DRedlineDistance,
   getCanvas2DVisibleBounds,
   IDENTITY_CANVAS_2D_VIEW,
+  inspectCanvas2DRuntime,
+  orthogonalSegmentIntersectsBoxInterior,
   panCanvas2DView,
+  resolveCanvas2DBoxModelRegions,
+  resolveCanvas2DObstacleFreeOrthogonalWaypoints,
   sceneToCanvasPoint,
+  summarizeCanvasImageData,
   zoomCanvas2DViewAt
-} from "@denovo/canvas-web/2d";
+} from "@de-novo/canvas-web/2d";
 export type {
+  Canvas2DBoxEdges,
+  Canvas2DBoxModelColors,
+  Canvas2DBoxModelOverlay,
+  Canvas2DBoxModelRect,
+  Canvas2DCapturedSnapshot,
+  Canvas2DInspectableRuntime,
+  Canvas2DInspectedLayer,
+  Canvas2DInspectedNode,
+  Canvas2DInspectionOverlay,
   Canvas2DMinimapOptions,
   Canvas2DNavigationOptions,
   Canvas2DObject,
+  Canvas2DObstacleRouteOptions,
   Canvas2DOptions,
   Canvas2DRectBounds,
+  Canvas2DRedlineExtension,
+  Canvas2DRedlineOptions,
+  Canvas2DRedlineOverlay,
   Canvas2DRenderNode,
   Canvas2DRenderNodeContext,
   Canvas2DRuntime,
+  Canvas2DRuntimeSnapshot,
   Canvas2DSnapCandidate,
   Canvas2DSnapEdge,
   Canvas2DSnapGuide,
@@ -200,11 +227,15 @@ export type {
   CanvasFrame,
   CanvasHitSelectionTarget,
   CanvasHitTestRuntime,
+  CanvasImageSource2D,
+  CanvasImageStore,
   CanvasNavigationInputCapability,
   CanvasNavigationInputRuntime,
   CanvasNavigationInputUnsupported,
   CanvasNodeTransformHandleRuntime,
   CanvasNodeTransformRuntime,
+  CanvasPixelDataLike,
+  CanvasPixelSummary,
   CanvasPointerSelectionOptions,
   CanvasRuntimeChange,
   CanvasRuntimeChangeListener,
@@ -214,9 +245,12 @@ export type {
   CanvasSceneChunkProgress,
   CanvasTarget,
   CanvasToolInputTarget,
+  CaptureCanvas2DSnapshotOptions,
   CreateCanvasOptions,
+  InspectCanvas2DOptions,
+  ResolvedCanvas2DBoxModelRegions,
   WebCanvasRuntime
-} from "@denovo/canvas-web/2d";
+} from "@de-novo/canvas-web/2d";
 
 export type Canvas2DTargetInput = string | CanvasTarget;
 export type Canvas2DDocumentSource = CanvasDocumentInput | string;
@@ -247,6 +281,7 @@ export type DenovoCanvas2DCommonConfig = {
   readonly className?: string;
   readonly devicePixelRatio?: number;
   readonly editable?: boolean;
+  readonly imageStore?: CreateCanvasOptions["imageStore"];
   readonly onFrame?: CreateCanvasOptions["onFrame"];
   readonly renderNode?: Canvas2DRenderNode;
   readonly renderer?: Canvas2DRendererInput;
@@ -384,7 +419,7 @@ function resolveDocumentSource(source: Canvas2DDocumentSource): CanvasDocument {
     typeof source === "string" ? parseDocumentJson(source) : parseDocument(source);
   if (document.scene.mode !== "2d") {
     throw new TypeError(
-      `@denovo/canvas/2d requires a 2D document; received mode "${document.scene.mode}".`
+      `@de-novo/canvas/2d requires a 2D document; received mode "${document.scene.mode}".`
     );
   }
   return document;
@@ -395,7 +430,7 @@ function resolveScene(config: DenovoCanvas2DConfig): Canvas2DScene {
     const scene = defineScene(config.scene);
     if (scene.mode !== "2d") {
       throw new TypeError(
-        `@denovo/canvas/2d requires a 2D scene; received mode "${scene.mode}".`
+        `@de-novo/canvas/2d requires a 2D scene; received mode "${scene.mode}".`
       );
     }
     return scene;
@@ -410,7 +445,7 @@ function resolveScene(config: DenovoCanvas2DConfig): Canvas2DScene {
     nodes: inline.nodes ?? []
   });
   if (scene.mode !== "2d") {
-    throw new TypeError("@denovo/canvas/2d requires a 2D scene.");
+    throw new TypeError("@de-novo/canvas/2d requires a 2D scene.");
   }
   return scene;
 }
@@ -427,7 +462,7 @@ function resolve2DRenderer(
 
   if (requested !== "auto" && requested !== "canvas2d" && requested !== "webgpu") {
     throw new TypeError(
-      `@denovo/canvas/2d supports only "auto", "canvas2d", or "webgpu" backends; received "${String(requested)}".`
+      `@de-novo/canvas/2d supports only "auto", "canvas2d", or "webgpu" backends; received "${String(requested)}".`
     );
   }
 
@@ -497,6 +532,21 @@ function applyHostAttributes(
   return themeKind;
 }
 
+function extractImageAssetUris(
+  document: CanvasDocument | null
+): ReadonlyMap<string, string> {
+  const uris = new Map<string, string>();
+  if (!document) {
+    return uris;
+  }
+  for (const asset of document.assets) {
+    if (asset.type === "image" && asset.uri !== undefined) {
+      uris.set(asset.id, asset.uri);
+    }
+  }
+  return uris;
+}
+
 /**
  * Lightweight 2D-only facade entrypoint. Mounts Canvas2D or 2D WebGPU without
  * importing Three.js, three/webgpu, or three-mesh-bvh into the bundle.
@@ -516,7 +566,7 @@ export function createCanvas(
         : null;
   if (attachedEditor !== null && currentDocument?.scene.mode !== "2d") {
     throw new TypeError(
-      `@denovo/canvas/2d requires a 2D editor document; received mode "${currentDocument?.scene.mode ?? "unknown"}".`
+      `@de-novo/canvas/2d requires a 2D editor document; received mode "${currentDocument?.scene.mode ?? "unknown"}".`
     );
   }
   const initialScene: Canvas2DScene =
@@ -525,6 +575,7 @@ export function createCanvas(
       : resolveScene(config);
   const renderer = resolve2DRenderer(config.renderer);
   const theme = applyHostAttributes(target, config, renderer.resolved);
+  const initialImageAssetUris = extractImageAssetUris(currentDocument);
 
   const webOptions: CreateCanvasOptions = {
     ...(config.antialias === undefined ? {} : { antialias: config.antialias }),
@@ -533,6 +584,12 @@ export function createCanvas(
     ...(config.devicePixelRatio === undefined
       ? {}
       : { devicePixelRatio: config.devicePixelRatio }),
+    ...(initialImageAssetUris.size === 0
+      ? {}
+      : { imageAssetUris: initialImageAssetUris }),
+    ...(config.imageStore === undefined
+      ? {}
+      : { imageStore: config.imageStore }),
     ...(config.onFrame === undefined ? {} : { onFrame: config.onFrame }),
     ...(config.renderNode === undefined ? {} : { renderNode: config.renderNode }),
     ...(renderer.resolved === "webgpu"
@@ -611,9 +668,10 @@ export function createCanvas(
       const parsed = resolveDocumentSource(source);
       if (parsed.scene.mode !== "2d") {
         throw new TypeError(
-          `@denovo/canvas/2d requires a 2D document; received mode "${parsed.scene.mode}".`
+          `@de-novo/canvas/2d requires a 2D document; received mode "${parsed.scene.mode}".`
         );
       }
+      runtime.setImageAssetUris(extractImageAssetUris(parsed));
       const updated = runtime.update(parsed.scene);
       currentDocument = defineDocument({
         ...parsed,
@@ -703,7 +761,7 @@ export function connectEditorToCanvas(
       | CanvasScenePointRequestFor<"3d">
   ) => {
     if (request.mode !== "2d") {
-      throw new TypeError("@denovo/canvas/2d cannot resolve 3D scene points.");
+      throw new TypeError("@de-novo/canvas/2d cannot resolve 3D scene points.");
     }
     return runtime.resolveScenePoint(request);
   }) as Parameters<typeof connectCanvasToolInput>[0]["resolveScenePoint"];
@@ -743,7 +801,7 @@ export function connectEditorToCanvas(
     setAuthoringPreviews: (previews) => {
       for (const preview of previews) {
         if (preview.mode !== "2d") {
-          throw new TypeError("@denovo/canvas/2d cannot render 3D authoring previews.");
+          throw new TypeError("@de-novo/canvas/2d cannot render 3D authoring previews.");
         }
       }
       runtime.setAuthoringPreviews(
@@ -756,7 +814,7 @@ export function connectEditorToCanvas(
     ) => runtime.setNodeTransformHandleTarget(target),
     setNodeTransformPreview: (preview) => {
       if (preview !== null && preview.mode !== "2d") {
-        throw new TypeError("@denovo/canvas/2d cannot render 3D transform previews.");
+        throw new TypeError("@de-novo/canvas/2d cannot render 3D transform previews.");
       }
       runtime.setNodeTransformPreview(preview);
     },
@@ -769,7 +827,7 @@ export function connectEditorToCanvas(
       const resolved = defineScene(scene);
       if (resolved.mode !== "2d") {
         throw new TypeError(
-          `@denovo/canvas/2d requires a 2D scene; received mode "${resolved.mode}".`
+          `@de-novo/canvas/2d requires a 2D scene; received mode "${resolved.mode}".`
         );
       }
       return runtime.update(resolved);

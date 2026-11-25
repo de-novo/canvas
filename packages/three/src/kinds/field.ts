@@ -2,7 +2,7 @@ import {
   denovoFieldInstanceCount,
   type DenovoFieldPattern,
   type DenovoFieldProps
-} from "@denovo/canvas-core";
+} from "@de-novo/canvas-core";
 import {
   AdditiveBlending,
   BoxGeometry,

@@ -7,5 +7,5 @@ https://github.com/MengTo/threeui
 
 Copyright (c) 2026 Meng To
 
-This playground is an isolated host. It is not part of the `@denovo/canvas`
+This playground is an isolated host. It is not part of the `@de-novo/canvas`
 facade, document model, or named-operation surface.

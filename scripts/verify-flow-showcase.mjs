@@ -27,7 +27,7 @@ const mobileShot = path.resolve(
   "artifacts/verification/flow-release-board-mobile.png"
 );
 
-const server = await startApp("@denovo/canvas-flow-example", 5181);
+const server = await startApp("@de-novo/canvas-flow-example", 5181);
 
 try {
   await check("flow-showcase-desktop-absorbs-and-edits", async () => {

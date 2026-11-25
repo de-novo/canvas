@@ -1,8 +1,8 @@
 import {
   type Canvas2DSceneInput,
   type Canvas3DSceneInput
-} from "@denovo/canvas-core";
-import { DenovoCanvas } from "@denovo/solid-canvas";
+} from "@de-novo/canvas-core";
+import { DenovoCanvas } from "@de-novo/solid-canvas";
 import { createSignal } from "solid-js";
 
 type DemoMode = "2d" | "3d";
@@ -22,7 +22,7 @@ export function App() {
         <p class="eyebrow">Solid</p>
         <h1>Solid adapter smoke example</h1>
         <p>
-          Renders 2D and 3D scenes through <code>@denovo/solid-canvas</code>.
+          Renders 2D and 3D scenes through <code>@de-novo/solid-canvas</code>.
         </p>
         <div class="controls">
           <button

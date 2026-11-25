@@ -22,7 +22,7 @@ soft. Isolated to the Canvas2D overlay sync.
 
 ## Verification
 
-- `pnpm --filter @denovo/canvas-web build`: passed
+- `pnpm --filter @de-novo/canvas-web build`: passed
 - `pnpm verify:hit-testing`: ok, including html bounds
   `[200, 260] → [320, 308]`
 - `pnpm verify:network-showcase`: 2/2, including overlay width at

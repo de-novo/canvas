@@ -184,7 +184,7 @@ If the server revision differs from the client base revision:
 - advanced apps may attempt patch rebase;
 - collaborative apps may use a CRDT or operation transform layer.
 
-Conflict result (implemented in `@denovo/canvas-core` as `CanvasSaveResult`;
+Conflict result (implemented in `@de-novo/canvas-core` as `CanvasSaveResult`;
 M6 Phase A settled on this shape):
 
 ```ts

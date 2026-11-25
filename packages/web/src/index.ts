@@ -18,7 +18,7 @@ import {
   type CanvasScenePointResult,
   type CanvasScenePointResultFor,
   type CanvasStore
-} from "@denovo/canvas-core";
+} from "@de-novo/canvas-core";
 import { createCanvas2D, type Canvas2DRuntime } from "./2d";
 import { createCanvas3D, type ThreeCanvasRuntime } from "./3d";
 import type {
@@ -76,6 +76,8 @@ export type DynamicCanvasRuntime = CanvasNavigationInputRuntime &
   ) => void;
   /** Three.js runtime only. Sets/clears the renderer-level section plane. */
   setSectionPlane?: (section: Canvas3DSectionPlaneInput | null) => void;
+  /** Canvas2D runtime only. Updates `AssetRef.id -> uri` mappings for `plugin.denovo.image`. */
+  setImageAssetUris?: (uris: ReadonlyMap<string, string>) => void;
   start: () => void;
   stop: () => void;
   update: (scene: CanvasSceneInput) => CanvasScene;
@@ -88,6 +90,7 @@ export function createCanvas(
 ): DynamicCanvasRuntime {
   const initialScene = defineScene(sceneInput);
   let current = createRuntime(target, initialScene, options);
+  let latestImageAssetUris = options.imageAssetUris;
   let navigationInputAllowed = true;
   let runtimeGeneration = 0;
   const runtimeChangeListeners = new Set<CanvasRuntimeChangeListener>();
@@ -215,6 +218,12 @@ export function createCanvas(
       // Optional capability: only the Three.js runtime implements it.
       current.setSectionPlane?.(section);
     },
+    setImageAssetUris(uris) {
+      latestImageAssetUris = uris;
+      if (current.mode === "2d") {
+        current.setImageAssetUris(uris);
+      }
+    },
     setNodeTransformHandleTarget(targetValue) {
       current.setNodeTransformHandleTarget(targetValue);
     },
@@ -286,7 +295,12 @@ export function createCanvas(
           type: "replace"
         });
         current.destroy();
-        current = createCanvas2D(target, nextScene, options);
+        current = createCanvas2D(target, nextScene, {
+          ...options,
+          ...(latestImageAssetUris === undefined
+            ? {}
+            : { imageAssetUris: latestImageAssetUris })
+        });
       } else {
         if (current.mode === "3d") {
           return current.update(nextScene);
@@ -327,10 +341,27 @@ function createRuntime(
     : createCanvas3D(target, scene, options);
 }
 
-export { computeCanvas2DSnapGuides, createCanvas2D } from "./2d";
+export {
+  captureCanvas2DSnapshot,
+  computeCanvas2DRedlines,
+  computeCanvas2DSnapGuides,
+  createCanvas2D,
+  createMemoryImageStore,
+  DEFAULT_BOX_MODEL_COLORS,
+  DEFAULT_REDLINE_COLOR,
+  formatCanvas2DRedlineDistance,
+  inspectCanvas2DRuntime,
+  orthogonalSegmentIntersectsBoxInterior,
+  resolveCanvas2DBoxModelRegions,
+  resolveCanvas2DObstacleFreeOrthogonalWaypoints,
+  summarizeCanvasImageData
+} from "./2d";
 export { createCanvas3D, createCanvas3DPluginNodeObject } from "./3d";
 export { hitTestSceneGraph } from "./2d/hit-test";
-export { renderCanvas2DScene } from "./2d/render";
+export {
+  renderCanvas2DInspectionOverlay,
+  renderCanvas2DScene
+} from "./2d/render";
 export {
   PLUGIN_NODE_MARKER_FILL,
   registerPluginNodeDrawer,
@@ -382,8 +413,22 @@ export {
 } from "./view2d";
 export { connectCanvasSelection, connectCanvasToolInput } from "./selection";
 export type {
+  Canvas2DBoxEdges,
+  Canvas2DBoxModelColors,
+  Canvas2DBoxModelOverlay,
+  Canvas2DBoxModelRect,
+  Canvas2DCapturedSnapshot,
+  Canvas2DInspectableRuntime,
+  Canvas2DInspectedLayer,
+  Canvas2DInspectedNode,
+  Canvas2DInspectionOverlay,
   Canvas2DObject,
+  Canvas2DObstacleRouteOptions,
+  Canvas2DRedlineExtension,
+  Canvas2DRedlineOptions,
+  Canvas2DRedlineOverlay,
   Canvas2DRuntime,
+  Canvas2DRuntimeSnapshot,
   Canvas2DSnapCandidate,
   Canvas2DSnapEdge,
   Canvas2DSnapGuide,
@@ -391,7 +436,14 @@ export type {
   Canvas2DSnapOptions,
   Canvas2DSnapResult,
   Canvas2DSpatialIndexStats,
-  Canvas2DSpatialSyncKind
+  Canvas2DSpatialSyncKind,
+  CanvasImageSource2D,
+  CanvasImageStore,
+  CanvasPixelDataLike,
+  CanvasPixelSummary,
+  CaptureCanvas2DSnapshotOptions,
+  InspectCanvas2DOptions,
+  ResolvedCanvas2DBoxModelRegions
 } from "./2d";
 export type { Canvas2DRectBounds, Canvas2DViewportSize, Canvas2DViewState, Canvas2DViewStateInput } from "./view2d";
 export type { Canvas2DRenderNode, Canvas2DRenderNodeContext } from "./types";

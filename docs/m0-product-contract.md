@@ -11,14 +11,14 @@ Denovo Canvas is a web ecosystem SDK, not a React-only renderer. The default
 install target is:
 
 ```sh
-pnpm add @denovo/canvas
+pnpm add @de-novo/canvas
 ```
 
 The default code path is:
 
 ```ts
-import { createCanvas } from "@denovo/canvas";
-import "@denovo/canvas/styles.css";
+import { createCanvas } from "@de-novo/canvas";
+import "@de-novo/canvas/styles.css";
 
 const runtime = createCanvas("#stage", {
   scene: {
@@ -39,27 +39,27 @@ const runtime = createCanvas("#stage", {
 The facade owns first-run ergonomics. Lower-level packages remain available for
 advanced users and adapters.
 
-The current facade package name is `@denovo/canvas`, but the name may change
+The current facade package name is `@de-novo/canvas`, but the name may change
 before release. The stable M0 contract is the facade API shape, subpaths, schema
 contracts, and runtime behavior, not the exact package name. See
 [Public API Contract](./public-api-contract.md).
 
 ## Package Boundary
 
-- `@denovo/canvas`: default facade, theme/CSS contract, plugin registration
+- `@de-novo/canvas`: default facade, theme/CSS contract, plugin registration
   surface, and framework-agnostic runtime setup.
-- `@denovo/canvas-core`: Zod schemas, document model, command contracts,
+- `@de-novo/canvas-core`: Zod schemas, document model, command contracts,
   selection/hit contracts, storage contracts, and extension contracts.
-- `@denovo/canvas-editor`: framework-independent command application,
+- `@de-novo/canvas-editor`: framework-independent command application,
   selection, transactions, history, and tool/command registries.
-- `@denovo/canvas-web`: browser runtime for native Canvas2D and Three.js.
-- `@denovo/canvas-three`: Three.js performance primitives and optimization
+- `@de-novo/canvas-web`: browser runtime for native Canvas2D and Three.js.
+- `@de-novo/canvas-three`: Three.js performance primitives and optimization
   helpers.
-- `@denovo/react-canvas`: optional React/R3F adapter, exported through
-  `@denovo/canvas/react` for convenience.
-- `@denovo/canvas-server`: server-side validation and repository utilities.
-- `@denovo/canvas-worker`: worker and OffscreenCanvas helpers.
-- `@denovo/canvas-bim`: optional BIM adapter contracts.
+- `@de-novo/react-canvas`: optional React/R3F adapter, exported through
+  `@de-novo/canvas/react` for convenience.
+- `@de-novo/canvas-server`: server-side validation and repository utilities.
+- `@de-novo/canvas-worker`: worker and OffscreenCanvas helpers.
+- `@de-novo/canvas-bim`: optional BIM adapter contracts.
 
 The core package must not import React, Next.js, R3F, xeokit, web-ifc, DOM
 runtime objects, or app-specific storage clients.
@@ -204,7 +204,7 @@ M0 command types:
 Commands are serializable and renderer-independent. M0 defined the shared
 shape; the first M2 slice now supplies strict recursive command schemas, the
 dispatcher, snapshot-backed history, undo/redo, atomic transactions, and
-command application helpers in `@denovo/canvas-editor`.
+command application helpers in `@de-novo/canvas-editor`.
 
 Every raw `node.update` carries the source node's correlated `nodeMode` and
 `nodeType` in addition to `nodeId` and `patch`. Application verifies that this
@@ -281,7 +281,7 @@ contract exists.
 The default CSS entry is:
 
 ```ts
-import "@denovo/canvas/styles.css";
+import "@de-novo/canvas/styles.css";
 ```
 
 Stable CSS variables:
@@ -310,7 +310,7 @@ and shadcn semantic variables, then built-in fallbacks.
 
 M0 is accepted when:
 
-- `@denovo/canvas` exists as the default entrypoint.
+- `@de-novo/canvas` exists as the default entrypoint.
 - public API verification can read the current facade package name from package
   metadata and validate imports against it.
 - A vanilla app can render and switch 2D/3D scenes through the facade.

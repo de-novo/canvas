@@ -12,7 +12,7 @@ playground.
 
 ## Changes
 
-- `@denovo/canvas-editor` and `@denovo/canvas` export `removeEdge`
+- `@de-novo/canvas-editor` and `@de-novo/canvas` export `removeEdge`
   and `RemoveEdgeInput`.
 - Source MUST be an `edge`. Compiles to one `node.remove`.
 - Unknown `nodeId` is `node-not-found`. A non-edge is

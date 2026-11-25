@@ -10,7 +10,7 @@ import {
   type CanvasSelectorEquality,
   type DenovoCanvas2DCommonConfig,
   type DenovoCanvas2DRuntime
-} from "@denovo/canvas/2d";
+} from "@de-novo/canvas/2d";
 import { useEffect, useRef, type CSSProperties } from "react";
 
 import { useCanvasSelector } from "./selector";
@@ -29,7 +29,7 @@ export type Canvas2DViewProps = Canvas2DViewBaseProps &
   );
 
 /**
- * Lightweight 2D-only React canvas view backed by `@denovo/canvas/2d`.
+ * Lightweight 2D-only React canvas view backed by `@de-novo/canvas/2d`.
  * Imports zero Three.js, `@react-three/fiber`, or `@react-three/drei` code.
  *
  * Pass either `scene` (stateless/controlled view) or `editor` (auto-connects

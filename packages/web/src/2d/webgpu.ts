@@ -9,8 +9,12 @@ import {
   denovoShadeStripCount,
   denovoSparklinePoints,
   isCanvas2DPluginNode,
+  isDenovoImageNode,
   isDenovoShadeNode,
   isDenovoSparklineNode,
+  resolveDenovoImageDrawRect,
+  resolveDenovoImageStyle,
+  type Canvas2DClipRect,
   type Canvas2DGrid,
   type Canvas2DNode,
   type Canvas2DPluginNode,
@@ -18,13 +22,23 @@ import {
   type CanvasAuthoringPreviewForMode,
   type CanvasNodeTransformHandleTarget,
   type CanvasNodeTransformPreview
-} from "@denovo/canvas-core";
+} from "@de-novo/canvas-core";
+import type { Canvas2DImageCache } from "./image-cache";
 
 import {
   getCanvas2DVisibleBounds,
+  sceneToCanvasPoint,
   type Canvas2DRectBounds,
   type Canvas2DViewState
 } from "../view2d";
+import type { Canvas2DSnapGuide } from "./snap";
+import {
+  DEFAULT_BOX_MODEL_COLORS,
+  DEFAULT_REDLINE_COLOR,
+  formatCanvas2DRedlineDistance,
+  resolveCanvas2DBoxModelRegions,
+  type Canvas2DInspectionOverlay
+} from "./inspection";
 import {
   resolveLiveParentWorldTransform,
   type Canvas2DSpatialIndex
@@ -45,12 +59,14 @@ import {
 } from "./constants";
 import {
   getCanvas2DMidpoint,
+  hasNonZeroCornerRadius,
   isCanvas2DConnectableNode,
   resolveCanvas2DConnectionHandlePoint,
   resolveCanvas2DEdgeGeometry,
   resolveCanvas2DNodeWorldBounds,
   resolveCanvas2DNodeWorldCenter,
   resolveCanvas2DPluginNodeLocalSize,
+  resolveClampedCornerRadii,
   resolveNodeRenderTransform,
   resolvePreviewParentWorldTransform,
   type Canvas2DEdgeNode
@@ -60,10 +76,15 @@ import {
   createCanvas2DTransformMatrix,
   multiplyCanvas2DMatrices,
   transformCanvas2DPoint,
+  tryInvertCanvas2DMatrix,
   type Canvas2DMatrix
 } from "./matrix";
-import { resolveCanvas2DGridRenderRange } from "./render";
 import {
+  resolveCanvas2DGridRenderRange,
+  traceCanvas2DRoundedRectPath
+} from "./render";
+import {
+  getCanvas2DAncestors,
   getCanvas2DGroupChildren,
   getCanvas2DLayerRoots,
   isNodeEffectivelyLocked,
@@ -81,10 +102,19 @@ import {
 } from "./text";
 import type { Canvas2DContentColors, Canvas2DTransformHandleColors } from "./render";
 
-const FLOATS_PER_VERTEX = 12;
+const FLOATS_PER_VERTEX = 32;
 const SHAPE_RECT = 0;
 const SHAPE_CIRCLE = 1;
+const SHAPE_ROUNDED_RECT = 2;
 const ATLAS_SIZE = 2048;
+const MAX_ATLAS_PAGES = 8;
+const MIN_IMAGE_ATLAS_STAMP_DIM = 24;
+const MAX_IMAGE_ATLAS_STAMP_DIM = 512;
+const MAX_IMAGE_ATLAS_ZOOMED_IN_DIM = 1024;
+const CANVAS_2D_WEBGPU_INSPECTION_FONT =
+  "600 11px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace";
+const TRANSPARENT_GPU_COLOR: GpuColor = [0, 0, 0, 0];
+const ZERO_VEC4: readonly [number, number, number, number] = [0, 0, 0, 0];
 const GPU_BUFFER_USAGE_MAP_READ = 0x0001;
 const GPU_BUFFER_USAGE_VERTEX = 0x0020;
 const GPU_BUFFER_USAGE_UNIFORM = 0x0040;
@@ -126,13 +156,18 @@ struct View {
 
 @group(0) @binding(0) var<uniform> view: View;
 @group(0) @binding(1) var textSampler: sampler;
-@group(0) @binding(2) var textAtlas: texture_2d<f32>;
+@group(0) @binding(2) var textAtlas: texture_2d_array<f32>;
 
 struct VSIn {
   @location(0) position: vec2f,
   @location(1) uv: vec2f,
   @location(2) color: vec4f,
   @location(3) extra: vec4f,
+  @location(4) strokeColor: vec4f,
+  @location(5) sizeClipPos: vec4f,
+  @location(6) radii: vec4f,
+  @location(7) clipBox: vec4f,
+  @location(8) clipRadii: vec4f,
 }
 
 struct VSOut {
@@ -140,6 +175,18 @@ struct VSOut {
   @location(0) uv: vec2f,
   @location(1) color: vec4f,
   @location(2) extra: vec4f,
+  @location(3) strokeColor: vec4f,
+  @location(4) sizeClipPos: vec4f,
+  @location(5) radii: vec4f,
+  @location(6) clipBox: vec4f,
+  @location(7) clipRadii: vec4f,
+}
+
+fn sdRoundedBox(p: vec2f, b: vec2f, r: vec4f) -> f32 {
+  let rx = select(r.zw, r.xy, p.x > 0.0);
+  let radius = select(rx.x, rx.y, p.y > 0.0);
+  let q = abs(p) - b + vec2f(radius, radius);
+  return min(max(q.x, q.y), 0.0) + length(max(q, vec2f(0.0, 0.0))) - radius;
 }
 
 @vertex
@@ -158,25 +205,71 @@ fn vs(input: VSIn) -> VSOut {
   out.uv = input.uv;
   out.color = input.color;
   out.extra = input.extra;
+  out.strokeColor = input.strokeColor;
+  out.sizeClipPos = input.sizeClipPos;
+  out.radii = input.radii;
+  out.clipBox = input.clipBox;
+  out.clipRadii = input.clipRadii;
   return out;
 }
 
 @fragment
 fn fs(input: VSOut) -> @location(0) vec4f {
-  let texel = textureSample(textAtlas, textSampler, input.uv);
+  let atlasLayer = max(i32(round(input.extra.y)) - 1, 0);
+  let texel = textureSample(textAtlas, textSampler, input.uv, atlasLayer);
+  let localSize = max(input.sizeClipPos.xy, vec2f(1e-4, 1e-4));
+  let p = (input.uv - vec2f(0.5, 0.5)) * localSize;
+  let dRect = sdRoundedBox(p, localSize * 0.5, input.radii);
+  let aaRect = max(fwidth(dRect), 1e-4);
+  let dCircle = length(p) - localSize.x * 0.5;
+  let aaCircle = max(fwidth(dCircle), 1e-4);
+  let dClip = sdRoundedBox(input.sizeClipPos.zw - input.clipBox.xy, input.clipBox.zw, input.clipRadii);
+  let aaClip = max(fwidth(dClip), 1e-4);
+
+  var clipMask = 1.0;
+  if (input.clipBox.z > 0.0) {
+    clipMask = clamp(0.5 - dClip / aaClip, 0.0, 1.0);
+    if (clipMask <= 0.001) {
+      discard;
+    }
+  }
+
   var color = input.color;
   if (input.extra.y > 0.5) {
-    color = vec4f(texel.rgb * input.color.rgb, input.color.a * texel.a);
+    color = vec4f(texel.rgb * input.color.rgb, input.color.a * texel.a * clipMask);
     if (color.a < 0.04) {
       discard;
     }
+    return color;
   }
-  if (input.extra.x > 0.5 && input.extra.x < 1.5) {
-    if (distance(input.uv, vec2f(0.5, 0.5)) > 0.5) {
+
+  let shape = input.extra.x;
+  let strokeWidth = input.extra.w;
+  if (shape > 0.5) {
+    let isRoundedRect = shape > 1.5;
+    let d = select(dCircle, dRect, isRoundedRect);
+    let aa = select(aaCircle, aaRect, isRoundedRect);
+    let fillAlpha = clamp(0.5 - d / aa, 0.0, 1.0) * input.color.a;
+
+    if (strokeWidth > 0.0 && input.strokeColor.a > 0.0) {
+      let halfStroke = strokeWidth * 0.5;
+      let strokeDist = abs(d) - halfStroke;
+      let strokeAlpha = clamp(0.5 - strokeDist / aa, 0.0, 1.0) * input.strokeColor.a;
+      let outAlpha = strokeAlpha + fillAlpha * (1.0 - strokeAlpha);
+      if (outAlpha <= 0.001) {
+        discard;
+      }
+      let outRgb = (input.strokeColor.rgb * strokeAlpha + input.color.rgb * fillAlpha * (1.0 - strokeAlpha)) / outAlpha;
+      return vec4f(outRgb, outAlpha * clipMask);
+    }
+
+    if (fillAlpha <= 0.001) {
       discard;
     }
+    return vec4f(input.color.rgb, fillAlpha * clipMask);
   }
-  return color;
+
+  return vec4f(color.rgb, color.a * clipMask);
 }
 `;
 
@@ -185,6 +278,8 @@ export type Canvas2DWebGpuFrame = {
   readonly connectionHandlesVisible: boolean;
   readonly contentColors: Canvas2DContentColors;
   readonly hoveredId: string | null;
+  readonly imageCache?: Canvas2DImageCache;
+  readonly inspectionOverlay: Canvas2DInspectionOverlay | null;
   readonly measureContext: CanvasRenderingContext2D;
   readonly resizeState: {
     readonly height: number;
@@ -193,6 +288,7 @@ export type Canvas2DWebGpuFrame = {
   readonly scene: Canvas2DScene;
   readonly sceneGraph: Canvas2DSceneGraph;
   readonly selectedIds: ReadonlySet<string>;
+  readonly snapGuides: readonly Canvas2DSnapGuide[];
   readonly spatialIndex?: Canvas2DSpatialIndex;
   readonly transformHandleColors: Canvas2DTransformHandleColors;
   readonly transformHandlePosition: readonly [number, number] | null;
@@ -257,7 +353,7 @@ export async function createCanvas2DWebGpuPresenter(
       {
         binding: 2,
         visibility: GPU_SHADER_STAGE_FRAGMENT,
-        texture: { sampleType: "float" }
+        texture: { sampleType: "float", viewDimension: "2d-array" }
       }
     ]
   });
@@ -273,7 +369,12 @@ export async function createCanvas2DWebGpuPresenter(
             { shaderLocation: 0, offset: 0, format: "float32x2" },
             { shaderLocation: 1, offset: 8, format: "float32x2" },
             { shaderLocation: 2, offset: 16, format: "float32x4" },
-            { shaderLocation: 3, offset: 32, format: "float32x4" }
+            { shaderLocation: 3, offset: 32, format: "float32x4" },
+            { shaderLocation: 4, offset: 48, format: "float32x4" },
+            { shaderLocation: 5, offset: 64, format: "float32x4" },
+            { shaderLocation: 6, offset: 80, format: "float32x4" },
+            { shaderLocation: 7, offset: 96, format: "float32x4" },
+            { shaderLocation: 8, offset: 112, format: "float32x4" }
           ]
         }
       ]
@@ -309,14 +410,14 @@ export async function createCanvas2DWebGpuPresenter(
   const sampler = device.createSampler({ magFilter: "linear", minFilter: "linear" });
   const whiteTexture = device.createTexture({
     format: "rgba8unorm",
-    size: { width: 1, height: 1 },
+    size: { width: 1, height: 1, depthOrArrayLayers: 1 },
     usage: GPU_TEXTURE_USAGE_TEXTURE_BINDING | GPU_TEXTURE_USAGE_COPY_DST
   });
   device.queue.writeTexture(
-    { texture: whiteTexture },
+    { texture: whiteTexture, origin: { x: 0, y: 0, z: 0 } },
     new Uint8Array([255, 255, 255, 255]),
-    { bytesPerRow: 4 },
-    { width: 1, height: 1 }
+    { bytesPerRow: 4, rowsPerImage: 1 },
+    { width: 1, height: 1, depthOrArrayLayers: 1 }
   );
 
   const FULL_SCENE_CACHE_THRESHOLD = 512;
@@ -327,12 +428,13 @@ export async function createCanvas2DWebGpuPresenter(
       entries: [
         { binding: 0, resource: { buffer: uniformBuffer } },
         { binding: 1, resource: sampler },
-        { binding: 2, resource: texture.createView() }
+        { binding: 2, resource: texture.createView({ dimension: "2d-array" }) }
       ]
     });
   }
 
   let atlasTexture = whiteTexture;
+  let atlasPageCount = 0;
   let bindGroup = makeBindGroup(whiteTexture);
   let vertexBuffer: GPUBuffer | null = null;
   let vertexCapacity = 0;
@@ -350,7 +452,10 @@ export async function createCanvas2DWebGpuPresenter(
     readonly coversFullScene: boolean;
     readonly drawerRegistryVersion: number;
     readonly hasAnimatedShade: boolean;
+    readonly hasImages: boolean;
     readonly hoveredId: string | null;
+    readonly imageCacheVersion: number;
+    readonly imageLodScale: number;
     readonly scene: Canvas2DScene;
     readonly sceneGraph: Canvas2DSceneGraph;
     readonly selectedIds: ReadonlySet<string>;
@@ -418,9 +523,18 @@ export async function createCanvas2DWebGpuPresenter(
       height
     });
     const drawerRegistryVersion = getPluginNodeDrawerRegistryVersion();
+    const imageCacheVersion = frame.imageCache?.getVersion() ?? 0;
+    const imageLodScale = resolveImageLodScale(frame.viewState.zoom);
+    const hasSnapGuides = frame.snapGuides.length > 0;
+    const hasInspectionOverlay =
+      frame.inspectionOverlay !== null &&
+      ((frame.inspectionOverlay.boxModels?.length ?? 0) > 0 ||
+        (frame.inspectionOverlay.redlines?.length ?? 0) > 0);
     const viewIndependent =
       frame.authoringPreviews.length === 0 &&
       !frame.connectionHandlesVisible &&
+      !hasSnapGuides &&
+      !hasInspectionOverlay &&
       !(frame.transformHandleTarget !== null && frame.transformHandlePosition !== null);
 
     const canReuseGeometry =
@@ -428,6 +542,7 @@ export async function createCanvas2DWebGpuPresenter(
       viewIndependent &&
       geometryCache.viewIndependent &&
       !geometryCache.hasAnimatedShade &&
+      (!geometryCache.hasImages || geometryCache.imageLodScale === imageLodScale) &&
       geometryCache.scene === frame.scene &&
       geometryCache.sceneGraph === frame.sceneGraph &&
       geometryCache.selectedIds === frame.selectedIds &&
@@ -435,6 +550,7 @@ export async function createCanvas2DWebGpuPresenter(
       geometryCache.transformPreview === frame.transformPreview &&
       geometryCache.contentColors === frame.contentColors &&
       geometryCache.drawerRegistryVersion === drawerRegistryVersion &&
+      geometryCache.imageCacheVersion === imageCacheVersion &&
       (geometryCache.coversFullScene ||
         (geometryCache.coveredBounds !== null &&
           boundsContains(geometryCache.coveredBounds, visibleBounds)));
@@ -448,7 +564,12 @@ export async function createCanvas2DWebGpuPresenter(
         : null;
 
       const batch = new VertexBatch(frame.measureContext);
-      const { hasAnimatedShade } = recordFrame(batch, frame, cullBounds);
+      const { hasAnimatedShade, hasImages } = recordFrame(
+        batch,
+        frame,
+        cullBounds,
+        imageLodScale
+      );
       const packed = batch.pack();
       cachedVertexCount = packed.vertexCount;
       triangles = cachedVertexCount / 3;
@@ -471,20 +592,36 @@ export async function createCanvas2DWebGpuPresenter(
       if (atlasTexture !== whiteTexture) {
         atlasTexture.destroy();
         atlasTexture = whiteTexture;
+        atlasPageCount = 0;
         atlasChanged = true;
       }
-      if (packed.atlas) {
+      if (packed.atlas && packed.atlas.pages.length > 0) {
+        const layerCount = packed.atlas.pages.length;
         atlasTexture = device.createTexture({
           format: "rgba8unorm",
-          size: { width: packed.atlas.width, height: packed.atlas.height },
+          size: {
+            width: packed.atlas.width,
+            height: packed.atlas.height,
+            depthOrArrayLayers: layerCount
+          },
           usage: GPU_TEXTURE_USAGE_TEXTURE_BINDING | GPU_TEXTURE_USAGE_COPY_DST
         });
-        device.queue.writeTexture(
-          { texture: atlasTexture },
-          packed.atlas.data,
-          { bytesPerRow: packed.atlas.width * 4 },
-          { width: packed.atlas.width, height: packed.atlas.height }
-        );
+        for (let layer = 0; layer < layerCount; layer += 1) {
+          device.queue.writeTexture(
+            { texture: atlasTexture, origin: { x: 0, y: 0, z: layer } },
+            packed.atlas.pages[layer]!,
+            {
+              bytesPerRow: packed.atlas.width * 4,
+              rowsPerImage: packed.atlas.height
+            },
+            {
+              width: packed.atlas.width,
+              height: packed.atlas.height,
+              depthOrArrayLayers: 1
+            }
+          );
+        }
+        atlasPageCount = layerCount;
         atlasChanged = true;
       }
       if (atlasChanged) {
@@ -497,7 +634,10 @@ export async function createCanvas2DWebGpuPresenter(
         coversFullScene: !useSpatialCulling,
         drawerRegistryVersion,
         hasAnimatedShade,
+        hasImages,
         hoveredId: frame.hoveredId,
+        imageCacheVersion,
+        imageLodScale,
         scene: frame.scene,
         sceneGraph: frame.sceneGraph,
         selectedIds: frame.selectedIds,
@@ -590,7 +730,7 @@ export async function createCanvas2DWebGpuPresenter(
 
   return {
     destroy,
-    getRenderStats: () => ({ drawCalls, triangles }),
+    getRenderStats: () => ({ drawCalls, textures: atlasPageCount, triangles }),
     readPixels,
     render,
     resize
@@ -627,9 +767,105 @@ function canvasBytesToRgba(
   return data;
 }
 
+type ActiveGpuClip = {
+  readonly inverseMatrix: Canvas2DMatrix;
+  readonly clipBox: readonly [number, number, number, number];
+  readonly clipRadii: readonly [number, number, number, number];
+};
+
+function isAxisAlignedNonNegativeScale(matrix: Canvas2DMatrix): boolean {
+  return matrix[1] === 0 && matrix[2] === 0 && matrix[0] > 0 && matrix[3] > 0;
+}
+
+function createGpuClipFromGroup(
+  groupWorldTransform: Canvas2DMatrix,
+  clip: Canvas2DClipRect
+): ActiveGpuClip | null {
+  const inverse = tryInvertCanvas2DMatrix(groupWorldTransform);
+  if (!inverse) {
+    return null;
+  }
+  const clamped = resolveClampedCornerRadii(
+    clip.width,
+    clip.height,
+    clip.cornerRadius
+  );
+  return {
+    inverseMatrix: inverse,
+    clipBox: [
+      clip.x + clip.width * 0.5,
+      clip.y + clip.height * 0.5,
+      clip.width * 0.5,
+      clip.height * 0.5
+    ],
+    clipRadii: [clamped[1], clamped[2], clamped[0], clamped[3]]
+  };
+}
+
+function composeGpuClips(
+  outer: ActiveGpuClip | null,
+  inner: ActiveGpuClip | null
+): ActiveGpuClip | null {
+  if (!outer) return inner;
+  if (!inner) return outer;
+
+  if (
+    isAxisAlignedNonNegativeScale(outer.inverseMatrix) &&
+    isAxisAlignedNonNegativeScale(inner.inverseMatrix)
+  ) {
+    const outerWorld = tryInvertCanvas2DMatrix(outer.inverseMatrix);
+    const innerWorld = tryInvertCanvas2DMatrix(inner.inverseMatrix);
+    if (outerWorld && innerWorld) {
+      const oMin = transformCanvas2DPoint(outerWorld, [
+        outer.clipBox[0] - outer.clipBox[2],
+        outer.clipBox[1] - outer.clipBox[3]
+      ]);
+      const oMax = transformCanvas2DPoint(outerWorld, [
+        outer.clipBox[0] + outer.clipBox[2],
+        outer.clipBox[1] + outer.clipBox[3]
+      ]);
+      const iMin = transformCanvas2DPoint(innerWorld, [
+        inner.clipBox[0] - inner.clipBox[2],
+        inner.clipBox[1] - inner.clipBox[3]
+      ]);
+      const iMax = transformCanvas2DPoint(innerWorld, [
+        inner.clipBox[0] + inner.clipBox[2],
+        inner.clipBox[1] + inner.clipBox[3]
+      ]);
+      const minX = Math.max(oMin[0], iMin[0]);
+      const minY = Math.max(oMin[1], iMin[1]);
+      const maxX = Math.min(oMax[0], iMax[0]);
+      const maxY = Math.min(oMax[1], iMax[1]);
+      const halfW = Math.max(0, (maxX - minX) * 0.5);
+      const halfH = Math.max(0, (maxY - minY) * 0.5);
+      const sx = innerWorld[0];
+      const sy = innerWorld[3];
+      const scaleAvg = (sx + sy) * 0.5;
+      return {
+        inverseMatrix: CANVAS_2D_IDENTITY_MATRIX,
+        clipBox: [
+          minX + halfW,
+          minY + halfH,
+          Math.max(1e-4, halfW),
+          Math.max(1e-4, halfH)
+        ],
+        clipRadii: [
+          inner.clipRadii[0] * scaleAvg,
+          inner.clipRadii[1] * scaleAvg,
+          inner.clipRadii[2] * scaleAvg,
+          inner.clipRadii[3] * scaleAvg
+        ]
+      };
+    }
+  }
+
+  return inner;
+}
+
 class VertexBatch {
   private readonly floats: number[] = [];
   private readonly atlas = new TextAtlas();
+  private activeClip: ActiveGpuClip | null = null;
   readonly measure: CanvasRenderingContext2D;
 
   constructor(measure: CanvasRenderingContext2D) {
@@ -640,8 +876,16 @@ class VertexBatch {
     return this.floats.length / FLOATS_PER_VERTEX;
   }
 
+  setClip(clip: ActiveGpuClip | null) {
+    this.activeClip = clip;
+  }
+
   pack(): {
-    readonly atlas: { data: Uint8Array; height: number; width: number } | null;
+    readonly atlas: {
+      readonly height: number;
+      readonly pages: readonly Uint8Array[];
+      readonly width: number;
+    } | null;
     readonly vertexCount: number;
     readonly vertices: Float32Array;
   } {
@@ -677,23 +921,102 @@ class VertexBatch {
     );
   }
 
+  roundedRect(
+    matrix: Canvas2DMatrix,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    fillColor: GpuColor,
+    radii: readonly [number, number, number, number],
+    strokeColor: GpuColor | null = null,
+    strokeWidth = 0,
+    screenSpace = false
+  ) {
+    const rx = width < 0 ? x + width : x;
+    const ry = height < 0 ? y + height : y;
+    const rw = Math.abs(width);
+    const rh = Math.abs(height);
+    if (rw <= 0 || rh <= 0) {
+      return;
+    }
+
+    const hasStroke =
+      strokeColor !== null && strokeWidth > 0 && strokeColor[3] > 0;
+    const hasRadius = hasNonZeroCornerRadius(radii);
+    if (!hasRadius && !hasStroke) {
+      if (fillColor[3] > 0) {
+        this.rect(matrix, rx, ry, rw, rh, fillColor, screenSpace);
+      }
+      return;
+    }
+
+    const pad = hasStroke ? strokeWidth * 0.5 + 1 : 0;
+    const u0 = -pad / rw;
+    const u1 = 1 + pad / rw;
+    const v0 = -pad / rh;
+    const v1 = 1 + pad / rh;
+    const radiiShader: readonly [number, number, number, number] = [
+      radii[1],
+      radii[2],
+      radii[0],
+      radii[3]
+    ];
+
+    this.quad(
+      transformCanvas2DPoint(matrix, [rx - pad, ry - pad]),
+      transformCanvas2DPoint(matrix, [rx + rw + pad, ry - pad]),
+      transformCanvas2DPoint(matrix, [rx - pad, ry + rh + pad]),
+      transformCanvas2DPoint(matrix, [rx + rw + pad, ry + rh + pad]),
+      fillColor,
+      SHAPE_ROUNDED_RECT,
+      false,
+      screenSpace,
+      { u0, v0, u1, v1 },
+      strokeColor ?? TRANSPARENT_GPU_COLOR,
+      hasStroke ? strokeWidth : 0,
+      [rw, rh],
+      radiiShader
+    );
+  }
+
   circle(
     matrix: Canvas2DMatrix,
     x: number,
     y: number,
     radius: number,
     color: GpuColor,
-    screenSpace = false
+    screenSpace = false,
+    strokeColor: GpuColor | null = null,
+    strokeWidth = 0
   ) {
+    const diameter = radius * 2;
+    if (diameter <= 0) {
+      return;
+    }
+    const hasStroke =
+      strokeColor !== null && strokeWidth > 0 && strokeColor[3] > 0;
+    const pad = hasStroke ? strokeWidth * 0.5 + 1 : 0;
+    const extent = radius + pad;
+    const u0 = -pad / diameter;
+    const u1 = 1 + pad / diameter;
+    const v0 = -pad / diameter;
+    const v1 = 1 + pad / diameter;
+
     this.quad(
-      transformCanvas2DPoint(matrix, [x - radius, y - radius]),
-      transformCanvas2DPoint(matrix, [x + radius, y - radius]),
-      transformCanvas2DPoint(matrix, [x - radius, y + radius]),
-      transformCanvas2DPoint(matrix, [x + radius, y + radius]),
+      transformCanvas2DPoint(matrix, [x - extent, y - extent]),
+      transformCanvas2DPoint(matrix, [x + extent, y - extent]),
+      transformCanvas2DPoint(matrix, [x - extent, y + extent]),
+      transformCanvas2DPoint(matrix, [x + extent, y + extent]),
       color,
       SHAPE_CIRCLE,
       false,
-      screenSpace
+      screenSpace,
+      { u0, v0, u1, v1 },
+      strokeColor ?? TRANSPARENT_GPU_COLOR,
+      hasStroke ? strokeWidth : 0,
+      [diameter, diameter],
+      ZERO_VEC4
     );
   }
 
@@ -756,9 +1079,9 @@ class VertexBatch {
     color: GpuColor,
     screenSpace = false
   ) {
-    this.vertex(a, [0, 0], color, SHAPE_RECT, false, screenSpace);
-    this.vertex(b, [1, 0], color, SHAPE_RECT, false, screenSpace);
-    this.vertex(c, [0, 1], color, SHAPE_RECT, false, screenSpace);
+    this.vertex(a, [0, 0], color, SHAPE_RECT, false, screenSpace, TRANSPARENT_GPU_COLOR, 0, [1, 1], ZERO_VEC4);
+    this.vertex(b, [1, 0], color, SHAPE_RECT, false, screenSpace, TRANSPARENT_GPU_COLOR, 0, [1, 1], ZERO_VEC4);
+    this.vertex(c, [0, 1], color, SHAPE_RECT, false, screenSpace, TRANSPARENT_GPU_COLOR, 0, [1, 1], ZERO_VEC4);
   }
 
   raster(
@@ -767,9 +1090,12 @@ class VertexBatch {
     y: number,
     width: number,
     height: number,
-    paint: (context: CanvasRenderingContext2D) => void
+    paint: (context: CanvasRenderingContext2D) => void,
+    alpha = 1,
+    stampWidth = width,
+    stampHeight = height
   ): boolean {
-    const entry = this.atlas.stamp(width, height, paint);
+    const entry = this.atlas.stamp(stampWidth, stampHeight, paint);
     if (!entry) {
       return false;
     }
@@ -778,9 +1104,9 @@ class VertexBatch {
       transformCanvas2DPoint(matrix, [x + width, y]),
       transformCanvas2DPoint(matrix, [x, y + height]),
       transformCanvas2DPoint(matrix, [x + width, y + height]),
-      [1, 1, 1, 1],
+      [1, 1, 1, alpha],
       SHAPE_RECT,
-      true,
+      entry.layer + 1,
       false,
       entry.uv
     );
@@ -795,7 +1121,9 @@ class VertexBatch {
     text: string,
     colorCss: string,
     align: "left" | "center" | "right" = "left",
-    baseline: "top" | "bottom" = "top"
+    baseline: "top" | "bottom" | "middle" = "top",
+    screenSpace = false,
+    alpha = 1
   ) {
     if (text.length === 0) {
       return;
@@ -810,16 +1138,21 @@ class VertexBatch {
     } else if (align === "right") {
       drawX -= entry.width;
     }
-    const drawY = baseline === "bottom" ? y - entry.height : y;
+    const drawY =
+      baseline === "bottom"
+        ? y - entry.height
+        : baseline === "middle"
+          ? y - entry.height / 2
+          : y;
     this.quad(
       transformCanvas2DPoint(matrix, [drawX, drawY]),
       transformCanvas2DPoint(matrix, [drawX + entry.width, drawY]),
       transformCanvas2DPoint(matrix, [drawX, drawY + entry.height]),
       transformCanvas2DPoint(matrix, [drawX + entry.width, drawY + entry.height]),
-      [1, 1, 1, 1],
+      [1, 1, 1, alpha],
       SHAPE_RECT,
-      true,
-      false,
+      entry.layer + 1,
+      screenSpace,
       entry.uv
     );
   }
@@ -868,20 +1201,26 @@ class VertexBatch {
     bottomRight: readonly [number, number],
     color: GpuColor,
     shape: number,
-    textured: boolean,
+    textured: boolean | number,
     screenSpace: boolean,
-    uv?: { u0: number; v0: number; u1: number; v1: number }
+    uv?: { u0: number; v0: number; u1: number; v1: number },
+    strokeColor: GpuColor = TRANSPARENT_GPU_COLOR,
+    strokeWidth = 0,
+    localSize: readonly [number, number] = [1, 1],
+    radii: readonly [number, number, number, number] = ZERO_VEC4
   ) {
     const u0 = uv?.u0 ?? 0;
     const v0 = uv?.v0 ?? 0;
     const u1 = uv?.u1 ?? 1;
     const v1 = uv?.v1 ?? 1;
-    this.vertex(topLeft, [u0, v0], color, shape, textured, screenSpace);
-    this.vertex(topRight, [u1, v0], color, shape, textured, screenSpace);
-    this.vertex(bottomLeft, [u0, v1], color, shape, textured, screenSpace);
-    this.vertex(topRight, [u1, v0], color, shape, textured, screenSpace);
-    this.vertex(bottomRight, [u1, v1], color, shape, textured, screenSpace);
-    this.vertex(bottomLeft, [u0, v1], color, shape, textured, screenSpace);
+    const textureSlot =
+      typeof textured === "number" ? textured : textured ? 1 : 0;
+    this.vertex(topLeft, [u0, v0], color, shape, textureSlot, screenSpace, strokeColor, strokeWidth, localSize, radii);
+    this.vertex(topRight, [u1, v0], color, shape, textureSlot, screenSpace, strokeColor, strokeWidth, localSize, radii);
+    this.vertex(bottomLeft, [u0, v1], color, shape, textureSlot, screenSpace, strokeColor, strokeWidth, localSize, radii);
+    this.vertex(topRight, [u1, v0], color, shape, textureSlot, screenSpace, strokeColor, strokeWidth, localSize, radii);
+    this.vertex(bottomRight, [u1, v1], color, shape, textureSlot, screenSpace, strokeColor, strokeWidth, localSize, radii);
+    this.vertex(bottomLeft, [u0, v1], color, shape, textureSlot, screenSpace, strokeColor, strokeWidth, localSize, radii);
   }
 
   private vertex(
@@ -889,9 +1228,40 @@ class VertexBatch {
     uv: readonly [number, number],
     color: GpuColor,
     shape: number,
-    textured: boolean,
-    screenSpace: boolean
+    textureSlot: number | boolean,
+    screenSpace: boolean,
+    strokeColor: GpuColor,
+    strokeWidth: number,
+    localSize: readonly [number, number],
+    radii: readonly [number, number, number, number]
   ) {
+    const clip = !screenSpace ? this.activeClip : null;
+    const slotValue =
+      typeof textureSlot === "number" ? textureSlot : textureSlot ? 1 : 0;
+    let clipX = 0;
+    let clipY = 0;
+    let clipBox0 = 0;
+    let clipBox1 = 0;
+    let clipBox2 = 0;
+    let clipBox3 = 0;
+    let clipR0 = 0;
+    let clipR1 = 0;
+    let clipR2 = 0;
+    let clipR3 = 0;
+    if (clip) {
+      const transformed = transformCanvas2DPoint(clip.inverseMatrix, point);
+      clipX = transformed[0];
+      clipY = transformed[1];
+      clipBox0 = clip.clipBox[0];
+      clipBox1 = clip.clipBox[1];
+      clipBox2 = clip.clipBox[2];
+      clipBox3 = clip.clipBox[3];
+      clipR0 = clip.clipRadii[0];
+      clipR1 = clip.clipRadii[1];
+      clipR2 = clip.clipRadii[2];
+      clipR3 = clip.clipRadii[3];
+    }
+
     this.floats.push(
       point[0],
       point[1],
@@ -902,55 +1272,113 @@ class VertexBatch {
       color[2],
       color[3],
       shape,
-      textured ? 1 : 0,
+      slotValue,
       screenSpace ? 1 : 0,
-      0
+      strokeWidth,
+      strokeColor[0],
+      strokeColor[1],
+      strokeColor[2],
+      strokeColor[3],
+      localSize[0],
+      localSize[1],
+      clipX,
+      clipY,
+      radii[0],
+      radii[1],
+      radii[2],
+      radii[3],
+      clipBox0,
+      clipBox1,
+      clipBox2,
+      clipBox3,
+      clipR0,
+      clipR1,
+      clipR2,
+      clipR3
     );
   }
 }
 
+type AtlasEntry = {
+  readonly height: number;
+  readonly layer: number;
+  readonly uv: { u0: number; v0: number; u1: number; v1: number };
+  readonly width: number;
+};
+
 class TextAtlas {
-  private readonly canvas = createAtlasCanvas();
+  private readonly pages: { canvas: HTMLCanvasElement; context: CanvasRenderingContext2D }[] = [];
   private cursorX = 1;
   private cursorY = 1;
   private rowHeight = 0;
   private used = false;
 
-  stamp(
-    width: number,
-    height: number,
-    paint: (context: CanvasRenderingContext2D) => void
-  ): { height: number; uv: { u0: number; v0: number; u1: number; v1: number }; width: number } | null {
-    const stampWidth = Math.max(1, Math.ceil(width));
-    const stampHeight = Math.max(1, Math.ceil(height));
-    if (stampWidth + 2 > ATLAS_SIZE || stampHeight + 2 > ATLAS_SIZE) {
+  private allocateSlot(
+    slotWidth: number,
+    slotHeight: number
+  ): {
+    readonly context: CanvasRenderingContext2D;
+    readonly layer: number;
+    readonly x: number;
+    readonly y: number;
+  } | null {
+    if (slotWidth + 2 > ATLAS_SIZE || slotHeight + 2 > ATLAS_SIZE) {
       return null;
     }
-    if (this.cursorX + stampWidth + 1 > ATLAS_SIZE) {
+    if (this.pages.length === 0) {
+      this.pages.push(createAtlasCanvas());
+      this.cursorX = 1;
+      this.cursorY = 1;
+      this.rowHeight = 0;
+    }
+    if (this.cursorX + slotWidth + 1 > ATLAS_SIZE) {
       this.cursorX = 1;
       this.cursorY += this.rowHeight + 1;
       this.rowHeight = 0;
     }
-    if (this.cursorY + stampHeight + 1 > ATLAS_SIZE) {
+    if (this.cursorY + slotHeight + 1 > ATLAS_SIZE) {
+      if (this.pages.length >= MAX_ATLAS_PAGES) {
+        return null;
+      }
+      this.pages.push(createAtlasCanvas());
+      this.cursorX = 1;
+      this.cursorY = 1;
+      this.rowHeight = 0;
+    }
+    const layer = this.pages.length - 1;
+    const x = this.cursorX;
+    const y = this.cursorY;
+    this.cursorX += slotWidth + 1;
+    this.rowHeight = Math.max(this.rowHeight, slotHeight);
+    this.used = true;
+    return { context: this.pages[layer]!.context, layer, x, y };
+  }
+
+  stamp(
+    width: number,
+    height: number,
+    paint: (context: CanvasRenderingContext2D) => void
+  ): AtlasEntry | null {
+    const stampWidth = Math.max(1, Math.ceil(width));
+    const stampHeight = Math.max(1, Math.ceil(height));
+    const slot = this.allocateSlot(stampWidth, stampHeight);
+    if (!slot) {
       return null;
     }
-    this.canvas.context.save();
-    this.canvas.context.beginPath();
-    this.canvas.context.rect(this.cursorX, this.cursorY, stampWidth, stampHeight);
-    this.canvas.context.clip();
-    this.canvas.context.translate(this.cursorX, this.cursorY);
-    paint(this.canvas.context);
-    this.canvas.context.restore();
+    slot.context.save();
+    slot.context.beginPath();
+    slot.context.rect(slot.x, slot.y, stampWidth, stampHeight);
+    slot.context.clip();
+    slot.context.translate(slot.x, slot.y);
+    paint(slot.context);
+    slot.context.restore();
     const uv = {
-      u0: this.cursorX / ATLAS_SIZE,
-      v0: this.cursorY / ATLAS_SIZE,
-      u1: (this.cursorX + stampWidth) / ATLAS_SIZE,
-      v1: (this.cursorY + stampHeight) / ATLAS_SIZE
+      u0: slot.x / ATLAS_SIZE,
+      v0: slot.y / ATLAS_SIZE,
+      u1: (slot.x + stampWidth) / ATLAS_SIZE,
+      v1: (slot.y + stampHeight) / ATLAS_SIZE
     };
-    this.cursorX += stampWidth + 1;
-    this.rowHeight = Math.max(this.rowHeight, stampHeight);
-    this.used = true;
-    return { height: stampHeight, uv, width: stampWidth };
+    return { height: stampHeight, layer: slot.layer, uv, width: stampWidth };
   }
 
   add(
@@ -958,44 +1386,45 @@ class TextAtlas {
     font: string,
     text: string,
     fill: string
-  ): { height: number; uv: { u0: number; v0: number; u1: number; v1: number }; width: number } | null {
+  ): AtlasEntry | null {
     measure.font = font;
     const width = Math.max(1, Math.ceil(measure.measureText(text).width) + 2);
     const sizeMatch = /(\d+(?:\.\d+)?)px/.exec(font);
-    const height = Math.max(1, Math.ceil((Number(sizeMatch?.[1] ?? 14) + 6)));
-    if (this.cursorX + width + 1 > ATLAS_SIZE) {
-      this.cursorX = 1;
-      this.cursorY += this.rowHeight + 1;
-      this.rowHeight = 0;
-    }
-    if (this.cursorY + height + 1 > ATLAS_SIZE) {
+    const height = Math.max(1, Math.ceil(Number(sizeMatch?.[1] ?? 14) + 6));
+    const slot = this.allocateSlot(width, height);
+    if (!slot) {
       return null;
     }
-    this.canvas.context.font = font;
-    this.canvas.context.fillStyle = fill;
-    this.canvas.context.textBaseline = "top";
-    this.canvas.context.textAlign = "left";
-    this.canvas.context.fillText(text, this.cursorX + 1, this.cursorY + 1);
+    slot.context.font = font;
+    slot.context.fillStyle = fill;
+    slot.context.textBaseline = "top";
+    slot.context.textAlign = "left";
+    slot.context.fillText(text, slot.x + 1, slot.y + 1);
     const uv = {
-      u0: this.cursorX / ATLAS_SIZE,
-      v0: this.cursorY / ATLAS_SIZE,
-      u1: (this.cursorX + width) / ATLAS_SIZE,
-      v1: (this.cursorY + height) / ATLAS_SIZE
+      u0: slot.x / ATLAS_SIZE,
+      v0: slot.y / ATLAS_SIZE,
+      u1: (slot.x + width) / ATLAS_SIZE,
+      v1: (slot.y + height) / ATLAS_SIZE
     };
-    this.cursorX += width + 1;
-    this.rowHeight = Math.max(this.rowHeight, height);
-    this.used = true;
-    return { height, uv, width };
+    return { height, layer: slot.layer, uv, width };
   }
 
-  snapshot(): { data: Uint8Array; height: number; width: number } | null {
-    if (!this.used) {
+  snapshot(): {
+    readonly height: number;
+    readonly pages: readonly Uint8Array[];
+    readonly width: number;
+  } | null {
+    if (!this.used || this.pages.length === 0) {
       return null;
     }
-    const image = this.canvas.context.getImageData(0, 0, ATLAS_SIZE, ATLAS_SIZE);
+    const pages: Uint8Array[] = [];
+    for (let i = 0; i < this.pages.length; i += 1) {
+      const image = this.pages[i]!.context.getImageData(0, 0, ATLAS_SIZE, ATLAS_SIZE);
+      pages.push(new Uint8Array(image.data.buffer));
+    }
     return {
-      data: new Uint8Array(image.data.buffer),
       height: ATLAS_SIZE,
+      pages,
       width: ATLAS_SIZE
     };
   }
@@ -1031,36 +1460,301 @@ function cssToRgba(
       alpha
     ];
   }
-  const rgb = /^rgba?\((\d+),\s*(\d+),\s*(\d+)/i.exec(value);
+  const rgb = /^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([0-9.]+))?/i.exec(value);
+  const cssAlpha = rgb?.[4] !== undefined ? Number(rgb[4]) : 1;
   return [
     Number(rgb?.[1] ?? 0) / 255,
     Number(rgb?.[2] ?? 0) / 255,
     Number(rgb?.[3] ?? 0) / 255,
-    alpha
+    (Number.isFinite(cssAlpha) ? cssAlpha : 1) * alpha
   ];
+}
+
+function resolveImageLodScale(zoom: number): number {
+  const clamped = Math.max(
+    0.0625,
+    Math.min(2, Number.isFinite(zoom) && zoom > 0 ? zoom : 1)
+  );
+  const exp = Math.ceil(Math.log2(clamped));
+  return Math.max(0.0625, Math.min(2, Math.pow(2, exp)));
 }
 
 function recordFrame(
   batch: VertexBatch,
   frame: Canvas2DWebGpuFrame,
-  cullBounds: Canvas2DRectBounds | null
-): { readonly hasAnimatedShade: boolean } {
+  cullBounds: Canvas2DRectBounds | null,
+  imageLodScale: number
+): { readonly hasAnimatedShade: boolean; readonly hasImages: boolean } {
   recordGridPreviews(batch, frame);
-  const hasAnimatedShade = recordScene(batch, frame, cullBounds);
-  recordOverlayPreviews(batch, frame);
+  const { hasAnimatedShade, hasImages } = recordScene(
+    batch,
+    frame,
+    cullBounds,
+    imageLodScale
+  );
+  batch.setClip(null);
+  recordOverlayPreviews(batch, frame, imageLodScale);
+  if (frame.snapGuides.length > 0) {
+    recordSnapGuides(batch, frame);
+  }
+  if (frame.inspectionOverlay) {
+    recordInspectionOverlay(batch, frame);
+  }
   if (frame.connectionHandlesVisible) {
     recordConnectionHandles(batch, frame);
   }
   recordTransformHandles(batch, frame);
-  return { hasAnimatedShade };
+  return { hasAnimatedShade, hasImages };
+}
+
+function recordSnapGuides(batch: VertexBatch, frame: Canvas2DWebGpuFrame) {
+  const safeZoom = Math.max(frame.viewState.zoom, 1e-4);
+  const lineWidth = 1 / safeZoom;
+  const dash = 4 / safeZoom;
+  const tick = 3 / safeZoom;
+  const color = batch.fillColor(frame.contentColors.accent || "#f43f5e");
+
+  for (let i = 0; i < frame.snapGuides.length; i += 1) {
+    const guide = frame.snapGuides[i]!;
+    if (guide.axis === "x") {
+      batch.polyline(
+        [
+          [guide.position, guide.from],
+          [guide.position, guide.to]
+        ],
+        lineWidth,
+        color,
+        [dash, dash]
+      );
+      batch.line(
+        [guide.position - tick, guide.from],
+        [guide.position + tick, guide.from],
+        lineWidth,
+        color
+      );
+      batch.line(
+        [guide.position - tick, guide.to],
+        [guide.position + tick, guide.to],
+        lineWidth,
+        color
+      );
+    } else {
+      batch.polyline(
+        [
+          [guide.from, guide.position],
+          [guide.to, guide.position]
+        ],
+        lineWidth,
+        color,
+        [dash, dash]
+      );
+      batch.line(
+        [guide.from, guide.position - tick],
+        [guide.from, guide.position + tick],
+        lineWidth,
+        color
+      );
+      batch.line(
+        [guide.to, guide.position - tick],
+        [guide.to, guide.position + tick],
+        lineWidth,
+        color
+      );
+    }
+  }
+}
+
+function recordInspectionPill(
+  batch: VertexBatch,
+  frame: Canvas2DWebGpuFrame,
+  sceneX: number,
+  sceneY: number,
+  text: string,
+  backgroundCss: string,
+  foregroundCss: string,
+  verticalAnchor: "above" | "center"
+) {
+  if (text.length === 0) {
+    return;
+  }
+  const screen = sceneToCanvasPoint(frame.viewState, [sceneX, sceneY]);
+  batch.measure.font = CANVAS_2D_WEBGPU_INSPECTION_FONT;
+  const textWidth = batch.measure.measureText(text).width;
+  const pillWidth = textWidth + 12;
+  const pillHeight = 18;
+  const pillX = screen[0] - pillWidth * 0.5;
+  const pillY =
+    verticalAnchor === "above"
+      ? screen[1] - (pillHeight + 6)
+      : screen[1] - pillHeight * 0.5;
+
+  batch.roundedRect(
+    CANVAS_2D_IDENTITY_MATRIX,
+    pillX,
+    pillY,
+    pillWidth,
+    pillHeight,
+    batch.fillColor(backgroundCss),
+    [4, 4, 4, 4],
+    null,
+    0,
+    true
+  );
+  batch.text(
+    CANVAS_2D_IDENTITY_MATRIX,
+    screen[0],
+    pillY + pillHeight * 0.5,
+    CANVAS_2D_WEBGPU_INSPECTION_FONT,
+    text,
+    foregroundCss,
+    "center",
+    "middle",
+    true
+  );
+}
+
+function recordInspectionOverlay(batch: VertexBatch, frame: Canvas2DWebGpuFrame) {
+  const overlay = frame.inspectionOverlay;
+  if (!overlay) {
+    return;
+  }
+  const safeZoom = Math.max(frame.viewState.zoom, 1e-4);
+  const invZoom = 1 / safeZoom;
+
+  if (overlay.boxModels && overlay.boxModels.length > 0) {
+    for (let i = 0; i < overlay.boxModels.length; i += 1) {
+      const boxModel = overlay.boxModels[i]!;
+      const regions = resolveCanvas2DBoxModelRegions(boxModel);
+      const palette = {
+        ...DEFAULT_BOX_MODEL_COLORS,
+        ...boxModel.colors
+      };
+
+      const marginColor = batch.fillColor(palette.margin, 0.26);
+      for (let s = 0; s < regions.marginStrips.length; s += 1) {
+        const strip = regions.marginStrips[s]!;
+        batch.rect(CANVAS_2D_IDENTITY_MATRIX, strip.x, strip.y, strip.width, strip.height, marginColor);
+      }
+
+      const borderColor = batch.fillColor(palette.border, 0.34);
+      for (let s = 0; s < regions.borderStrips.length; s += 1) {
+        const strip = regions.borderStrips[s]!;
+        batch.rect(CANVAS_2D_IDENTITY_MATRIX, strip.x, strip.y, strip.width, strip.height, borderColor);
+      }
+
+      const paddingColor = batch.fillColor(palette.padding, 0.26);
+      for (let s = 0; s < regions.paddingStrips.length; s += 1) {
+        const strip = regions.paddingStrips[s]!;
+        batch.rect(CANVAS_2D_IDENTITY_MATRIX, strip.x, strip.y, strip.width, strip.height, paddingColor);
+      }
+
+      if (regions.contentRect) {
+        batch.rect(
+          CANVAS_2D_IDENTITY_MATRIX,
+          regions.contentRect.x,
+          regions.contentRect.y,
+          regions.contentRect.width,
+          regions.contentRect.height,
+          batch.fillColor(palette.content, 0.22)
+        );
+      }
+
+      const b = regions.borderBox;
+      batch.polyline(
+        [
+          [b.minX, b.minY],
+          [b.maxX, b.minY],
+          [b.maxX, b.maxY],
+          [b.minX, b.maxY],
+          [b.minX, b.minY]
+        ],
+        invZoom,
+        batch.fillColor(palette.content, 0.92),
+        [4 * invZoom, 3 * invZoom]
+      );
+
+      if (boxModel.label) {
+        recordInspectionPill(
+          batch,
+          frame,
+          (b.minX + b.maxX) * 0.5,
+          regions.marginBox.minY,
+          boxModel.label,
+          palette.labelBackground,
+          palette.labelForeground,
+          "above"
+        );
+      }
+    }
+  }
+
+  if (overlay.redlines && overlay.redlines.length > 0) {
+    const tickHalf = 4 * invZoom;
+    for (let i = 0; i < overlay.redlines.length; i += 1) {
+      const redline = overlay.redlines[i]!;
+      const accentCss = redline.color ?? DEFAULT_REDLINE_COLOR;
+      const accent = batch.fillColor(accentCss);
+      const extColor = batch.fillColor(accentCss, 0.65);
+      const dx = redline.end[0] - redline.start[0];
+      const dy = redline.end[1] - redline.start[1];
+      const length = Math.hypot(dx, dy);
+
+      if (redline.extensions && redline.extensions.length > 0) {
+        for (let e = 0; e < redline.extensions.length; e += 1) {
+          const ext = redline.extensions[e]!;
+          batch.polyline(
+            [ext.start, ext.end],
+            invZoom,
+            extColor,
+            [3 * invZoom, 3 * invZoom]
+          );
+        }
+      }
+
+      batch.line(redline.start, redline.end, 1.5 * invZoom, accent);
+      if (length > 1e-6) {
+        const nx = (-dy / length) * tickHalf;
+        const ny = (dx / length) * tickHalf;
+        batch.line(
+          [redline.start[0] - nx, redline.start[1] - ny],
+          [redline.start[0] + nx, redline.start[1] + ny],
+          1.5 * invZoom,
+          accent
+        );
+        batch.line(
+          [redline.end[0] - nx, redline.end[1] - ny],
+          [redline.end[0] + nx, redline.end[1] + ny],
+          1.5 * invZoom,
+          accent
+        );
+      }
+
+      const labelText =
+        redline.label ?? formatCanvas2DRedlineDistance(length);
+      if (labelText.length > 0) {
+        recordInspectionPill(
+          batch,
+          frame,
+          (redline.start[0] + redline.end[0]) * 0.5,
+          (redline.start[1] + redline.end[1]) * 0.5,
+          labelText,
+          accentCss,
+          frame.contentColors.foreground === accentCss ? "#0f172a" : "#ffffff",
+          "center"
+        );
+      }
+    }
+  }
 }
 
 function recordScene(
   batch: VertexBatch,
   frame: Canvas2DWebGpuFrame,
-  cullBounds: Canvas2DRectBounds | null
-): boolean {
+  cullBounds: Canvas2DRectBounds | null,
+  imageLodScale: number
+): { readonly hasAnimatedShade: boolean; readonly hasImages: boolean } {
   let hasAnimatedShade = false;
+  let hasImages = false;
 
   if (frame.spatialIndex && cullBounds) {
     const candidates = frame.spatialIndex.queryRect(
@@ -1072,6 +1766,7 @@ function recordScene(
       const entry = candidates[i]!;
       const node = entry.node;
       if (node.type === "edge") {
+        batch.setClip(null);
         recordEdge(
           batch,
           node,
@@ -1084,14 +1779,49 @@ function recordScene(
       if (isDenovoShadeNode(node)) {
         hasAnimatedShade = true;
       }
+      if (isDenovoImageNode(node)) {
+        hasImages = true;
+      }
+      if (entry.hasStyledAncestor) {
+        const ancestors = getCanvas2DAncestors(node, frame.sceneGraph);
+        let opacity = 1;
+        let world = CANVAS_2D_IDENTITY_MATRIX;
+        let activeClip: ActiveGpuClip | null = null;
+        for (let a = ancestors.length - 1; a >= 0; a -= 1) {
+          const ancestor = ancestors[a]!;
+          opacity *= ancestor.opacity;
+          if (opacity <= 0) {
+            break;
+          }
+          world = multiplyCanvas2DMatrices(
+            world,
+            createCanvas2DTransformMatrix(
+              resolveNodeRenderTransform(ancestor, frame.transformPreview)
+            )
+          );
+          if (ancestor.clip !== null) {
+            activeClip = composeGpuClips(
+              activeClip,
+              createGpuClipFromGroup(world, ancestor.clip)
+            );
+          }
+        }
+        if (opacity > 0) {
+          batch.setClip(activeClip);
+          recordDrawable(batch, node, frame, world, opacity, imageLodScale);
+          batch.setClip(null);
+        }
+        continue;
+      }
+      batch.setClip(null);
       const parentWorldTransform = resolveLiveParentWorldTransform(
         entry,
         frame.sceneGraph,
         frame.transformPreview
       );
-      recordDrawable(batch, node, frame, parentWorldTransform);
+      recordDrawable(batch, node, frame, parentWorldTransform, 1, imageLodScale);
     }
-    return hasAnimatedShade;
+    return { hasAnimatedShade, hasImages };
   }
 
   for (const layer of frame.scene.layers) {
@@ -1099,24 +1829,41 @@ function recordScene(
       continue;
     }
     for (const root of getCanvas2DLayerRoots(frame.sceneGraph, layer.id)) {
-      if (recordTreeNode(batch, root, frame, CANVAS_2D_IDENTITY_MATRIX)) {
+      const flags = recordTreeNode(
+        batch,
+        root,
+        frame,
+        CANVAS_2D_IDENTITY_MATRIX,
+        1,
+        null,
+        imageLodScale
+      );
+      if (flags.hasAnimatedShade) {
         hasAnimatedShade = true;
+      }
+      if (flags.hasImages) {
+        hasImages = true;
       }
     }
   }
-  return hasAnimatedShade;
+  batch.setClip(null);
+  return { hasAnimatedShade, hasImages };
 }
 
 function recordTreeNode(
   batch: VertexBatch,
   node: Canvas2DNode,
   frame: Canvas2DWebGpuFrame,
-  parentWorldTransform: Canvas2DMatrix
-): boolean {
-  if (!node.visible) {
-    return false;
+  parentWorldTransform: Canvas2DMatrix,
+  inheritedOpacity: number,
+  activeClip: ActiveGpuClip | null,
+  imageLodScale: number
+): { readonly hasAnimatedShade: boolean; readonly hasImages: boolean } {
+  if (!node.visible || inheritedOpacity <= 0) {
+    return { hasAnimatedShade: false, hasImages: false };
   }
   if (node.type === "edge") {
+    batch.setClip(null);
     recordEdge(
       batch,
       node,
@@ -1124,35 +1871,62 @@ function recordTreeNode(
       frame.selectedIds.has(node.id),
       frame.hoveredId === node.id
     );
-    return false;
+    return { hasAnimatedShade: false, hasImages: false };
   }
   if (node.type !== "group") {
-    recordDrawable(batch, node, frame, parentWorldTransform);
-    return isDenovoShadeNode(node);
+    batch.setClip(activeClip);
+    recordDrawable(batch, node, frame, parentWorldTransform, inheritedOpacity, imageLodScale);
+    return {
+      hasAnimatedShade: isDenovoShadeNode(node),
+      hasImages: isDenovoImageNode(node)
+    };
+  }
+  const nextOpacity = inheritedOpacity * node.opacity;
+  if (nextOpacity <= 0) {
+    return { hasAnimatedShade: false, hasImages: false };
   }
   const worldTransform = multiplyCanvas2DMatrices(
     parentWorldTransform,
     createCanvas2DTransformMatrix(resolveNodeRenderTransform(node, frame.transformPreview))
   );
+  const nextClip =
+    node.clip !== null
+      ? composeGpuClips(activeClip, createGpuClipFromGroup(worldTransform, node.clip))
+      : activeClip;
   let hasAnimatedShade = false;
+  let hasImages = false;
   for (const child of getCanvas2DGroupChildren(frame.sceneGraph, node.id)) {
-    if (recordTreeNode(batch, child, frame, worldTransform)) {
+    const flags = recordTreeNode(
+      batch,
+      child,
+      frame,
+      worldTransform,
+      nextOpacity,
+      nextClip,
+      imageLodScale
+    );
+    if (flags.hasAnimatedShade) {
       hasAnimatedShade = true;
     }
+    if (flags.hasImages) {
+      hasImages = true;
+    }
   }
-  return hasAnimatedShade;
+  return { hasAnimatedShade, hasImages };
 }
 
 function recordDrawable(
   batch: VertexBatch,
   node: Canvas2DDrawableNode,
   frame: Canvas2DWebGpuFrame,
-  parentWorldTransform: Canvas2DMatrix
+  parentWorldTransform: Canvas2DMatrix,
+  inheritedOpacity = 1,
+  imageLodScale = 1
 ) {
   switch (node.type) {
     case "rect":
     case "circle":
-      recordShape(batch, node, frame.transformPreview);
+      recordShape(batch, node, frame.transformPreview, parentWorldTransform, inheritedOpacity);
       return;
     case "measurement":
       recordMeasurement(batch, node, parentWorldTransform, frame.contentColors);
@@ -1164,26 +1938,38 @@ function recordDrawable(
       recordEdge(batch, node, frame, false, false);
       return;
     case "text":
-      recordText(batch, node);
+      recordText(batch, node, parentWorldTransform, inheritedOpacity);
       return;
     case "html":
       return;
     default: {
+      if (isDenovoImageNode(node)) {
+        recordImage(
+          batch,
+          node,
+          frame.transformPreview,
+          parentWorldTransform,
+          inheritedOpacity,
+          frame.imageCache,
+          imageLodScale
+        );
+        return;
+      }
       if (isDenovoSparklineNode(node)) {
-        recordSparkline(batch, node, frame.transformPreview);
+        recordSparkline(batch, node, frame.transformPreview, parentWorldTransform, inheritedOpacity);
         return;
       }
       if (isDenovoShadeNode(node)) {
-        recordShade(batch, node, frame.transformPreview);
+        recordShade(batch, node, frame.transformPreview, parentWorldTransform, inheritedOpacity);
         return;
       }
       if (isCanvas2DPluginNode(node)) {
         if (
-          recordHostPluginDrawer(batch, node, frame.transformPreview)
+          recordHostPluginDrawer(batch, node, frame.transformPreview, parentWorldTransform, inheritedOpacity)
         ) {
           return;
         }
-        recordPluginMarker(batch, node, frame.transformPreview);
+        recordPluginMarker(batch, node, frame.transformPreview, parentWorldTransform, inheritedOpacity);
         return;
       }
       const exhaustive: never = node;
@@ -1195,26 +1981,74 @@ function recordDrawable(
 function recordShape(
   batch: VertexBatch,
   node: Canvas2DShapeNode,
-  preview: CanvasNodeTransformPreview | null
+  preview: CanvasNodeTransformPreview | null,
+  parentWorldTransform: Canvas2DMatrix,
+  inheritedOpacity: number
 ) {
-  const matrix = createCanvas2DTransformMatrix(resolveNodeRenderTransform(node, preview));
-  const color = batch.fillColor(node.fill);
-  if (node.type === "rect") {
-    batch.rect(matrix, 0, 0, node.size[0], node.size[1], color);
+  const effectiveOpacity = inheritedOpacity * node.opacity;
+  if (effectiveOpacity <= 0) {
     return;
   }
-  batch.circle(matrix, 0, 0, node.radius, color);
+
+  const matrix = multiplyCanvas2DMatrices(
+    parentWorldTransform,
+    createCanvas2DTransformMatrix(resolveNodeRenderTransform(node, preview))
+  );
+  const transparentFill = node.fill === "none" || node.fill === "transparent";
+  const fillColor: GpuColor = transparentFill
+    ? TRANSPARENT_GPU_COLOR
+    : batch.fillColor(node.fill, effectiveOpacity);
+  const hasStroke = node.stroke !== null && node.strokeWidth > 0;
+  const strokeColor: GpuColor | null =
+    hasStroke && node.stroke !== null
+      ? batch.fillColor(node.stroke, effectiveOpacity)
+      : null;
+
+  if (node.type === "rect") {
+    const radii = resolveClampedCornerRadii(
+      node.size[0],
+      node.size[1],
+      node.cornerRadius
+    );
+    batch.roundedRect(
+      matrix,
+      0,
+      0,
+      node.size[0],
+      node.size[1],
+      fillColor,
+      radii,
+      strokeColor,
+      hasStroke ? node.strokeWidth : 0
+    );
+    return;
+  }
+  batch.circle(
+    matrix,
+    0,
+    0,
+    node.radius,
+    fillColor,
+    false,
+    strokeColor,
+    hasStroke ? node.strokeWidth : 0
+  );
 }
 
 function recordText(
   batch: VertexBatch,
-  node: Extract<Canvas2DNode, { type: "text" }>
+  node: Extract<Canvas2DNode, { type: "text" }>,
+  parentWorldTransform: Canvas2DMatrix,
+  inheritedOpacity: number
 ) {
-  const matrix = createCanvas2DTransformMatrix({
-    position: node.position,
-    rotation: node.rotation,
-    scale: node.scale
-  });
+  const matrix = multiplyCanvas2DMatrices(
+    parentWorldTransform,
+    createCanvas2DTransformMatrix({
+      position: node.position,
+      rotation: node.rotation,
+      scale: node.scale
+    })
+  );
   const font = `${node.fontWeight} ${node.fontSize}px ${node.fontFamily}`;
   const lines = wrapCanvas2DText(batch.measure, font, node.text, node.width);
   const lineHeight = node.fontSize * 1.2;
@@ -1225,7 +2059,18 @@ function recordText(
     } else if (node.align === "right") {
       drawX = -measureCanvas2DText(batch.measure, font, line);
     }
-    batch.text(matrix, drawX, index * lineHeight, font, line, node.fill, "left", "top");
+    batch.text(
+      matrix,
+      drawX,
+      index * lineHeight,
+      font,
+      line,
+      node.fill,
+      "left",
+      "top",
+      false,
+      inheritedOpacity
+    );
   });
 }
 
@@ -1369,15 +2214,152 @@ function recordArrowhead(
   );
 }
 
+function recordImage(
+  batch: VertexBatch,
+  node: Canvas2DPluginNode,
+  preview: CanvasNodeTransformPreview | null,
+  parentWorldTransform: Canvas2DMatrix,
+  inheritedOpacity: number,
+  imageCache?: Canvas2DImageCache,
+  lodScale = 1
+) {
+  if (!isDenovoImageNode(node)) {
+    return;
+  }
+
+  const style = resolveDenovoImageStyle(node.props);
+  const effectiveOpacity = inheritedOpacity * style.opacity;
+  if (effectiveOpacity <= 0) {
+    return;
+  }
+
+  const width = node.props.width;
+  const height = node.props.height;
+  const matrix = multiplyCanvas2DMatrices(
+    parentWorldTransform,
+    createCanvas2DTransformMatrix(resolveNodeRenderTransform(node, preview))
+  );
+  const radii = resolveClampedCornerRadii(width, height, style.cornerRadius);
+  const hasStroke = style.stroke !== null && style.strokeWidth > 0;
+  const strokeColor: GpuColor | null =
+    hasStroke && style.stroke !== null
+      ? batch.fillColor(style.stroke, effectiveOpacity)
+      : null;
+
+  const resolved = imageCache?.resolve(node.props) ?? null;
+  let stamped = false;
+
+  if (resolved) {
+    const drawRect = resolveDenovoImageDrawRect(
+      resolved.naturalWidth,
+      resolved.naturalHeight,
+      width,
+      height,
+      style.fit
+    );
+    if (drawRect) {
+      const lodCap =
+        lodScale > 1 ? MAX_IMAGE_ATLAS_ZOOMED_IN_DIM : MAX_IMAGE_ATLAS_STAMP_DIM;
+      const desiredWidth = width * lodScale;
+      const desiredHeight = height * lodScale;
+      const maxDesired = Math.max(desiredWidth, desiredHeight);
+      const clampScale = maxDesired > lodCap ? lodCap / maxDesired : 1;
+      const minW = Math.min(Math.ceil(width), MIN_IMAGE_ATLAS_STAMP_DIM);
+      const minH = Math.min(Math.ceil(height), MIN_IMAGE_ATLAS_STAMP_DIM);
+      const stampWidth = Math.max(
+        minW,
+        Math.min(lodCap, Math.round(desiredWidth * clampScale))
+      );
+      const stampHeight = Math.max(
+        minH,
+        Math.min(lodCap, Math.round(desiredHeight * clampScale))
+      );
+      stamped = batch.raster(
+        matrix,
+        0,
+        0,
+        width,
+        height,
+        (context) => {
+          context.scale(stampWidth / width, stampHeight / height);
+          traceCanvas2DRoundedRectPath(context, 0, 0, width, height, radii);
+          context.clip();
+          if (
+            style.fit === "contain" &&
+            style.placeholder !== "none" &&
+            style.placeholder !== "transparent"
+          ) {
+            context.fillStyle = style.placeholder;
+            context.fillRect(0, 0, width, height);
+          }
+          context.drawImage(
+            resolved.source,
+            drawRect.sx,
+            drawRect.sy,
+            drawRect.sw,
+            drawRect.sh,
+            drawRect.dx,
+            drawRect.dy,
+            drawRect.dw,
+            drawRect.dh
+          );
+        },
+        effectiveOpacity,
+        stampWidth,
+        stampHeight
+      );
+    }
+  }
+
+  if (!stamped) {
+    const transparentPlaceholder =
+      style.placeholder === "none" || style.placeholder === "transparent";
+    const fillColor: GpuColor = transparentPlaceholder
+      ? TRANSPARENT_GPU_COLOR
+      : batch.fillColor(style.placeholder, effectiveOpacity);
+    batch.roundedRect(
+      matrix,
+      0,
+      0,
+      width,
+      height,
+      fillColor,
+      radii,
+      strokeColor,
+      hasStroke ? style.strokeWidth : 0
+    );
+    return;
+  }
+
+  if (hasStroke && strokeColor !== null) {
+    batch.roundedRect(
+      matrix,
+      0,
+      0,
+      width,
+      height,
+      TRANSPARENT_GPU_COLOR,
+      radii,
+      strokeColor,
+      style.strokeWidth
+    );
+  }
+}
+
 function recordShade(
   batch: VertexBatch,
   node: Canvas2DPluginNode,
-  preview: CanvasNodeTransformPreview | null
+  preview: CanvasNodeTransformPreview | null,
+  parentWorldTransform: Canvas2DMatrix,
+  inheritedOpacity: number
 ) {
   if (!isDenovoShadeNode(node)) {
     return;
   }
-  const matrix = createCanvas2DTransformMatrix(resolveNodeRenderTransform(node, preview));
+  const matrix = multiplyCanvas2DMatrices(
+    parentWorldTransform,
+    createCanvas2DTransformMatrix(resolveNodeRenderTransform(node, preview))
+  );
   const [width, height] = [node.props.width, node.props.height];
   const elapsedMs = performance.now();
   const strips = node.props.pattern === "gradient" ? 24 : denovoShadeStripCount(node.props);
@@ -1389,7 +2371,10 @@ function recordShade(
       0,
       stripWidth + 0.5,
       height,
-      batch.fillColor(denovoShadeStripColor(node.props, index, strips, elapsedMs))
+      batch.fillColor(
+        denovoShadeStripColor(node.props, index, strips, elapsedMs),
+        inheritedOpacity
+      )
     );
   }
 }
@@ -1397,12 +2382,17 @@ function recordShade(
 function recordSparkline(
   batch: VertexBatch,
   node: Canvas2DPluginNode,
-  preview: CanvasNodeTransformPreview | null
+  preview: CanvasNodeTransformPreview | null,
+  parentWorldTransform: Canvas2DMatrix,
+  inheritedOpacity: number
 ) {
   if (!isDenovoSparklineNode(node)) {
     return;
   }
-  const matrix = createCanvas2DTransformMatrix(resolveNodeRenderTransform(node, preview));
+  const matrix = multiplyCanvas2DMatrices(
+    parentWorldTransform,
+    createCanvas2DTransformMatrix(resolveNodeRenderTransform(node, preview))
+  );
   const points = denovoSparklinePoints(node.props);
   const first = points[0];
   const last = points[points.length - 1];
@@ -1411,7 +2401,7 @@ function recordSparkline(
   }
   const worldPoints = points.map((point) => transformCanvas2DPoint(matrix, point));
   if (node.props.fill !== "none") {
-    const fill = batch.fillColor(node.props.fill);
+    const fill = batch.fillColor(node.props.fill, inheritedOpacity);
     const bottomFirst = transformCanvas2DPoint(matrix, [first[0], node.props.height]);
     const bottomLast = transformCanvas2DPoint(matrix, [last[0], node.props.height]);
     for (let index = 1; index < worldPoints.length; index += 1) {
@@ -1434,33 +2424,49 @@ function recordSparkline(
     void bottomFirst;
     void bottomLast;
   }
-  batch.polyline(worldPoints, 2, batch.fillColor(node.props.stroke));
+  batch.polyline(worldPoints, 2, batch.fillColor(node.props.stroke, inheritedOpacity));
 }
 
 function recordHostPluginDrawer(
   batch: VertexBatch,
   node: Canvas2DPluginNode,
-  preview: CanvasNodeTransformPreview | null
+  preview: CanvasNodeTransformPreview | null,
+  parentWorldTransform: Canvas2DMatrix,
+  inheritedOpacity: number
 ): boolean {
   const draw2d = resolveHostPluginNodeDraw2d(node);
   if (!draw2d) {
     return false;
   }
   const [width, height] = resolveCanvas2DPluginNodeLocalSize(node);
-  const matrix = createCanvas2DTransformMatrix(
-    resolveNodeRenderTransform(node, preview)
+  const matrix = multiplyCanvas2DMatrices(
+    parentWorldTransform,
+    createCanvas2DTransformMatrix(resolveNodeRenderTransform(node, preview))
   );
-  return batch.raster(matrix, 0, 0, width, height, (context) => {
-    draw2d(context, node, preview);
-  });
+  return batch.raster(
+    matrix,
+    0,
+    0,
+    width,
+    height,
+    (context) => {
+      draw2d(context, node, preview);
+    },
+    inheritedOpacity
+  );
 }
 
 function recordPluginMarker(
   batch: VertexBatch,
   node: Canvas2DPluginNode,
-  preview: CanvasNodeTransformPreview | null
+  preview: CanvasNodeTransformPreview | null,
+  parentWorldTransform: Canvas2DMatrix,
+  inheritedOpacity: number
 ) {
-  const matrix = createCanvas2DTransformMatrix(resolveNodeRenderTransform(node, preview));
+  const matrix = multiplyCanvas2DMatrices(
+    parentWorldTransform,
+    createCanvas2DTransformMatrix(resolveNodeRenderTransform(node, preview))
+  );
   const [width, height] = resolveCanvas2DPluginNodeLocalSize(node);
   batch.rect(
     matrix,
@@ -1468,7 +2474,7 @@ function recordPluginMarker(
     0,
     width,
     height,
-    batch.fillColor(PLUGIN_NODE_MARKER_FILL)
+    batch.fillColor(PLUGIN_NODE_MARKER_FILL, inheritedOpacity)
   );
 }
 
@@ -1518,7 +2524,11 @@ function recordGrid(
   }
 }
 
-function recordOverlayPreviews(batch: VertexBatch, frame: Canvas2DWebGpuFrame) {
+function recordOverlayPreviews(
+  batch: VertexBatch,
+  frame: Canvas2DWebGpuFrame,
+  imageLodScale: number
+) {
   const zoom = frame.viewState.zoom;
   for (const preview of frame.authoringPreviews) {
     switch (preview.kind) {
@@ -1540,7 +2550,9 @@ function recordOverlayPreviews(batch: VertexBatch, frame: Canvas2DWebGpuFrame) {
           batch,
           preview.node,
           { ...frame, transformPreview: null },
-          parentWorldTransform
+          parentWorldTransform,
+          0.62,
+          imageLodScale
         );
         break;
       }

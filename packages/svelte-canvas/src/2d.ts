@@ -1,5 +1,5 @@
 /**
- * Lightweight 2D-only Svelte adapter backed by `@denovo/canvas/2d`.
+ * Lightweight 2D-only Svelte adapter backed by `@de-novo/canvas/2d`.
  * Imports zero Three.js or 3D runtime code.
  */
 import {
@@ -7,7 +7,7 @@ import {
   type CanvasEditor,
   type CanvasSelector,
   type CanvasSelectorEquality
-} from "@denovo/canvas/2d";
+} from "@de-novo/canvas/2d";
 
 export { default as DenovoCanvas2D } from "./DenovoCanvas2D.svelte";
 
@@ -54,4 +54,4 @@ export {
   type CanvasSelectorEquality,
   type DenovoCanvas2DCommonConfig,
   type DenovoCanvas2DRuntime
-} from "@denovo/canvas/2d";
+} from "@de-novo/canvas/2d";

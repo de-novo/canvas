@@ -1,6 +1,6 @@
 {
-  "name": "@denovo/react-canvas",
-  "version": "0.1.0",
+  "name": "@de-novo/react-canvas",
+  "version": "0.2.0",
   "license": "Apache-2.0",
   "description": "React adapter for Denovo Canvas.",
   "type": "module",
@@ -26,25 +26,25 @@
   ],
   "sideEffects": false,
   "scripts": {
-    "build": "tsup src/index.tsx src/2d.tsx --format esm,cjs --clean --external react --external react/jsx-runtime --external three --external @react-three/fiber --external @react-three/drei --external @denovo/canvas --external @denovo/canvas/2d --external @denovo/canvas-core --external @denovo/canvas-three && tsc --emitDeclarationOnly",
+    "build": "tsup src/index.tsx src/2d.tsx --format esm,cjs --clean --external react --external react/jsx-runtime --external three --external @react-three/fiber --external @react-three/drei --external @de-novo/canvas --external @de-novo/canvas/2d --external @de-novo/canvas-core --external @de-novo/canvas-three && tsc --emitDeclarationOnly",
     "clean": "rm -rf dist .turbo",
     "typecheck": "tsc --noEmit"
   },
   "peerDependencies": {
-    "@denovo/canvas": "workspace:*",
-    "@denovo/canvas-core": "workspace:*",
+    "@de-novo/canvas": "workspace:*",
+    "@de-novo/canvas-core": "workspace:*",
     "@react-three/drei": ">=10.0.0",
     "@react-three/fiber": ">=9.0.0",
     "react": ">=18.3.0 <20",
     "three": ">=0.185.1"
   },
   "dependencies": {
-    "@denovo/canvas-three": "workspace:*"
+    "@de-novo/canvas-three": "workspace:*"
   },
   "devDependencies": {
-    "@denovo/canvas": "workspace:*",
-    "@denovo/canvas-core": "workspace:*",
-    "@denovo/canvas-three": "workspace:*",
+    "@de-novo/canvas": "workspace:*",
+    "@de-novo/canvas-core": "workspace:*",
+    "@de-novo/canvas-three": "workspace:*",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.6.1",
     "@types/react": "^19.2.17",

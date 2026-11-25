@@ -20,8 +20,8 @@ catalog rooms. Not a facade, schema, or named-operation change.
 
 ## Verification
 
-- `pnpm --filter @denovo/canvas-threeui-example typecheck` passed.
-- `pnpm --filter @denovo/canvas-threeui-example build` passed (102 modules).
+- `pnpm --filter @de-novo/canvas-threeui-example typecheck` passed.
+- `pnpm --filter @de-novo/canvas-threeui-example build` passed (102 modules).
 - Browser on `127.0.0.1:5179`: Warp Field live canvas; Structure Flow canvas
   1408×951; Temple Night `data-state=ready`; Country Towers Japan iframe
   `japanese-tower.html?country=japan` ready.
@@ -39,4 +39,4 @@ catalog rooms. Not a facade, schema, or named-operation change.
 
 Warp Field now uses a Denovo document host. Keep remaining rooms as
 vendor references until they get the same treatment, one renderer at a
-time. Do not export ThreeUI types from `@denovo/canvas`.
+time. Do not export ThreeUI types from `@de-novo/canvas`.

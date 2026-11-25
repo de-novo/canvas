@@ -1,6 +1,6 @@
 {
-  "name": "@denovo/canvas-worker",
-  "version": "0.1.0",
+  "name": "@de-novo/canvas-worker",
+  "version": "0.2.0",
   "license": "Apache-2.0",
   "description": "Worker and OffscreenCanvas helpers for Denovo Canvas.",
   "type": "module",

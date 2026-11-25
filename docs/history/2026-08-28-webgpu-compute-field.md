@@ -13,11 +13,11 @@ frame-budget gate, no new kind, no ThreeUI wrap, no new playground.
 
 ## Changes
 
-- `@denovo/canvas-three` uploads field seeds to a storage buffer and
+- `@de-novo/canvas-three` uploads field seeds to a storage buffer and
   dispatches a workgroup-64 compute shader that writes streak
   endpoints. Results come back one frame later; the first frames still
   use the CPU writer so the corridor moves immediately.
-- `@denovo/canvas-web` attaches that compute to field objects when
+- `@de-novo/canvas-web` attaches that compute to field objects when
   Three's WebGPU backend exposes a device. Fallback and dispose stay
   on the CPU path.
 - `CanvasRenderStats.computeDispatches` reports how many dispatches

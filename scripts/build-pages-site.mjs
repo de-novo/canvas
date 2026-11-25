@@ -43,10 +43,10 @@ function buildViteApp(filterName, subDir, extraArgs = []) {
   );
 }
 
-// 1. Release Board (2D cards + connectors + save/reset, @denovo/canvas/2d)
-buildViteApp("@denovo/canvas-flow-example", "flow");
+// 1. Release Board (2D cards + connectors + save/reset, @de-novo/canvas/2d)
+buildViteApp("@de-novo/canvas-flow-example", "flow");
 
-// 2. Interactive 10k 2D Live Benchmark & Smart Snap (@denovo/canvas/2d, Three.js 0B)
+// 2. Interactive 10k 2D Live Benchmark & Smart Snap (@de-novo/canvas/2d, Three.js 0B)
 const benchConfigPath = path.join(outRoot, ".bench-vite.config.mjs");
 writeFileSync(
   benchConfigPath,
@@ -67,7 +67,7 @@ export default {
 console.log("[build:pages] building 10k 2D live benchmark -> dist-pages/bench-2d");
 execFileSync(
   "pnpm",
-  ["--filter", "@denovo/canvas-flow-example", "exec", "vite", "build", "--config", benchConfigPath],
+  ["--filter", "@de-novo/canvas-flow-example", "exec", "vite", "build", "--config", benchConfigPath],
   { cwd: root, stdio: "inherit" }
 );
 rmSync(benchConfigPath, { force: true });
@@ -76,11 +76,41 @@ renameSync(
   path.join(outRoot, "bench-2d", "index.html")
 );
 
-// 3. Service Map (2D graph layouts, @denovo/canvas/2d)
-buildViteApp("@denovo/canvas-network-example", "network");
+// 2b. Interactive UI Screen Map, Gutter Routing & Box-Model Inspector (@de-novo/canvas/2d, Three.js 0B)
+const uiMapConfigPath = path.join(outRoot, ".ui-map-vite.config.mjs");
+writeFileSync(
+  uiMapConfigPath,
+  `import { resolve } from "node:path";
+export default {
+  root: ${JSON.stringify(path.join(root, "apps/playground-flow"))},
+  base: "./",
+  build: {
+    outDir: ${JSON.stringify(path.join(outRoot, "ui-map"))},
+    emptyOutDir: true,
+    rollupOptions: {
+      input: resolve(${JSON.stringify(path.join(root, "apps/playground-flow"))}, "ui-map.html")
+    }
+  }
+};
+`
+);
+console.log("[build:pages] building UI Screen Map & Box-Model Inspector -> dist-pages/ui-map");
+execFileSync(
+  "pnpm",
+  ["--filter", "@de-novo/canvas-flow-example", "exec", "vite", "build", "--config", uiMapConfigPath],
+  { cwd: root, stdio: "inherit" }
+);
+rmSync(uiMapConfigPath, { force: true });
+renameSync(
+  path.join(outRoot, "ui-map", "ui-map.html"),
+  path.join(outRoot, "ui-map", "index.html")
+);
+
+// 3. Service Map (2D graph layouts, @de-novo/canvas/2d)
+buildViteApp("@de-novo/canvas-network-example", "network");
 
 // 4. 3D Warp Field showcase
-buildViteApp("@denovo/canvas-field-example", "field");
+buildViteApp("@de-novo/canvas-field-example", "field");
 
 // 5. Warehouse Digital Twin (5,000 multi-color stacked 3D pallets + 20 AGVs + 2D floorplan)
 const warehouseConfigPath = path.join(outRoot, ".warehouse-vite.config.mjs");
@@ -103,7 +133,7 @@ export default {
 console.log("[build:pages] building Warehouse Digital Twin -> dist-pages/warehouse");
 execFileSync(
   "pnpm",
-  ["--filter", "@denovo/canvas-field-example", "exec", "vite", "build", "--config", warehouseConfigPath],
+  ["--filter", "@de-novo/canvas-field-example", "exec", "vite", "build", "--config", warehouseConfigPath],
   { cwd: root, stdio: "inherit" }
 );
 rmSync(warehouseConfigPath, { force: true });
@@ -133,7 +163,7 @@ export default {
 console.log("[build:pages] building 3D Parametric Lotus -> dist-pages/flower");
 execFileSync(
   "pnpm",
-  ["--filter", "@denovo/canvas-field-example", "exec", "vite", "build", "--config", flowerConfigPath],
+  ["--filter", "@de-novo/canvas-field-example", "exec", "vite", "build", "--config", flowerConfigPath],
   { cwd: root, stdio: "inherit" }
 );
 rmSync(flowerConfigPath, { force: true });
@@ -293,9 +323,17 @@ writeFileSync(
         <div class="metric"><div class="val">0.40 ms</div><div class="lbl" id="m4"></div></div>
       </section>
       <section class="grid">
+        <a class="card" href="./ui-map/">
+          <div>
+            <span class="tag">v0.2 · @de-novo/canvas/2d · Three.js 0B</span>
+            <h2 id="c7-t"></h2>
+            <p id="c7-p"></p>
+          </div>
+          <span class="cta" id="c7-cta"></span>
+        </a>
         <a class="card" href="./bench-2d/">
           <div>
-            <span class="tag">@denovo/canvas/2d · Three.js 0B</span>
+            <span class="tag">@de-novo/canvas/2d · Three.js 0B</span>
             <h2 id="c1-t"></h2>
             <p id="c1-p"></p>
           </div>
@@ -303,7 +341,7 @@ writeFileSync(
         </a>
         <a class="card" href="./flow/">
           <div>
-            <span class="tag">@denovo/canvas/2d · 361 kB</span>
+            <span class="tag">@de-novo/canvas/2d · 361 kB</span>
             <h2 id="c2-t"></h2>
             <p id="c2-p"></p>
           </div>
@@ -311,7 +349,7 @@ writeFileSync(
         </a>
         <a class="card" href="./network/">
           <div>
-            <span class="tag">@denovo/canvas/2d · 352 kB</span>
+            <span class="tag">@de-novo/canvas/2d · 352 kB</span>
             <h2 id="c3-t"></h2>
             <p id="c3-p"></p>
           </div>
@@ -319,7 +357,7 @@ writeFileSync(
         </a>
         <a class="card" href="./warehouse/">
           <div>
-            <span class="tag">@denovo/canvas · 5,020 Pallets · 1 drawCall</span>
+            <span class="tag">@de-novo/canvas · 5,020 Pallets · 1 drawCall</span>
             <h2 id="c5-t"></h2>
             <p id="c5-p"></p>
           </div>
@@ -327,7 +365,7 @@ writeFileSync(
         </a>
         <a class="card" href="./flower/">
           <div>
-            <span class="tag">@denovo/canvas · Parametric 3D Mesh</span>
+            <span class="tag">@de-novo/canvas · Parametric 3D Mesh</span>
             <h2 id="c6-t"></h2>
             <p id="c6-p"></p>
           </div>
@@ -335,7 +373,7 @@ writeFileSync(
         </a>
         <a class="card" href="./field/">
           <div>
-            <span class="tag">@denovo/canvas · 3D WebGPU/WebGL2</span>
+            <span class="tag">@de-novo/canvas · 3D WebGPU/WebGL2</span>
             <h2 id="c4-t"></h2>
             <p id="c4-p"></p>
           </div>
@@ -356,13 +394,13 @@ writeFileSync(
           title: "Framework-agnostic 2D & 3D canvas optimization SDK",
           lead: "TanStack-style headless core and thin React, Vue, Svelte, and Solid adapters: viewport culling, O(k) incremental spatial indexing, O(visible) smart snap guides, HTML overlay virtualization, rAF coalescing, and Three.js-free 2D bundles.",
           m1: "2D Canvas2D drawCalls on 10k nodes",
-          m2: "2D bundle reduction via @denovo/canvas/2d",
+          m2: "2D bundle reduction via @de-novo/canvas/2d",
           m3: "Unrelated UI re-renders across 100 hover events",
           m4: "O(visible) smart snap across 10,001 nodes",
           c1t: "10k 2D Live Benchmark & Snap",
           c1p: "Test 10,000 nodes with live drawCall telemetry, O(k) incremental moves, O(visible) smart snap guides, and alignNodes/distributeNodes.",
           c2t: "Release Board (2D Flow)",
-          c2p: "Editable HTML cards, orthogonal connectors, touch drag, undo/redo, and save/reset running on Three.js-free @denovo/canvas/2d.",
+          c2p: "Editable HTML cards, orthogonal connectors, touch drag, undo/redo, and save/reset running on Three.js-free @de-novo/canvas/2d.",
           c3t: "Service Map (2D Graph)",
           c3p: "Multi-layout 2D topology viewer and editor with viewport culling and zoom-scaled HTML cards.",
           c4t: "3D Warp Field",
@@ -371,19 +409,21 @@ writeFileSync(
           c5p: "5,000 stacked 3D pallets across 20 aisles + 20 moving AGVs across 6 live status colors in 1 single drawCall, with instant 2D floorplan switch.",
           c6t: "3D Parametric Blooming Lotus",
           c6p: "Interactive curved parametric lotus petals (mesh) + 90 batched Fibonacci pollen spheres with live bloom slider, palettes, and wireframe view.",
+          c7t: "UI Screen Map & Box-Model Inspector",
+          c7p: "Interactive v0.2 showcase: plugin.denovo.image screens, obstacle-free gutter routing, DevTools box-model & spacing redlines, WebGPU multi-page atlas + zoom-LOD, and agent snapshot capture.",
           cta: "Open demo →"
         },
         ko: {
           title: "프레임워크 독립형 2D · 3D 캔버스 최적화 SDK",
           lead: "TanStack 스타일의 헤드리스 코어와 React, Vue, Svelte, Solid 얇은 어댑터: 뷰포트 컬링, O(k) 증분 공간 인덱스, O(visible) 스마트 스냅 가이드, HTML 오버레이 가상화, rAF 병합, Three.js 0B 2D 번들.",
           m1: "10k 2D 노드 기준 Canvas2D 드로우콜",
-          m2: "@denovo/canvas/2d 경량 엔트리 번들 절감",
+          m2: "@de-novo/canvas/2d 경량 엔트리 번들 절감",
           m3: "100회 호버 이벤트 동안 무관 UI 리렌더",
           m4: "10,001개 노드 중 O(visible) 스마트 스냅",
           c1t: "10k 2D 라이브 벤치마크 & 스냅",
           c1p: "10,000개 노드 실시간 드로우콜, O(k) 증분 이동, O(visible) 스마트 스냅 가이드, alignNodes/distributeNodes를 바로 체험하세요.",
           c2t: "Release Board (2D 플로우)",
-          c2p: "Three.js 없는 @denovo/canvas/2d 기반 HTML 카드, 직교 커넥터, 터치 드래그, Undo/Redo, 저장/초기화 데모.",
+          c2p: "Three.js 없는 @de-novo/canvas/2d 기반 HTML 카드, 직교 커넥터, 터치 드래그, Undo/Redo, 저장/초기화 데모.",
           c3t: "Service Map (2D 그래프)",
           c3p: "뷰포트 컬링과 줌 스케일 HTML 카드를 갖춘 멀티 레이아웃 2D 토폴로지 뷰어.",
           c4t: "3D Warp Field",
@@ -392,19 +432,21 @@ writeFileSync(
           c5p: "파란 철골 랙·주황 로드빔·목재 팔레트·화물·12대 AGV(3,367 파츠)를 단 2 drawCalls로 렌더링하고 2D 평면도로 즉시 전환합니다.",
           c6t: "3D 파라메트릭 연꽃 (Blooming Lotus)",
           c6p: "곡면 파라메트릭 꽃잎 메시 + 90개 피보나치 배칭 수술 구로 구현한 인터랙티브 3D 연꽃(개화 슬라이더·팔레트·와이어프레임).",
+          c7t: "UI 스크린 맵 & 박스 모델 인스펙터",
+          c7p: "v0.2 종합 데모: plugin.denovo.image 스크린 카드, 장애물 회피 거터 라우팅, DevTools 박스 모델·레드라인 오버레이, WebGPU 멀티 페이지 아틀라스/줌-LOD 및 스냅샷 캡처.",
           cta: "데모 열기 →"
         },
         zh: {
           title: "框架无关的 2D 与 3D 画布性能优化 SDK",
           lead: "TanStack 风格的无头核心与 React、Vue、Svelte、Solid 薄适配层：视口裁剪、O(k) 增量空间索引、O(visible) 智能吸附辅助线、HTML 覆盖层虚拟化、rAF 帧合并与零 Three.js 2D 打包。",
           m1: "10k 节点下的 2D Canvas2D 绘制调用",
-          m2: "使用 @denovo/canvas/2d 缩减 2D 包体积",
+          m2: "使用 @de-novo/canvas/2d 缩减 2D 包体积",
           m3: "100 次悬停事件下无关 UI 重渲染次数",
           m4: "10,001 个节点中 O(visible) 智能吸附耗时",
           c1t: "10k 2D 实时基准测试与智能吸附",
           c1p: "实时体验 10,000 节点裁剪绘制调用、O(k) 增量移动、O(visible) 智能吸附辅助线与 alignNodes/distributeNodes。",
           c2t: "Release Board（2D 流程看板）",
-          c2p: "基于零 Three.js 的 @denovo/canvas/2d：可编辑 HTML 卡片、正交连线、触控拖拽、撤销重做与保存重置。",
+          c2p: "基于零 Three.js 的 @de-novo/canvas/2d：可编辑 HTML 卡片、正交连线、触控拖拽、撤销重做与保存重置。",
           c3t: "Service Map（2D 服务拓扑）",
           c3p: "支持多布局切换、视口裁剪与缩放 HTML 卡片的 2D 拓扑视图。",
           c4t: "3D Warp Field",
@@ -413,6 +455,8 @@ writeFileSync(
           c5p: "工业钢货架、木托盘、多色货物与 12 台 AGV（3,367 个部件）仅需 2 次 drawCalls，并支持一键切换 2D 平面图。",
           c6t: "3D 参数化绽放莲花",
           c6p: "基于参数化曲面网格花瓣与 90 个斐波那契合批花蕊球体，支持实时绽放滑块、配色方案与线框视图。",
+          c7t: "UI 屏幕地图与盒模型检查器",
+          c7p: "v0.2 综合示例：plugin.denovo.image 屏幕卡片、避障通道正交连线、DevTools 盒模型与红线间距标注、WebGPU 多页图集缩放 LOD 及代理快照捕获。",
           cta: "打开示例 →"
         }
       };
@@ -437,7 +481,9 @@ writeFileSync(
         document.getElementById("c5-p").textContent = d.c5p;
         document.getElementById("c6-t").textContent = d.c6t;
         document.getElementById("c6-p").textContent = d.c6p;
-        for (const id of ["c1-cta", "c2-cta", "c3-cta", "c4-cta", "c5-cta", "c6-cta"]) {
+        document.getElementById("c7-t").textContent = d.c7t;
+        document.getElementById("c7-p").textContent = d.c7p;
+        for (const id of ["c1-cta", "c2-cta", "c3-cta", "c4-cta", "c5-cta", "c6-cta", "c7-cta"]) {
           document.getElementById(id).textContent = d.cta;
         }
         document.querySelectorAll(".langs button").forEach((btn) => {

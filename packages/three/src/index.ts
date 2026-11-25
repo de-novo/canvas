@@ -4,7 +4,7 @@ import type {
   CanvasHitResult,
   CanvasHitTestInput,
   NodeId
-} from "@denovo/canvas-core";
+} from "@de-novo/canvas-core";
 import {
   acceleratedRaycast,
   computeBoundsTree,

@@ -9,18 +9,18 @@ framework-native selector bindings so canvas-based apps avoid unnecessary UI
 re-renders during high-frequency editor updates (such as 60–120 Hz hover
 tracking):
 
-- `@denovo/canvas-editor` (re-exported from `@denovo/canvas`):
+- `@de-novo/canvas-editor` (re-exported from `@de-novo/canvas`):
   `subscribeCanvasSelector`, `shallowEqual`, `CanvasSelector`,
   `CanvasSelectorEquality`, `SubscribeCanvasSelectorOptions`.
-- `@denovo/react-canvas` (re-exported from `@denovo/canvas/react`):
+- `@de-novo/react-canvas` (re-exported from `@de-novo/canvas/react`):
   `useCanvasSelector` built on `useSyncExternalStore` with cached equality
   comparison (safe for inline derived object selectors + `shallowEqual` and
   prop-dependent closures).
-- `@denovo/vue-canvas`: `useCanvasSelector` returning a `ComputedRef<TSelected>`
+- `@de-novo/vue-canvas`: `useCanvasSelector` returning a `ComputedRef<TSelected>`
   backed by `shallowRef` and disposed automatically via `onScopeDispose`.
-- `@denovo/svelte-canvas`: `createCanvasSelectorStore` returning a standard
+- `@de-novo/svelte-canvas`: `createCanvasSelectorStore` returning a standard
   Svelte `CanvasReadableStore<TSelected>` (`$store`-compatible).
-- `@denovo/solid-canvas`: `useCanvasSelector` returning an `Accessor<TSelected>`
+- `@de-novo/solid-canvas`: `useCanvasSelector` returning an `Accessor<TSelected>`
   backed by `createSignal` and cleaned up via `onCleanup`.
 - Consumer adoption: `apps/playground/app/mask-host.tsx` now subscribes to
   `document` and `{ canUndo, canRedo }` through `useCanvasSelector` +
@@ -40,8 +40,8 @@ contain zero explicit `any`. Positive consumer inference fixtures and negative
 - `pnpm typecheck`: passed (25 packages)
 - `pnpm build`: passed (25/25)
 - `pnpm verify:public-api`: passed (including `selectors-smoke.ts` positive and
-  negative fixtures across `@denovo/canvas`, `@denovo/canvas/react`,
-  `@denovo/vue-canvas`, `@denovo/svelte-canvas`, and `@denovo/solid-canvas`)
+  negative fixtures across `@de-novo/canvas`, `@de-novo/canvas/react`,
+  `@de-novo/vue-canvas`, `@de-novo/svelte-canvas`, and `@de-novo/solid-canvas`)
 - `pnpm verify:selectors`: passed (4/4: `shallow-equal-semantics`,
   `headless-subscribe-isolates-hover-storm`,
   `vue-useCanvasSelector-isolates-and-disposes`, and

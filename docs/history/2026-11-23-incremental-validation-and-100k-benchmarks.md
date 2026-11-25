@@ -4,13 +4,13 @@ Issue: [#18](https://github.com/de-novo/canvas/issues/18).
 
 ## Summary
 
-- Eliminated redundant O(N) Zod re-validation in `@denovo/canvas-core`
+- Eliminated redundant O(N) Zod re-validation in `@de-novo/canvas-core`
   (`defineScene`, `defineDocument`) using `WeakSet` tracking of deeply frozen
   validated scenes/documents/nodes with incremental per-node validation (only
   parsing newly created/modified nodes while preserving 100% identical
   cross-node invariant checks and `ZodError` fallback), and removed duplicate
-  `defineScene` / `CanvasSceneSchema.parse` calls across `@denovo/canvas-editor`,
-  `@denovo/canvas-web` (`2d.ts`, `3d.ts`), and `@denovo/canvas`.
+  `defineScene` / `CanvasSceneSchema.parse` calls across `@de-novo/canvas-editor`,
+  `@de-novo/canvas-web` (`2d.ts`, `3d.ts`), and `@de-novo/canvas`.
 - Eliminated O(N) `Object.values()` array copy inside `freezeValue`
   (`packages/editor/src/utils.ts`) and cached per-scene node lookup maps via
   `WeakMap` inside `resolveEffectiveNodeState` (`packages/editor/src/node-state.ts`).

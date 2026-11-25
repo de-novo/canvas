@@ -1,18 +1,18 @@
 /**
  * Main-side {@link BimAdapter} that delegates tessellation to a
- * `@denovo/canvas-worker` queue running `createBimWorkerHandler`. Parsing
+ * `@de-novo/canvas-worker` queue running `createBimWorkerHandler`. Parsing
  * (OpenModel + LoadAllGeometry + vertex baking) runs off the main thread;
  * this adapter only assembles the document from transferable results.
  *
- * @module @denovo/canvas-bim/web-ifc-worker
+ * @module @de-novo/canvas-bim/web-ifc-worker
  */
 
 import {
   createMemoryGeometryStore,
   type CanvasGeometryStore,
   type CanvasScene
-} from "@denovo/canvas-core";
-import type { WorkerTaskQueue } from "@denovo/canvas-worker";
+} from "@de-novo/canvas-core";
+import type { WorkerTaskQueue } from "@de-novo/canvas-worker";
 
 import type {
   BimAdapter,

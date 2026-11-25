@@ -374,7 +374,7 @@ await check("named-ops-human-and-agent-share-the-same-list", async () => {
   ]);
 });
 
-const server = await startApp("@denovo/canvas-bim-example", 5189);
+const server = await startApp("@de-novo/canvas-bim-example", 5189);
 try {
   await check("named-ops-playground-hide-level-2-uses-the-helper", async () => {
     const browser = await launchPixelChromium();
@@ -462,7 +462,7 @@ try {
   server.process.kill("SIGTERM");
 }
 
-const vanilla = await startApp("@denovo/canvas-vanilla-example", 5190);
+const vanilla = await startApp("@de-novo/canvas-vanilla-example", 5190);
 try {
   await check("named-ops-vanilla-stack-and-layer-toggles-use-the-helpers", async () => {
     const browser = await launchPixelChromium();

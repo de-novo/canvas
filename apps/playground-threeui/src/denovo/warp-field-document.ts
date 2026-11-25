@@ -1,4 +1,4 @@
-import { defineDocument, type CanvasDocument, type JsonValue } from "@denovo/canvas-core";
+import { defineDocument, type CanvasDocument, type JsonValue } from "@de-novo/canvas-core";
 
 export const WARP_FIELD_PLUGIN_KEY = "threeui.warp-field";
 export const WARP_FIELD_VARIANTS = ["streaks", "letters", "keycaps", "hyperspace"] as const;

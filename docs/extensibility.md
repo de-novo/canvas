@@ -215,10 +215,10 @@ Adapter non-responsibilities:
 
 Expected adapter packages:
 
-- `@denovo/react-canvas`;
-- `@denovo/vue-canvas`;
-- `@denovo/svelte-canvas`;
-- `@denovo/solid-canvas`;
+- `@de-novo/react-canvas`;
+- `@de-novo/vue-canvas`;
+- `@de-novo/svelte-canvas`;
+- `@de-novo/solid-canvas`;
 - app examples for Next.js, Astro, and vanilla web.
 
 ## BIM Extension Strategy
@@ -237,7 +237,7 @@ Policy:
 
 - keep `@xeokit/xeokit-sdk` optional because it is AGPL-3.0;
 - keep `web-ifc` optional and worker-loaded;
-- use `@denovo/canvas-bim` for contracts;
+- use `@de-novo/canvas-bim` for contracts;
 - do not make base packages import BIM dependencies;
 - map BIM element IDs into the common selection/metadata model.
 

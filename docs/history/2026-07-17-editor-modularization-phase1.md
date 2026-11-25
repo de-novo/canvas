@@ -4,7 +4,7 @@ Date: 2026-07-17.
 
 ## Context
 
-The `@denovo/canvas-editor` package was a single 6,673-line `index.ts` file
+The `@de-novo/canvas-editor` package was a single 6,673-line `index.ts` file
 containing 142 functions and 67 type definitions. This made the codebase hard
 to navigate, difficult to unit test, and created a barrier for open-source
 contributors. The goal is to decompose the monolith into cohesive modules
@@ -69,7 +69,7 @@ Public exports remain identical; no consumer-facing type or function changed.
 All baselines pass on 2026-07-17:
 
 - `pnpm typecheck` (all tasks).
-- `pnpm --filter @denovo/canvas-editor build`.
+- `pnpm --filter @de-novo/canvas-editor build`.
 - `pnpm verify:public-api`.
 - `pnpm verify:editor-core`.
 - `pnpm verify:document-schema`.

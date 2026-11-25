@@ -10,7 +10,7 @@ import {
   type NodeId,
   type Point2,
   type Vector3
-} from "@denovo/canvas-core";
+} from "@de-novo/canvas-core";
 
 type CanvasAuthoringToolOptionsBase<
   TMode extends CanvasMode,
@@ -35,11 +35,18 @@ type Canvas3DAuthoringToolOptionsBase<TId extends string = string> =
 
 export type Canvas2DShapeToolOptions<TId extends string = string> =
   | (Canvas2DAuthoringToolOptionsBase<TId> & {
+      readonly cornerRadius?: CanvasNodeByType<"2d", "rect">["cornerRadius"];
       readonly fill?: CanvasNodeByType<"2d", "rect">["fill"];
+      readonly opacity?: CanvasNodeByType<"2d", "rect">["opacity"];
+      readonly stroke?: CanvasNodeByType<"2d", "rect">["stroke"];
+      readonly strokeWidth?: CanvasNodeByType<"2d", "rect">["strokeWidth"];
       readonly type: "rect";
     })
   | (Canvas2DAuthoringToolOptionsBase<TId> & {
       readonly fill?: CanvasNodeByType<"2d", "circle">["fill"];
+      readonly opacity?: CanvasNodeByType<"2d", "circle">["opacity"];
+      readonly stroke?: CanvasNodeByType<"2d", "circle">["stroke"];
+      readonly strokeWidth?: CanvasNodeByType<"2d", "circle">["strokeWidth"];
       readonly type: "circle";
     });
 

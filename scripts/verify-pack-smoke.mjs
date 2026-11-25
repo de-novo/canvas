@@ -10,7 +10,7 @@
  * 3. Standard open-source metadata (`license`, `repository`, `homepage`, `bugs`,
  *    `publishConfig.access === "public"`) is present.
  * 4. Unpacking the core/editor/facade tarballs into an isolated temp directory
- *    allows Node ESM to import `@denovo/canvas/2d` and execute `defineDocument`,
+ *    allows Node ESM to import `@de-novo/canvas/2d` and execute `defineDocument`,
  *    `createEditor`, `setNodeVisible`, `subscribeCanvasSelector`, and
  *    `shallowEqual` cleanly outside the monorepo.
  */
@@ -153,14 +153,14 @@ try {
 
   await check("external-unpacked-esm-smoke", () => {
     const consumerDir = path.join(tempDir, "consumer");
-    const scopeDir = path.join(consumerDir, "node_modules", "@denovo");
+    const scopeDir = path.join(consumerDir, "node_modules", "@de-novo");
     mkdirSync(scopeDir, { recursive: true });
 
     const unpackTargets = [
-      ["@denovo/canvas-core", "canvas-core"],
-      ["@denovo/canvas-editor", "canvas-editor"],
-      ["@denovo/canvas-web", "canvas-web"],
-      ["@denovo/canvas", "canvas"]
+      ["@de-novo/canvas-core", "canvas-core"],
+      ["@de-novo/canvas-editor", "canvas-editor"],
+      ["@de-novo/canvas-web", "canvas-web"],
+      ["@de-novo/canvas", "canvas"]
     ];
     for (const [pkgName, folder] of unpackTargets) {
       const info = packed.get(pkgName);
@@ -180,7 +180,7 @@ try {
         readFileSync(path.join(scopeDir, folder, "package.json"), "utf8")
       );
       for (const depName of Object.keys(manifest.dependencies ?? {})) {
-        if (depName.startsWith("@denovo/")) continue;
+        if (depName.startsWith("@de-novo/")) continue;
         const targetLink = path.join(consumerDir, "node_modules", depName);
         if (existsSync(targetLink)) continue;
         const sourceDir = path.join(info.dir, "node_modules", depName);
@@ -206,7 +206,7 @@ import {
   setNodeVisible,
   shallowEqual,
   subscribeCanvasSelector
-} from "@denovo/canvas/2d";
+} from "@de-novo/canvas/2d";
 
 const doc = defineDocument({
   id: "pack-smoke-doc",
@@ -250,22 +250,22 @@ stop();
       stdio: ["ignore", "pipe", "pipe"]
     });
 
-    // Verify @denovo/canvas packed tarball contains styles.css and Three.js-free 2d.js.
+    // Verify @de-novo/canvas packed tarball contains styles.css and Three.js-free 2d.js.
     const stylesCss = readFileSync(
       path.join(scopeDir, "canvas", "src", "styles.css"),
       "utf8"
     );
     assert.ok(
       stylesCss.includes("--dc-"),
-      "packed @denovo/canvas/styles.css must expose --dc-* CSS custom properties"
+      "packed @de-novo/canvas/styles.css must expose --dc-* CSS custom properties"
     );
     const facade2dJs = readFileSync(
       path.join(scopeDir, "canvas", "dist", "2d.js"),
       "utf8"
     );
     assert.ok(
-      !facade2dJs.includes("\"three\"") && !facade2dJs.includes("\"@denovo/canvas-web\""),
-      "packed @denovo/canvas/2d must remain free of Three.js and root @denovo/canvas-web"
+      !facade2dJs.includes("\"three\"") && !facade2dJs.includes("\"@de-novo/canvas-web\""),
+      "packed @de-novo/canvas/2d must remain free of Three.js and root @de-novo/canvas-web"
     );
   });
 } finally {

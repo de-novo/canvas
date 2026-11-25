@@ -1,5 +1,5 @@
-import type { Point2, Vector3 } from "@denovo/canvas-core";
-import type { CanvasNodeByType } from "@denovo/canvas-core";
+import type { Point2, Vector3 } from "@de-novo/canvas-core";
+import type { CanvasNodeByType } from "@de-novo/canvas-core";
 import { CanvasEditorError } from "../errors.js";
 
 type Transform2D = Pick<

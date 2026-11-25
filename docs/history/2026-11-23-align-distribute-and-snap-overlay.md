@@ -6,9 +6,9 @@ Issue: [#16](https://github.com/de-novo/canvas/issues/16).
 
 - Added `alignNodes` (`left` | `center` | `right` | `top` | `middle` | `bottom`)
   and `distributeNodes` (`horizontal` | `vertical`) 2D multi-node layout Named
-  Operations to `@denovo/canvas-editor`, registered them in
+  Operations to `@de-novo/canvas-editor`, registered them in
   `NAMED_OPERATION_NAMES` / `listNamedOperations()`, and re-exported them from
-  `@denovo/canvas/2d` and `@denovo/canvas`.
+  `@de-novo/canvas/2d` and `@de-novo/canvas`.
 - Both operations compile into canonical `node.update` commands (atomic
   single-step undo/redo via `editor.apply([...])`), return `{ changed: false,
   commands: [] }` when already aligned/distributed or given `< 2` / `< 3`

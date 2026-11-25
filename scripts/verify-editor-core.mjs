@@ -6066,6 +6066,197 @@ try {
   );
 }
 
+// 2D UI styles (cornerRadius, stroke, strokeWidth, opacity) and group clip undo/redo
+{
+  const uiDoc = facade.defineDocument({
+    id: "ui-styles-editor-doc",
+    scene: {
+      id: "ui-styles-editor-scene",
+      mode: "2d",
+      layers: [{ id: "ui", name: "UI" }],
+      nodes: [
+        {
+          id: "card",
+          layerId: "ui",
+          type: "rect",
+          position: [20, 20],
+          size: [160, 100],
+          fill: "#1e293b"
+        },
+        {
+          id: "badge",
+          layerId: "ui",
+          type: "circle",
+          position: [220, 70],
+          radius: 24,
+          fill: "#38bdf8"
+        },
+        {
+          id: "frame",
+          layerId: "ui",
+          type: "group",
+          position: [0, 0]
+        }
+      ]
+    }
+  });
+  const uiEditor = facade.createEditor({ document: uiDoc });
+  const getNode = (id) =>
+    uiEditor.getState().document.scene.nodes.find((n) => n.id === id);
+
+  const rectUpdateCmd = facade.createNodeUpdateCommand(getNode("card"), {
+    cornerRadius: [16, 16, 4, 4],
+    stroke: "#38bdf8",
+    strokeWidth: 2,
+    opacity: 0.75
+  });
+  const circleUpdateCmd = facade.createNodeUpdateCommand(getNode("badge"), {
+    stroke: "#f59e0b",
+    strokeWidth: 3,
+    opacity: 0.8
+  });
+  const groupUpdateCmd = facade.createNodeUpdateCommand(getNode("frame"), {
+    clip: { x: 0, y: 0, width: 240, height: 140, cornerRadius: 12 },
+    opacity: 0.9
+  });
+
+  await uiEditor.dispatch({
+    type: "transaction",
+    label: "Style UI nodes",
+    commands: [rectUpdateCmd, circleUpdateCmd, groupUpdateCmd]
+  });
+
+  assert.deepEqual(getNode("card").cornerRadius, [16, 16, 4, 4]);
+  assert.equal(getNode("card").stroke, "#38bdf8");
+  assert.equal(getNode("card").strokeWidth, 2);
+  assert.equal(getNode("card").opacity, 0.75);
+  assert.equal(getNode("badge").stroke, "#f59e0b");
+  assert.equal(getNode("badge").strokeWidth, 3);
+  assert.equal(getNode("badge").opacity, 0.8);
+  assert.deepEqual(getNode("frame").clip, {
+    x: 0,
+    y: 0,
+    width: 240,
+    height: 140,
+    cornerRadius: 12
+  });
+  assert.equal(getNode("frame").opacity, 0.9);
+
+  await uiEditor.undo();
+  assert.equal(getNode("card").cornerRadius, 0);
+  assert.equal(getNode("card").stroke, null);
+  assert.equal(getNode("card").strokeWidth, 1);
+  assert.equal(getNode("card").opacity, 1);
+  assert.equal(getNode("badge").stroke, null);
+  assert.equal(getNode("badge").opacity, 1);
+  assert.equal(getNode("frame").clip, null);
+  assert.equal(getNode("frame").opacity, 1);
+
+  await uiEditor.redo();
+  assert.deepEqual(getNode("card").cornerRadius, [16, 16, 4, 4]);
+  assert.equal(getNode("frame").clip?.width, 240);
+}
+
+// setImageFit Named Operation and edge avoidObstacles undo/redo
+{
+  const imageAsset = facade.createImageAssetRef("shot-a", {
+    uri: "/screens/a.png",
+    width: 390,
+    height: 844
+  });
+  const doc = facade.defineDocument({
+    id: "image-and-gutter-editor-doc",
+    assets: [imageAsset],
+    scene: {
+      id: "image-and-gutter-editor-scene",
+      mode: "2d",
+      layers: [{ id: "main", name: "Main" }],
+      nodes: [
+        {
+          id: "shot-node",
+          layerId: "main",
+          type: "plugin.denovo.image",
+          position: [0, 0],
+          props: { assetId: "shot-a", width: 200, height: 120 }
+        },
+        {
+          id: "target-rect",
+          layerId: "main",
+          type: "rect",
+          position: [400, 0],
+          size: [120, 80]
+        },
+        {
+          id: "locked-shot",
+          layerId: "main",
+          type: "plugin.denovo.image",
+          locked: true,
+          props: { src: "/locked.png", width: 100, height: 100 }
+        },
+        {
+          id: "link-1",
+          layerId: "main",
+          type: "edge",
+          sourceId: "shot-node",
+          targetId: "target-rect",
+          routing: "orthogonal"
+        }
+      ]
+    }
+  });
+  const imgEditor = facade.createEditor({ document: doc });
+  const getNode = (id) =>
+    imgEditor.getState().document.scene.nodes.find((n) => n.id === id);
+
+  // Default fit is implicitly "contain" -> setting "contain" is a no-op.
+  await imgEditor.apply([
+    facade.setImageFit({ nodeId: "shot-node", fit: "contain" })
+  ]);
+  assert.equal(imgEditor.getState().history.undoDepth, 0);
+
+  // Change fit to "cover", undo, redo.
+  await imgEditor.apply([
+    facade.setImageFit({ nodeId: "shot-node", fit: "cover" })
+  ]);
+  assert.equal(getNode("shot-node").props.fit, "cover");
+  assert.equal(imgEditor.getState().history.undoDepth, 1);
+
+  await imgEditor.undo();
+  assert.equal(getNode("shot-node").props.fit, undefined);
+  await imgEditor.redo();
+  assert.equal(getNode("shot-node").props.fit, "cover");
+
+  // Update edge avoidObstacles + obstaclePadding via createNodeUpdateCommand + undo.
+  await imgEditor.dispatch(
+    facade.createNodeUpdateCommand(getNode("link-1"), {
+      avoidObstacles: true,
+      obstaclePadding: 24
+    })
+  );
+  assert.equal(getNode("link-1").avoidObstacles, true);
+  assert.equal(getNode("link-1").obstaclePadding, 24);
+  await imgEditor.undo();
+  assert.equal(getNode("link-1").avoidObstacles, false);
+  assert.equal(getNode("link-1").obstaclePadding, 16);
+
+  // Error boundaries for setImageFit
+  await assert.rejects(
+    () => imgEditor.apply([facade.setImageFit({ nodeId: "target-rect", fit: "fill" })]),
+    (error) =>
+      error instanceof facade.CanvasEditorError && error.code === "invalid-command"
+  );
+  await assert.rejects(
+    () => imgEditor.apply([facade.setImageFit({ nodeId: "locked-shot", fit: "fill" })]),
+    (error) =>
+      error instanceof facade.CanvasEditorError && error.code === "locked-target"
+  );
+  await assert.rejects(
+    () => imgEditor.apply([facade.setImageFit({ nodeId: "missing", fit: "fill" })]),
+    (error) =>
+      error instanceof facade.CanvasEditorError && error.code === "node-not-found"
+  );
+}
+
 // Reaching here means every sequential assertion above held: any failure throws
 // and aborts the run, which the non-zero exit code reports.
 check("editor-core-suite", () => {});

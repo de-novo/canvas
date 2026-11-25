@@ -30,8 +30,8 @@ ships the contract.
   options.storage, { debounceMs })` when a storage adapter is supplied, and
   threads the resulting disconnect through the existing disconnect chain (and
   the try/catch rollback).
-- Imports `connectEditorToStorage` from `@denovo/canvas-editor` and
-  `CanvasStorageAdapter` from `@denovo/canvas-core`.
+- Imports `connectEditorToStorage` from `@de-novo/canvas-editor` and
+  `CanvasStorageAdapter` from `@de-novo/canvas-core`.
 
 ## Result
 

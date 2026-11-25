@@ -35,16 +35,16 @@ importers:
       '@base-ui/react':
         specifier: ^1.6.0
         version: 1.6.0(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
-      '@denovo/canvas':
+      '@de-novo/canvas':
         specifier: workspace:*
         version: link:../../packages/canvas
-      '@denovo/canvas-core':
+      '@de-novo/canvas-core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@denovo/canvas-web':
+      '@de-novo/canvas-web':
         specifier: workspace:*
         version: link:../../packages/web
-      '@denovo/react-canvas':
+      '@de-novo/react-canvas':
         specifier: workspace:*
         version: link:../../packages/react
       '@react-three/drei':
@@ -111,10 +111,10 @@ importers:
 
   apps/playground-bim:
     dependencies:
-      '@denovo/canvas':
+      '@de-novo/canvas':
         specifier: workspace:*
         version: link:../../packages/canvas
-      '@denovo/canvas-bim':
+      '@de-novo/canvas-bim':
         specifier: workspace:*
         version: link:../../packages/bim
       web-ifc:
@@ -130,13 +130,13 @@ importers:
 
   apps/playground-diagram:
     dependencies:
-      '@denovo/canvas':
+      '@de-novo/canvas':
         specifier: workspace:*
         version: link:../../packages/canvas
-      '@denovo/canvas-editor':
+      '@de-novo/canvas-editor':
         specifier: workspace:*
         version: link:../../packages/editor
-      '@denovo/canvas-web':
+      '@de-novo/canvas-web':
         specifier: workspace:*
         version: link:../../packages/web
     devDependencies:
@@ -149,7 +149,7 @@ importers:
 
   apps/playground-field:
     dependencies:
-      '@denovo/canvas':
+      '@de-novo/canvas':
         specifier: workspace:*
         version: link:../../packages/canvas
     devDependencies:
@@ -162,7 +162,7 @@ importers:
 
   apps/playground-flow:
     dependencies:
-      '@denovo/canvas':
+      '@de-novo/canvas':
         specifier: workspace:*
         version: link:../../packages/canvas
     devDependencies:
@@ -175,13 +175,13 @@ importers:
 
   apps/playground-graph:
     dependencies:
-      '@denovo/canvas':
+      '@de-novo/canvas':
         specifier: workspace:*
         version: link:../../packages/canvas
-      '@denovo/canvas-editor':
+      '@de-novo/canvas-editor':
         specifier: workspace:*
         version: link:../../packages/editor
-      '@denovo/canvas-web':
+      '@de-novo/canvas-web':
         specifier: workspace:*
         version: link:../../packages/web
     devDependencies:
@@ -194,7 +194,7 @@ importers:
 
   apps/playground-network:
     dependencies:
-      '@denovo/canvas':
+      '@de-novo/canvas':
         specifier: workspace:*
         version: link:../../packages/canvas
     devDependencies:
@@ -207,10 +207,10 @@ importers:
 
   apps/playground-react:
     dependencies:
-      '@denovo/canvas-core':
+      '@de-novo/canvas-core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@denovo/react-canvas':
+      '@de-novo/react-canvas':
         specifier: workspace:*
         version: link:../../packages/react
       '@react-three/drei':
@@ -250,13 +250,13 @@ importers:
 
   apps/playground-solid:
     dependencies:
-      '@denovo/canvas-core':
+      '@de-novo/canvas-core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@denovo/canvas-web':
+      '@de-novo/canvas-web':
         specifier: workspace:*
         version: link:../../packages/web
-      '@denovo/solid-canvas':
+      '@de-novo/solid-canvas':
         specifier: workspace:*
         version: link:../../packages/solid-canvas
       solid-js:
@@ -275,13 +275,13 @@ importers:
 
   apps/playground-svelte:
     dependencies:
-      '@denovo/canvas-core':
+      '@de-novo/canvas-core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@denovo/canvas-web':
+      '@de-novo/canvas-web':
         specifier: workspace:*
         version: link:../../packages/web
-      '@denovo/svelte-canvas':
+      '@de-novo/svelte-canvas':
         specifier: workspace:*
         version: link:../../packages/svelte-canvas
       svelte:
@@ -303,7 +303,7 @@ importers:
 
   apps/playground-threeui:
     dependencies:
-      '@denovo/canvas-core':
+      '@de-novo/canvas-core':
         specifier: workspace:*
         version: link:../../packages/core
       react:
@@ -343,13 +343,13 @@ importers:
 
   apps/playground-vue:
     dependencies:
-      '@denovo/canvas-core':
+      '@de-novo/canvas-core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@denovo/canvas-web':
+      '@de-novo/canvas-web':
         specifier: workspace:*
         version: link:../../packages/web
-      '@denovo/vue-canvas':
+      '@de-novo/vue-canvas':
         specifier: workspace:*
         version: link:../../packages/vue-canvas
       vue:
@@ -368,7 +368,7 @@ importers:
 
   apps/vanilla:
     dependencies:
-      '@denovo/canvas':
+      '@de-novo/canvas':
         specifier: workspace:*
         version: link:../../packages/canvas
     devDependencies:
@@ -381,11 +381,11 @@ importers:
 
   packages/bim:
     dependencies:
-      '@denovo/canvas-core':
+      '@de-novo/canvas-core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
-      '@denovo/canvas-worker':
+      '@de-novo/canvas-worker':
         specifier: workspace:*
         version: link:../worker
       web-ifc:
@@ -394,19 +394,19 @@ importers:
 
   packages/canvas:
     dependencies:
-      '@denovo/canvas-core':
+      '@de-novo/canvas-core':
         specifier: workspace:*
         version: link:../core
-      '@denovo/canvas-editor':
+      '@de-novo/canvas-editor':
         specifier: workspace:*
         version: link:../editor
-      '@denovo/canvas-web':
+      '@de-novo/canvas-web':
         specifier: workspace:*
         version: link:../web
-      '@denovo/canvas-worker':
+      '@de-novo/canvas-worker':
         specifier: workspace:*
         version: link:../worker
-      '@denovo/react-canvas':
+      '@de-novo/react-canvas':
         specifier: workspace:*
         version: link:../react
       effect:
@@ -431,7 +431,7 @@ importers:
 
   packages/editor:
     dependencies:
-      '@denovo/canvas-core':
+      '@de-novo/canvas-core':
         specifier: workspace:*
         version: link:../core
       effect:
@@ -440,14 +440,14 @@ importers:
 
   packages/react:
     dependencies:
-      '@denovo/canvas-three':
+      '@de-novo/canvas-three':
         specifier: workspace:*
         version: link:../three
     devDependencies:
-      '@denovo/canvas':
+      '@de-novo/canvas':
         specifier: workspace:*
         version: link:../canvas
-      '@denovo/canvas-core':
+      '@de-novo/canvas-core':
         specifier: workspace:*
         version: link:../core
       '@react-three/drei':
@@ -471,10 +471,10 @@ importers:
 
   packages/server:
     dependencies:
-      '@denovo/canvas-core':
+      '@de-novo/canvas-core':
         specifier: workspace:*
         version: link:../core
-      '@denovo/canvas-editor':
+      '@de-novo/canvas-editor':
         specifier: workspace:*
         version: link:../editor
     devDependencies:
@@ -484,10 +484,10 @@ importers:
 
   packages/solid-canvas:
     devDependencies:
-      '@denovo/canvas':
+      '@de-novo/canvas':
         specifier: workspace:*
         version: link:../canvas
-      '@denovo/canvas-core':
+      '@de-novo/canvas-core':
         specifier: workspace:*
         version: link:../core
       solid-js:
@@ -496,10 +496,10 @@ importers:
 
   packages/svelte-canvas:
     devDependencies:
-      '@denovo/canvas':
+      '@de-novo/canvas':
         specifier: workspace:*
         version: link:../canvas
-      '@denovo/canvas-core':
+      '@de-novo/canvas-core':
         specifier: workspace:*
         version: link:../core
       svelte:
@@ -508,7 +508,7 @@ importers:
 
   packages/three:
     dependencies:
-      '@denovo/canvas-core':
+      '@de-novo/canvas-core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
@@ -524,10 +524,10 @@ importers:
 
   packages/vue-canvas:
     devDependencies:
-      '@denovo/canvas':
+      '@de-novo/canvas':
         specifier: workspace:*
         version: link:../canvas
-      '@denovo/canvas-core':
+      '@de-novo/canvas-core':
         specifier: workspace:*
         version: link:../core
       vue:
@@ -536,13 +536,13 @@ importers:
 
   packages/web:
     dependencies:
-      '@denovo/canvas-core':
+      '@de-novo/canvas-core':
         specifier: workspace:*
         version: link:../core
-      '@denovo/canvas-editor':
+      '@de-novo/canvas-editor':
         specifier: workspace:*
         version: link:../editor
-      '@denovo/canvas-three':
+      '@de-novo/canvas-three':
         specifier: workspace:*
         version: link:../three
       three:

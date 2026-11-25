@@ -322,7 +322,7 @@ function perfBenchHtml() {
     "<body>",
     "  <div id=\"stage\" style=\"position:fixed;inset:0;\"></div>",
     "  <script type=\"module\">",
-    "    import { createCanvas } from \"@denovo/canvas\";",
+    "    import { createCanvas } from \"@de-novo/canvas\";",
     "    const params = new URLSearchParams(location.search);",
     "    const count = Number(params.get(\"count\") || \"1000\");",
     "    const primitive = params.get(\"primitive\") || \"box\";",
@@ -446,7 +446,7 @@ async function startViteServer() {
     "pnpm",
     [
       "--filter",
-      "@denovo/canvas-vanilla-example",
+      "@de-novo/canvas-vanilla-example",
       "exec",
       "vite",
       "--config",

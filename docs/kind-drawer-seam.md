@@ -13,15 +13,15 @@ It is a target contract. Status is not claimed here.
 
 ## Decision
 
-Registration lives in `@denovo/canvas-web`. For kind `T` in mode `M`,
+Registration lives in `@de-novo/canvas-web`. For kind `T` in mode `M`,
 the host supplies a drawer. The 2D path paints through Canvas2D. The 3D
 path creates the object the WebGL2 runtime already raycasts. Hit-testing
 uses the same structural bounds as the drawer’s local size.
 
-The default facade (`@denovo/canvas`) MUST NOT export this registration
+The default facade (`@de-novo/canvas`) MUST NOT export this registration
 and MUST NOT expose `CanvasRenderingContext2D` or Three.js types for it.
-Hosts that need a custom kind visual import `@denovo/canvas/web` or
-`@denovo/canvas-web`.
+Hosts that need a custom kind visual import `@de-novo/canvas/web` or
+`@de-novo/canvas-web`.
 
 Official kinds (`plugin.denovo.field`, `plugin.denovo.sparkline`,
 `plugin.denovo.shade`) keep their hard-coded drawers. A host
@@ -32,7 +32,7 @@ MUST NOT throw.
 ## Registration
 
 ```ts
-import { registerPluginNodeDrawer } from "@denovo/canvas/web";
+import { registerPluginNodeDrawer } from "@de-novo/canvas/web";
 
 const unregister = registerPluginNodeDrawer({
   type: "plugin.test.card",
@@ -81,7 +81,7 @@ on WebGPU. 3D runtimes reject with `CanvasReadPixelsUnsupportedError`.
    throw.
 4. **Unregister restores the marker.** After the host drawer is
    removed, the same node paints as the marker again.
-5. **No engine types on the facade.** Generated `@denovo/canvas`
+5. **No engine types on the facade.** Generated `@de-novo/canvas`
    declarations do not mention `registerPluginNodeDrawer`,
    `CanvasRenderingContext2D`, or `Object3D` as part of this seam.
    Consumer fixtures import the facade for kind enumeration, not for

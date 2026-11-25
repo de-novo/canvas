@@ -5,7 +5,7 @@ import {
   type AssetRef,
   type AssetUpload,
   type NodeId
-} from "@denovo/canvas-core";
+} from "@de-novo/canvas-core";
 
 export type StoredAssetBlob = {
   asset: AssetRef;

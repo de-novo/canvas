@@ -1,5 +1,5 @@
 {
-  "name": "@denovo/canvas-svelte-example",
+  "name": "@de-novo/canvas-svelte-example",
   "version": "0.0.0",
   "license": "Apache-2.0",
   "private": true,
@@ -12,9 +12,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@denovo/canvas-core": "workspace:*",
-    "@denovo/canvas-web": "workspace:*",
-    "@denovo/svelte-canvas": "workspace:*",
+    "@de-novo/canvas-core": "workspace:*",
+    "@de-novo/canvas-web": "workspace:*",
+    "@de-novo/svelte-canvas": "workspace:*",
     "svelte": "^5.19.0"
   },
   "devDependencies": {

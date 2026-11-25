@@ -21,7 +21,7 @@ The editor only applies that result.
 `stackBox` is document-only (M3.1 analytic box faces), not a live
 surface-point runtime. First three, in order: `setLayerVisible`,
 `stackBox`, `listNodes`. BIM `modelId` listing stays in
-`@denovo/canvas-bim`. WebGPU stays deferred and must accept the same
+`@de-novo/canvas-bim`. WebGPU stays deferred and must accept the same
 calls later.
 
 See [Named Authoring Operations](../named-authoring-operations.md).

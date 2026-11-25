@@ -6,7 +6,7 @@
     type CanvasEditor,
     type DenovoCanvas2DCommonConfig,
     type DenovoCanvas2DRuntime
-  } from "@denovo/canvas/2d";
+  } from "@de-novo/canvas/2d";
 
   /**
    * 2D scene document to render. Reactive: changing it calls `runtime.update`.

@@ -3,7 +3,7 @@
 Isolated host for the public ThreeUI **Three.js** catalog rooms.
 
 ```sh
-pnpm --filter @denovo/canvas-threeui-example dev
+pnpm --filter @de-novo/canvas-threeui-example dev
 ```
 
 Opens on `127.0.0.1:5179`. Sources stay under `src/vendor/threeui` (MIT).

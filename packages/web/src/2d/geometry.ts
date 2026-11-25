@@ -10,19 +10,24 @@
  */
 import {
   CANVAS_NODE_PORT_SIDES,
+  denovoImageSize,
   denovoShadeSize,
   denovoSparklineSize,
   isCanvas2DPluginNode,
+  isDenovoImageNode,
   isDenovoShadeNode,
   isDenovoSparklineNode,
+  type Canvas2DClipRect,
+  type Canvas2DCornerRadius,
   type Canvas2DNode,
   type Canvas2DPluginNode,
   type Canvas2DScene,
   type CanvasNodePortSide,
   type CanvasNodeTransformPreview
-} from "@denovo/canvas-core";
+} from "@de-novo/canvas-core";
 
 import type { Canvas2DRectBounds } from "../view2d";
+import { resolveCanvas2DObstacleFreeOrthogonalWaypoints } from "./routing";
 import {
   CANVAS_2D_IDENTITY_MATRIX,
   createCanvas2DTransformMatrix,
@@ -150,22 +155,151 @@ export function resolveNodeRenderTransform(
     }
   }
 }
+/**
+ * Clamps per-corner radii `[tl, tr, br, bl]` to the CSS Border Radius
+ * specification so opposing corners never overlap past the box width or height.
+ */
+export function resolveClampedCornerRadii(
+  width: number,
+  height: number,
+  cornerRadius: number | readonly [number, number, number, number]
+): readonly [number, number, number, number] {
+  const w = Math.abs(width);
+  const h = Math.abs(height);
+  if (w <= 0 || h <= 0) {
+    return [0, 0, 0, 0];
+  }
+
+  let tl: number;
+  let tr: number;
+  let br: number;
+  let bl: number;
+  if (typeof cornerRadius === "number") {
+    const r = Number.isFinite(cornerRadius) && cornerRadius > 0 ? cornerRadius : 0;
+    tl = r;
+    tr = r;
+    br = r;
+    bl = r;
+  } else {
+    tl = Number.isFinite(cornerRadius[0]) && cornerRadius[0] > 0 ? cornerRadius[0] : 0;
+    tr = Number.isFinite(cornerRadius[1]) && cornerRadius[1] > 0 ? cornerRadius[1] : 0;
+    br = Number.isFinite(cornerRadius[2]) && cornerRadius[2] > 0 ? cornerRadius[2] : 0;
+    bl = Number.isFinite(cornerRadius[3]) && cornerRadius[3] > 0 ? cornerRadius[3] : 0;
+  }
+
+  if (tl === 0 && tr === 0 && br === 0 && bl === 0) {
+    return [0, 0, 0, 0];
+  }
+
+  let scale = 1;
+  if (tl + tr > w) scale = Math.min(scale, w / (tl + tr));
+  if (bl + br > w) scale = Math.min(scale, w / (bl + br));
+  if (tl + bl > h) scale = Math.min(scale, h / (tl + bl));
+  if (tr + br > h) scale = Math.min(scale, h / (tr + br));
+
+  return [tl * scale, tr * scale, br * scale, bl * scale];
+}
+
+export function hasNonZeroCornerRadius(
+  radii: readonly [number, number, number, number]
+): boolean {
+  return radii[0] > 0 || radii[1] > 0 || radii[2] > 0 || radii[3] > 0;
+}
+
+/**
+ * Signed distance to a centered rounded rectangle in local coordinates (+Y down).
+ * `radii` is `[tl, tr, br, bl]`. Negative inside, zero on boundary, positive outside.
+ */
+export function signedDistanceRoundedRect(
+  px: number,
+  py: number,
+  halfWidth: number,
+  halfHeight: number,
+  radii: readonly [number, number, number, number]
+): number {
+  const radius =
+    px > 0
+      ? py > 0
+        ? radii[2]
+        : radii[1]
+      : py > 0
+        ? radii[3]
+        : radii[0];
+  const qx = Math.abs(px) - halfWidth + radius;
+  const qy = Math.abs(py) - halfHeight + radius;
+  return (
+    Math.min(Math.max(qx, qy), 0) +
+    Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) -
+    radius
+  );
+}
+
+export function isPointInsideClipRect(
+  localPoint: readonly [number, number],
+  clip: Canvas2DClipRect
+): boolean {
+  const halfWidth = clip.width * 0.5;
+  const halfHeight = clip.height * 0.5;
+  const px = localPoint[0] - (clip.x + halfWidth);
+  const py = localPoint[1] - (clip.y + halfHeight);
+  if (Math.abs(px) > halfWidth || Math.abs(py) > halfHeight) {
+    return false;
+  }
+  const radii = resolveClampedCornerRadii(
+    clip.width,
+    clip.height,
+    clip.cornerRadius
+  );
+  if (!hasNonZeroCornerRadius(radii)) {
+    return true;
+  }
+  return signedDistanceRoundedRect(px, py, halfWidth, halfHeight, radii) <= 0;
+}
+
 export function isPointInsideCanvas2DShape(
   point: readonly [number, number],
   node: Canvas2DShapeNode
 ): boolean {
+  const halfStroke =
+    node.stroke !== null && node.strokeWidth > 0 ? node.strokeWidth * 0.5 : 0;
+
   if (node.type === "circle") {
+    const effectiveRadius = node.radius + halfStroke;
     return (
-      point[0] * point[0] + point[1] * point[1] <= node.radius * node.radius
+      point[0] * point[0] + point[1] * point[1] <=
+      effectiveRadius * effectiveRadius
     );
   }
 
-  return isPointInsideRectangle(point, {
-    maxX: Math.max(0, node.size[0]),
-    maxY: Math.max(0, node.size[1]),
-    minX: Math.min(0, node.size[0]),
-    minY: Math.min(0, node.size[1])
-  });
+  const minX = Math.min(0, node.size[0]);
+  const maxX = Math.max(0, node.size[0]);
+  const minY = Math.min(0, node.size[1]);
+  const maxY = Math.max(0, node.size[1]);
+
+  if (
+    !isPointInsideRectangle(point, {
+      maxX: maxX + halfStroke,
+      maxY: maxY + halfStroke,
+      minX: minX - halfStroke,
+      minY: minY - halfStroke
+    })
+  ) {
+    return false;
+  }
+
+  const width = maxX - minX;
+  const height = maxY - minY;
+  const radii = resolveClampedCornerRadii(width, height, node.cornerRadius);
+  if (!hasNonZeroCornerRadius(radii)) {
+    return true;
+  }
+
+  const px = point[0] - (minX + width * 0.5);
+  const py = point[1] - (minY + height * 0.5);
+  return (
+    signedDistanceRoundedRect(px, py, width * 0.5, height * 0.5, radii) <=
+    halfStroke
+  );
 }
 export function isPointInsideRectangle(
   point: readonly [number, number],
@@ -354,6 +488,9 @@ export function resolveCanvas2DNodeWorldCenter(
 export function resolveCanvas2DPluginNodeLocalSize(
   node: Canvas2DPluginNode
 ): readonly [number, number] {
+  if (isDenovoImageNode(node)) {
+    return denovoImageSize(node.props);
+  }
   if (isDenovoSparklineNode(node)) {
     return denovoSparklineSize(node.props);
   }
@@ -398,6 +535,16 @@ export function resolveCanvas2DNodeWorldBounds(
       };
     }
     case "group": {
+      if (node.clip !== null) {
+        const world = resolveCanvas2DNodeWorldTransform(node, sceneGraph);
+        const { x, y, width, height } = node.clip;
+        return boundsFromPoints([
+          transformCanvas2DPoint(world, [x, y]),
+          transformCanvas2DPoint(world, [x + width, y]),
+          transformCanvas2DPoint(world, [x + width, y + height]),
+          transformCanvas2DPoint(world, [x, y + height])
+        ]);
+      }
       const children = getCanvas2DGroupChildren(sceneGraph, node.id);
       if (children.length === 0) {
         const center = resolveCanvas2DNodeWorldCenter(node, sceneGraph);
@@ -606,6 +753,82 @@ export function resolveCanvas2DEdgeEndpoint(
 
   return [base[0] + anchor[0], base[1] + anchor[1]];
 }
+type LayerObstacleEntry = {
+  readonly id: string;
+  readonly bounds: Canvas2DRectBounds;
+};
+
+const obstacleCacheBySceneGraph = new WeakMap<
+  Canvas2DSceneGraph,
+  Map<string, readonly LayerObstacleEntry[]>
+>();
+
+function isNodeVisibleInSceneGraph(
+  node: Canvas2DNode,
+  sceneGraph: Canvas2DSceneGraph
+): boolean {
+  const layer = sceneGraph.layersById.get(node.layerId);
+  if (!layer || !layer.visible || !node.visible) {
+    return false;
+  }
+  for (const ancestor of getCanvas2DAncestors(node, sceneGraph)) {
+    if (!ancestor.visible) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function getLayerObstacleEntries(
+  sceneGraph: Canvas2DSceneGraph,
+  layerId: string
+): readonly LayerObstacleEntry[] {
+  let perLayer = obstacleCacheBySceneGraph.get(sceneGraph);
+  if (!perLayer) {
+    perLayer = new Map();
+    obstacleCacheBySceneGraph.set(sceneGraph, perLayer);
+  }
+  const cached = perLayer.get(layerId);
+  if (cached) {
+    return cached;
+  }
+
+  const entries: LayerObstacleEntry[] = [];
+  for (const candidate of sceneGraph.nodesById.values()) {
+    if (
+      candidate.layerId !== layerId ||
+      candidate.type === "group" ||
+      !isCanvas2DConnectableNode(candidate) ||
+      !isNodeVisibleInSceneGraph(candidate, sceneGraph)
+    ) {
+      continue;
+    }
+    entries.push({
+      id: candidate.id,
+      bounds: resolveCanvas2DNodeWorldBounds(candidate, sceneGraph)
+    });
+  }
+
+  perLayer.set(layerId, entries);
+  return entries;
+}
+
+function collectObstacleBoundsForEdge(
+  node: Canvas2DEdgeNode,
+  sceneGraph: Canvas2DSceneGraph
+): Canvas2DRectBounds[] {
+  const entries = getLayerObstacleEntries(sceneGraph, node.layerId);
+  const obstacles: Canvas2DRectBounds[] = [];
+  for (let i = 0; i < entries.length; i += 1) {
+    const entry = entries[i]!;
+    if (entry.id === node.sourceId || entry.id === node.targetId) {
+      continue;
+    }
+    obstacles.push(entry.bounds);
+  }
+  return obstacles;
+}
+
 export function resolveCanvas2DEdgeGeometry(
   node: Canvas2DEdgeNode,
   sceneGraph: Canvas2DSceneGraph
@@ -613,11 +836,17 @@ export function resolveCanvas2DEdgeGeometry(
   if (node.routing === "orthogonal") {
     const sourceNode = sceneGraph.nodesById.get(node.sourceId);
     const targetNode = sceneGraph.nodesById.get(node.targetId);
+    const sourceBounds = sourceNode
+      ? resolveCanvas2DNodeWorldBounds(sourceNode, sceneGraph)
+      : null;
+    const targetBounds = targetNode
+      ? resolveCanvas2DNodeWorldBounds(targetNode, sceneGraph)
+      : null;
     const ports =
-      sourceNode && targetNode
+      sourceBounds && targetBounds
         ? resolveCanvas2DOrthogonalPorts(
-            resolveCanvas2DNodeWorldBounds(sourceNode, sceneGraph),
-            resolveCanvas2DNodeWorldBounds(targetNode, sceneGraph),
+            sourceBounds,
+            targetBounds,
             node.sourcePort,
             node.targetPort
           )
@@ -638,12 +867,25 @@ export function resolveCanvas2DEdgeGeometry(
     return {
       start,
       end,
-      waypoints: resolveCanvas2DOrthogonalWaypoints(
-        start,
-        end,
-        ports.sourcePort,
-        ports.targetPort
-      ),
+      waypoints: node.avoidObstacles
+        ? resolveCanvas2DObstacleFreeOrthogonalWaypoints(
+            start,
+            end,
+            ports.sourcePort,
+            ports.targetPort,
+            collectObstacleBoundsForEdge(node, sceneGraph),
+            {
+              padding: node.obstaclePadding,
+              sourceBounds,
+              targetBounds
+            }
+          )
+        : resolveCanvas2DOrthogonalWaypoints(
+            start,
+            end,
+            ports.sourcePort,
+            ports.targetPort
+          ),
       control: null
     };
   }

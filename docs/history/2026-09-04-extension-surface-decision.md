@@ -25,12 +25,12 @@ Recorded in [Extension Surface Decision](../extension-surface-decision.md).
 - `pluginState` is host bookkeeping. Nothing that draws, picks, or undoes
   may live only there. The only consumer in the tree is the documented
   absorption failure in `apps/playground-threeui`.
-- The ten-category plugin taxonomy, `@denovo/canvas/plugins/*`, the
+- The ten-category plugin taxonomy, `@de-novo/canvas/plugins/*`, the
   `storage:` config field, and the CLI sketch are superseded as direction.
   [Extensibility](../extensibility.md) and
   [Better Auth Style Architecture](../better-auth-style-architecture.md)
   carry status notes and are otherwise unchanged.
-- Next contract candidates: a per-kind drawer seam in `@denovo/canvas-web`
+- Next contract candidates: a per-kind drawer seam in `@de-novo/canvas-web`
   so a host kind stops drawing as a marker without a custom renderer, and a
   read-only `listPluginNodeKinds()`.
 
@@ -51,7 +51,7 @@ Recorded in [Extension Surface Decision](../extension-surface-decision.md).
   repository skills, 5/5 project-status headings, 6/6 pull-request
   headings.
 - `pnpm typecheck` — passed, 36/36 tasks (JSDoc-only edit in core). In a
-  fresh checkout `@denovo/react-canvas` must be built once first; it is an
+  fresh checkout `@de-novo/react-canvas` must be built once first; it is an
   optional peer of the facade and outside the turbo task graph.
 - `git diff --check` — clean.
 

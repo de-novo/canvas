@@ -17,7 +17,7 @@ the editor applier.
 - Editor: undo/redo emit `CanvasPersistenceEvent` `history.changed` without
   incrementing local `baseRevision`. `connectEditorToStorage` flushes on
   `transaction.committed` and `history.changed`, not on `revision.changed`.
-- Server: `@denovo/canvas-server` depends on `@denovo/canvas-editor`. Memory
+- Server: `@de-novo/canvas-server` depends on `@de-novo/canvas-editor`. Memory
   and filesystem adapters persist the applied document. `createCanvasServer`
   forwards `applyCommands`.
 - Web: IndexedDB `applyCommands` uses the same stored-document helper, then

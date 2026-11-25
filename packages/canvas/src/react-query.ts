@@ -11,7 +11,7 @@
  *
  * @example
  * ```tsx
- * import { useCanvasDocument, useCanvasDocumentSave } from "@denovo/canvas/react-query";
+ * import { useCanvasDocument, useCanvasDocumentSave } from "@de-novo/canvas/react-query";
  *
  * function CanvasEditor({ documentId }: { documentId: string }) {
  *   const { data: document, isLoading } = useCanvasDocument(adapter, documentId);
@@ -34,10 +34,10 @@ import {
   type CanvasSaveResult,
   type AssetUpload,
   type AssetRef
-} from "@denovo/canvas-core";
+} from "@de-novo/canvas-core";
 import {
   type CanvasStorageAdapter
-} from "@denovo/canvas-core";
+} from "@de-novo/canvas-core";
 import {
   type UseMutationOptions,
   type UseQueryOptions,

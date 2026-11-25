@@ -10,7 +10,7 @@ import {
   type CanvasNodeIdentityFor,
   type CanvasNodePatch,
   type CanvasNodePatchFor
-} from "@denovo/canvas-core";
+} from "@de-novo/canvas-core";
 import { CanvasEditorError } from "../errors.js";
 import { freezeValue, isPlainObject } from "../utils.js";
 

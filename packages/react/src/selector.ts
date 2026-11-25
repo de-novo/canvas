@@ -5,7 +5,7 @@ import type {
   CanvasEditorState,
   CanvasSelector,
   CanvasSelectorEquality
-} from "@denovo/canvas/2d";
+} from "@de-novo/canvas/2d";
 import { useCallback, useRef, useSyncExternalStore } from "react";
 
 /**

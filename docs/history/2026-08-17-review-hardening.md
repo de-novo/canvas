@@ -75,7 +75,7 @@ environment.
 
 - Memory and filesystem adapters still omit `applyCommands`.
 - Undo/redo still do not emit persistence events.
-- Framework adapters still mount `@denovo/canvas-web`, not the facade.
+- Framework adapters still mount `@de-novo/canvas-web`, not the facade.
 - `3d.ts` remains a 3k-line module.
 - Schema `0.2.0` still names a shape that has grown since M3.
 

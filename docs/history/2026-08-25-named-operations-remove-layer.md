@@ -11,7 +11,7 @@ Named authoring slice 10. Document-only helper that compiles to one
 
 ## Changes
 
-- `@denovo/canvas-editor` and `@denovo/canvas` export `removeLayer`
+- `@de-novo/canvas-editor` and `@de-novo/canvas` export `removeLayer`
   and `RemoveLayerInput`.
 - Empty layer requires `targetLayerId: null`. Non-empty layer requires
   an explicit other layer; nodes move there.

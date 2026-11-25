@@ -72,7 +72,7 @@ const asset = {
 ### applyCommands
 
 ```typescript
-import { createIndexedDbDocumentAdapter } from "@denovo/canvas/indexed-db";
+import { createIndexedDbDocumentAdapter } from "@de-novo/canvas/indexed-db";
 
 const adapter = createIndexedDbDocumentAdapter();
 
@@ -153,7 +153,7 @@ await adapter.deleteDocument("doc-123");
 ### With TanStack Query Hooks
 
 ```typescript
-import { useCanvasCommands, useCanvasAssetUpload } from "@denovo/canvas/react-query";
+import { useCanvasCommands, useCanvasAssetUpload } from "@de-novo/canvas/react-query";
 
 const commandsMutation = useCanvasCommands(adapter);
 const uploadMutation = useCanvasAssetUpload(adapter);

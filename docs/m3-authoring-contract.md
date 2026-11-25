@@ -419,11 +419,11 @@ command.
 
 | Package | M3 responsibility | Must not own |
 | --- | --- | --- |
-| `@denovo/canvas-core` | Versioned schemas, migrations, mode-correlated node and capability types, layers, group relationships, measurement and annotation values | DOM input, Three.js math, tool sessions, renderer resources |
-| `@denovo/canvas-editor` | Creation/measurement/annotation state machines, precise property helpers, group/layer commands, grid snap math, transactions, lock enforcement, history | DOM events, renderer objects, persistence transport |
-| `@denovo/canvas-web` | Canvas2D and Three.js scene-point resolution, transient preview rendering, built-in node rendering and hit testing, lifecycle cleanup | Document mutation, command history, framework UI |
-| `@denovo/canvas-three` | Optional Three.js geometry, ray, picking, and performance helpers reused by the web 3D runtime | Public document semantics, editor commands, facade policy |
-| `@denovo/canvas` | Explicit re-exports, runtime capability detection/wiring, dynamic renderer replacement, ordinary public errors | Duplicate schemas, duplicate tool logic, React-only semantics |
+| `@de-novo/canvas-core` | Versioned schemas, migrations, mode-correlated node and capability types, layers, group relationships, measurement and annotation values | DOM input, Three.js math, tool sessions, renderer resources |
+| `@de-novo/canvas-editor` | Creation/measurement/annotation state machines, precise property helpers, group/layer commands, grid snap math, transactions, lock enforcement, history | DOM events, renderer objects, persistence transport |
+| `@de-novo/canvas-web` | Canvas2D and Three.js scene-point resolution, transient preview rendering, built-in node rendering and hit testing, lifecycle cleanup | Document mutation, command history, framework UI |
+| `@de-novo/canvas-three` | Optional Three.js geometry, ray, picking, and performance helpers reused by the web 3D runtime | Public document semantics, editor commands, facade policy |
+| `@de-novo/canvas` | Explicit re-exports, runtime capability detection/wiring, dynamic renderer replacement, ordinary public errors | Duplicate schemas, duplicate tool logic, React-only semantics |
 | Framework adapters and examples | Lifecycle bindings, host property UI, annotation draft UI, and acceptance proofs over the same facade/editor contracts | New document semantics or private mutation paths |
 
 Core and editor remain usable without DOM, React, Next.js, Canvas2D, Three.js,

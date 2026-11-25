@@ -19,7 +19,7 @@ Three follow-ups after the drawer seam and kind enumeration:
   Facade export names are unchanged.
 - Editor: `listNamedOperations()` and `NAMED_OPERATION_NAMES` list the
   twenty named operations with `read` / `write` role and closed field
-  kinds. Re-exported by `@denovo/canvas`.
+  kinds. Re-exported by `@de-novo/canvas`.
 - 2D WebGPU: host `draw2d` stamps into the text atlas when the local
   size fits; otherwise the marker. The presenter does not throw.
 

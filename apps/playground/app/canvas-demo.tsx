@@ -3,8 +3,8 @@
 import type {
   Canvas2DSceneInput,
   Canvas3DSceneInput
-} from "@denovo/canvas-core";
-import { CanvasStage3D, CanvasView } from "@denovo/react-canvas";
+} from "@de-novo/canvas-core";
+import { CanvasStage3D, CanvasView } from "@de-novo/react-canvas";
 import { useQuery } from "@tanstack/react-query";
 import { Box, RefreshCw, Square, SquareDashed } from "lucide-react";
 import { useMemo } from "react";

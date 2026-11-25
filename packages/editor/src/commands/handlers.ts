@@ -13,7 +13,7 @@ import {
   type CanvasPluginCommandType,
   type JsonValue,
   type NodeId
-} from "@denovo/canvas-core";
+} from "@de-novo/canvas-core";
 import { Effect, Either } from "effect";
 import { CanvasEditorError, PluginPayloadValidationFailure } from "../errors.js";
 import type {

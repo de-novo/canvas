@@ -12,7 +12,7 @@ what the document says. No new playground.
 
 ## Changes
 
-- `@denovo/canvas-editor` and `@denovo/canvas` export `listLabels`,
+- `@de-novo/canvas-editor` and `@de-novo/canvas` export `listLabels`,
   `ListedLabel`, `ListedLabelType`, and `ListLabelsOptions`.
 - Returns `{ id, type, layerId, text }` in document order.
 - Optional `layerId` matches `listNodes`. Unknown layer is

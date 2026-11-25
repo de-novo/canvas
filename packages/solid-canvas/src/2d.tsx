@@ -19,7 +19,7 @@ import {
   type CanvasSelectorEquality,
   type DenovoCanvas2DCommonConfig,
   type DenovoCanvas2DRuntime
-} from "@denovo/canvas/2d";
+} from "@de-novo/canvas/2d";
 
 type DenovoCanvas2DBaseProps = {
   /** 2D options forwarded to `createCanvas`. Only read on mount. */
@@ -42,7 +42,7 @@ export type DenovoCanvas2DProps = DenovoCanvas2DBaseProps &
   );
 
 /**
- * Lightweight 2D-only Solid canvas component backed by `@denovo/canvas/2d`.
+ * Lightweight 2D-only Solid canvas component backed by `@de-novo/canvas/2d`.
  * Imports zero Three.js or 3D runtime code.
  */
 export const DenovoCanvas2D: Component<DenovoCanvas2DProps> = (props) => {
@@ -139,4 +139,4 @@ export {
   type CanvasSelectorEquality,
   type DenovoCanvas2DCommonConfig,
   type DenovoCanvas2DRuntime
-} from "@denovo/canvas/2d";
+} from "@de-novo/canvas/2d";

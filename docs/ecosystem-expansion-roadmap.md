@@ -20,7 +20,7 @@ This roadmap outlines the strategic expansion of Denovo Canvas from a core 2D/3D
 ## 1. Framework Adapters (M5 Expansion)
 
 ### Current State
-- ✅ React adapter (`@denovo/react-canvas`) implemented and verified
+- ✅ React adapter (`@de-novo/react-canvas`) implemented and verified
 - ✅ Framework-agnostic core/web packages support vanilla usage
 - ✅ Next.js App Router example demonstrates React integration
 
@@ -32,14 +32,14 @@ This roadmap outlines the strategic expansion of Denovo Canvas from a core 2D/3D
 **Team:** 1-2 Vue specialists + 1 core team member
 
 **Scope:**
-- `@denovo/vue-canvas` package with Composition API
+- `@de-novo/vue-canvas` package with Composition API
 - Reactive canvas binding via `useCanvas()` composable
 - Component-based declarative API (`<Canvas>`, `<Tool>`, `<Layer>`)
 - Vue 3.3+ with TypeScript support
 - Nuxt 3 integration example
 
 **Technical Approach:**
-- Leverage existing `@denovo/canvas` facade
+- Leverage existing `@de-novo/canvas` facade
 - Use Vue's `watchEffect` for reactive scene updates
 - Implement proper cleanup in `onBeforeUnmount`
 - Support DevTools integration
@@ -63,7 +63,7 @@ This roadmap outlines the strategic expansion of Denovo Canvas from a core 2D/3D
 **Team:** 1 Svelte specialist + 0.5 core team member
 
 **Scope:**
-- `@denovo/svelte-canvas` package
+- `@de-novo/svelte-canvas` package
 - Svelte 5 runes mode support
 - `useCanvas()` action directive
 - Declarative component API
@@ -94,7 +94,7 @@ This roadmap outlines the strategic expansion of Denovo Canvas from a core 2D/3D
 **Team:** 1 Solid specialist + 0.5 core team member
 
 **Scope:**
-- `@denovo/solid-canvas` package
+- `@de-novo/solid-canvas` package
 - Solid 1.8+ with TypeScript
 - `useCanvas()` primitive
 - Component API using Solid JSX
@@ -126,7 +126,7 @@ This roadmap outlines the strategic expansion of Denovo Canvas from a core 2D/3D
 
 **Scope:**
 - Official Astro integration guide
-- `@denovo/canvas-astro` wrapper package
+- `@de-novo/canvas-astro` wrapper package
 - Client-side only hydration patterns
 - Multiple framework demo (React + Vue in same Astro site)
 - Content Collections + Canvas examples
@@ -156,7 +156,7 @@ This roadmap outlines the strategic expansion of Denovo Canvas from a core 2D/3D
 **Team:** 1 Angular specialist + 1 core team member
 
 **Scope:**
-- `@denovo/angular-canvas` package
+- `@de-novo/angular-canvas` package
 - Angular 17+ standalone components
 - Service-based canvas management
 - Reactive forms integration for property editing
@@ -207,7 +207,7 @@ This roadmap outlines the strategic expansion of Denovo Canvas from a core 2D/3D
 ## 2. BIM Extensions (M7)
 
 ### Current State
-- ✅ `@denovo/canvas-bim` package structure exists
+- ✅ `@de-novo/canvas-bim` package structure exists
 - ✅ License policy documented (AGPL isolation)
 - ✅ BIM contracts defined in architecture
 
@@ -229,7 +229,7 @@ This roadmap outlines the strategic expansion of Denovo Canvas from a core 2D/3D
 **Technical Architecture:**
 ```
 ┌─────────────────────────────────────┐
-│   @denovo/canvas-bim package        │
+│   @de-novo/canvas-bim package        │
 ├─────────────────────────────────────┤
 │ • IFCParser (Web Worker)            │
 │ • GeometryConverter                 │
@@ -290,7 +290,7 @@ This roadmap outlines the strategic expansion of Denovo Canvas from a core 2D/3D
 **Team:** 1-2 BIM specialists + 1 core team member
 
 **Scope:**
-- Optional `@denovo/canvas-xeokit` adapter (AGPL-3.0 isolation)
+- Optional `@de-novo/canvas-xeokit` adapter (AGPL-3.0 isolation)
 - Separate viewer mode for xeokit-rendered scenes
 - Shared selection/metadata contracts between web-ifc and xeokit
 - XKT file format support (xeokit's optimized format)
@@ -299,7 +299,7 @@ This roadmap outlines the strategic expansion of Denovo Canvas from a core 2D/3D
 **Technical Approach:**
 ```
 ┌─────────────────────────────────────┐
-│   @denovo/canvas-xeokit (AGPL-3.0)  │
+│   @de-novo/canvas-xeokit (AGPL-3.0)  │
 ├─────────────────────────────────────┤
 │ • XeokitRendererRuntime            │
 │ • XKTLoader                         │
@@ -494,7 +494,7 @@ interface CanvasQuantityTakeoff {
 **Technical Architecture:**
 ```
 ┌─────────────────────────────────────┐
-│   @denovo/canvas-collab package    │
+│   @de-novo/canvas-collab package    │
 ├─────────────────────────────────────┤
 │ • CRDTDocumentSync                 │
 │ • PresenceManager                  │
@@ -960,7 +960,7 @@ A simple 3D scene viewer with orbit controls.
 
 ### Current State
 - ✅ TanStack Query examples planned (M6)
-- ✅ Server package exists (`@denovo/canvas-server`)
+- ✅ Server package exists (`@de-novo/canvas-server`)
 - ❌ No cloud integrations yet
 
 ### Expansion Plan
@@ -1287,16 +1287,16 @@ class Auth0Provider implements CanvasAuthProvider {
 **CLI Integration:**
 ```bash
 # Install plugin
-denovo canvas install @denovo/plugin-bim
+denovo canvas install @de-novo/plugin-bim
 
 # List plugins
 denovo canvas plugin list
 
 # Update plugin
-denovo canvas update @denovo/plugin-bim
+denovo canvas update @de-novo/plugin-bim
 
 # Remove plugin
-denovo canvas remove @denovo/plugin-bim
+denovo canvas remove @de-novo/plugin-bim
 ```
 
 **Acceptance Criteria:**
@@ -1426,7 +1426,7 @@ interface CanvasPlugin {
 **Plugin SDK:**
 ```typescript
 // Plugin development kit
-import { definePlugin, defineTool, defineCommand } from '@denovo/plugin-sdk';
+import { definePlugin, defineTool, defineCommand } from '@de-novo/plugin-sdk';
 
 // Define plugin
 export default definePlugin({

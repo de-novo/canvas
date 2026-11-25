@@ -1,4 +1,4 @@
-import type { NodeId } from "@denovo/canvas-core";
+import type { NodeId } from "@de-novo/canvas-core";
 
 /**
  * Checks if a value is a plain object (not null, not array, not function).

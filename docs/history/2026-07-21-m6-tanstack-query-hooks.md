@@ -9,12 +9,12 @@ Implemented comprehensive TanStack Query hooks for Denovo Canvas storage persist
 
 ## Implementation Details
 
-### New Package: `@denovo/canvas/react-query`
+### New Package: `@de-novo/canvas/react-query`
 
-Created a new module within the `@denovo/canvas` facade that exports TanStack Query hooks:
+Created a new module within the `@de-novo/canvas` facade that exports TanStack Query hooks:
 
 ```typescript
-import { useCanvasDocument, useCanvasDocumentSave } from "@denovo/canvas/react-query";
+import { useCanvasDocument, useCanvasDocumentSave } from "@de-novo/canvas/react-query";
 ```
 
 ### Provided Hooks
@@ -85,8 +85,8 @@ tsup src/index.ts src/react.ts src/indexed-db.ts src/react-query.ts --format esm
 ### Basic Document Loading
 
 ```tsx
-import { useCanvasDocument } from "@denovo/canvas/react-query";
-import { createIndexedDbDocumentAdapter } from "@denovo/canvas/indexed-db";
+import { useCanvasDocument } from "@de-novo/canvas/react-query";
+import { createIndexedDbDocumentAdapter } from "@de-novo/canvas/indexed-db";
 
 function CanvasEditor({ documentId }: { documentId: string }) {
   const adapter = createIndexedDbDocumentAdapter();
@@ -103,7 +103,7 @@ function CanvasEditor({ documentId }: { documentId: string }) {
 ### Document List
 
 ```tsx
-import { useCanvasDocumentList } from "@denovo/canvas/react-query";
+import { useCanvasDocumentList } from "@de-novo/canvas/react-query";
 
 function DocumentGallery() {
   const adapter = createIndexedDbDocumentAdapter();
@@ -132,7 +132,7 @@ function DocumentGallery() {
 ### Auto-saving Editor
 
 ```tsx
-import { useCanvasDocumentEditor } from "@denovo/canvas/react-query";
+import { useCanvasDocumentEditor } from "@de-novo/canvas/react-query";
 
 function AutoSavingCanvas({ documentId }: { documentId: string }) {
   const adapter = createIndexedDbDocumentAdapter();
@@ -160,7 +160,7 @@ function AutoSavingCanvas({ documentId }: { documentId: string }) {
 ### With Suspense Boundaries
 
 ```tsx
-import { useCanvasDocumentSuspense } from "@denovo/canvas/react-query";
+import { useCanvasDocumentSuspense } from "@de-novo/canvas/react-query";
 
 function DocumentViewer({ documentId }: { documentId: string }) {
   const adapter = createIndexedDbDocumentAdapter();
@@ -195,13 +195,13 @@ The hooks work seamlessly with all existing storage adapters:
 
 ```typescript
 // IndexedDB (browser)
-import { createIndexedDbDocumentAdapter } from "@denovo/canvas/indexed-db";
+import { createIndexedDbDocumentAdapter } from "@de-novo/canvas/indexed-db";
 
 // Filesystem (server)
-import { createFilesystemAdapter } from "@denovo/canvas-server";
+import { createFilesystemAdapter } from "@de-novo/canvas-server";
 
 // Memory adapter
-import { createMemoryAdapter } from "@denovo/canvas-core";
+import { createMemoryAdapter } from "@de-novo/canvas-core";
 ```
 
 ### With React Query Client

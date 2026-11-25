@@ -12,9 +12,9 @@ First shipped named authoring helper. Humans and agents share
 
 ## Changes
 
-- `@denovo/canvas-editor` exports `setLayerVisible`,
+- `@de-novo/canvas-editor` exports `setLayerVisible`,
   `applyNamedOperations`, and `CanvasEditor.apply`.
-- `@denovo/canvas` re-exports the helpers and types
+- `@de-novo/canvas` re-exports the helpers and types
   (`NamedOperation`, `NamedOperationResult`, `SetLayerVisibleInput`).
 - Compiles to one `layer.update` when the layer exists and `visible`
   differs. Unknown `layerId` is `layer-not-found`. Extra fields and a

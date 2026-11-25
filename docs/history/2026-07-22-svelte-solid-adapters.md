@@ -5,14 +5,14 @@
 
 ## Overview
 
-Added the last two framework adapters for M5 — `@denovo/svelte-canvas`
-(Svelte 5) and `@denovo/solid-canvas` (Solid) — with example apps and
+Added the last two framework adapters for M5 — `@de-novo/svelte-canvas`
+(Svelte 5) and `@de-novo/solid-canvas` (Solid) — with example apps and
 browser-rendering smoke coverage. With React and Vue already runtime-verified,
 all four framework adapters are now type/build/runtime-verified.
 
 ## New packages
 
-### `@denovo/solid-canvas` (`packages/solid-canvas`)
+### `@de-novo/solid-canvas` (`packages/solid-canvas`)
 
 A `DenovoCanvas` Solid component wrapping `createCanvas`. Lifecycle via
 `onMount`/`onCleanup`; the reactive `scene` prop is forwarded to
@@ -22,7 +22,7 @@ so the consumer's Solid compiler handles JSX transformation — the standard
 pattern for Solid libraries and avoids a babel-preset-solid build step in the
 package.
 
-### `@denovo/svelte-canvas` (`packages/svelte-canvas`)
+### `@de-novo/svelte-canvas` (`packages/svelte-canvas`)
 
 A `DenovoCanvas.svelte` component wrapping `createCanvas`. Lifecycle via
 `onMount`/`onDestroy`; scene changes re-run `$: if (runtime && scene)` to call
@@ -69,7 +69,7 @@ them under rolldown.
 **Resolution:** the Svelte example app pins **Vite 7 + `@sveltejs/vite-plugin-svelte`
 5.x** (the stable, non-rolldown combo). Every other package in the repo keeps
 Vite 8. pnpm permits the version split per-app. The adapter package itself
-(`@denovo/svelte-canvas`) is framework-version-agnostic source, so this is purely
+(`@de-novo/svelte-canvas`) is framework-version-agnostic source, so this is purely
 an example-app toolchain pin until vite-plugin-svelte supports rolldown. This is
 documented inline in `apps/playground-svelte/vite.config.ts`.
 

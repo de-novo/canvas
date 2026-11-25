@@ -8,8 +8,8 @@ import {
   type CanvasDocumentSummary,
   type CanvasStorageAdapter,
   type NodeId
-} from "@denovo/canvas-core";
-import { applyCommandsToStoredDocument } from "@denovo/canvas-editor";
+} from "@de-novo/canvas-core";
+import { applyCommandsToStoredDocument } from "@de-novo/canvas-editor";
 import { assertSafeAssetId, storeUploadedAsset } from "./asset-blob.js";
 
 export type FileSystemDocumentAdapterOptions = {
@@ -25,7 +25,7 @@ export type FileSystemDocumentAdapterOptions = {
  * IndexedDB.
  *
  * Browser builds should not import this module (it uses `node:fs`); it is
- * published under the `@denovo/canvas-server/filesystem` export so bundlers can
+ * published under the `@de-novo/canvas-server/filesystem` export so bundlers can
  * keep it out of browser bundles.
  */
 export function createFileSystemDocumentAdapter(
@@ -197,4 +197,4 @@ export function createFileSystemDocumentAdapter(
   };
 }
 
-export type { CanvasSaveResult, CanvasStorageAdapter } from "@denovo/canvas-core";
+export type { CanvasSaveResult, CanvasStorageAdapter } from "@de-novo/canvas-core";

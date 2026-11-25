@@ -1,10 +1,10 @@
-import { createCanvas2D } from "@denovo/canvas-web";
-import { createEditor, defineDocument, type CanvasSceneInput } from "@denovo/canvas";
+import { createCanvas2D } from "@de-novo/canvas-web";
+import { createEditor, defineDocument, type CanvasSceneInput } from "@de-novo/canvas";
 import {
   createRelationGraphLayoutAdapter,
   createTimeGraphLayoutAdapter
-} from "@denovo/canvas-editor";
-import "@denovo/canvas/styles.css";
+} from "@de-novo/canvas-editor";
+import "@de-novo/canvas/styles.css";
 import { createPointFieldBench } from "./field-bench";
 import "./styles.css";
 

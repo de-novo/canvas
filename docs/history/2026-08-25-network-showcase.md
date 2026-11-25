@@ -12,7 +12,7 @@ document of `html` cards, `edge`s, and `text` labels. Isolated to
 
 ## Changes
 
-- Added `@denovo/canvas-network-example` (`apps/playground-network`).
+- Added `@de-novo/canvas-network-example` (`apps/playground-network`).
 - The document is `createCanvas` + `defineDocument` with nine services,
   seven edges, and a labels layer. Host chrome builds cards with
   `createElement`. It does not assign `innerHTML`.
@@ -21,7 +21,7 @@ document of `html` cards, `edge`s, and `text` labels. Isolated to
   history.
 - `createRelationGraphLayoutAdapter` and
   `createTimeGraphLayoutAdapter` are facade exports so the catalog stays
-  on `@denovo/canvas`.
+  on `@de-novo/canvas`.
 - `pnpm verify:network-showcase` is the browser gate.
 
 This does not wrap ThreeUI. `apps/playground-graph` stays the throughput
@@ -32,8 +32,8 @@ catalog.
 
 - `pnpm typecheck`: 36/36
 - `pnpm build`: 25/25
-- `pnpm --filter @denovo/canvas-network-example typecheck`: passed
-- `pnpm --filter @denovo/canvas-network-example build`: passed
+- `pnpm --filter @de-novo/canvas-network-example typecheck`: passed
+- `pnpm --filter @de-novo/canvas-network-example build`: passed
 - `pnpm verify:public-api`: ok
 - `pnpm verify:network-showcase`: passed 2/2
   - desktop: no iframe, no point-field overlay, nine cards,

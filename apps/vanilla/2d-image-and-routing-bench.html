@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>2d-image-and-routing-bench</title>
+  </head>
+  <body style="margin:0;background:#0f172a;color:#e2e8f0;font:14px sans-serif;">
+    <div id="status" style="position:fixed;z-index:2;left:12px;bottom:12px;padding:6px 10px;border-radius:6px;background:#020617cc;">
+      starting
+    </div>
+    <div id="stage" style="width:100vw;height:100vh;"></div>
+    <script type="module">
+      import {
+        createCanvas,
+        createImageAssetRef,
+        createMemoryImageStore,
+        define2DEdge,
+        defineDocument,
+        DENOVO_IMAGE_NODE_TYPE
+      } from "@de-novo/canvas/2d";
+
+      const BG = [15, 23, 42];
+      const CYAN = [6, 182, 212];
+      const MAGENTA = [236, 72, 153];
+      const GREEN = [34, 197, 94];
+      const SLATE = [51, 65, 85];
+      const AMBER = [245, 158, 11];
+
+      // 1. Pre-decoded synchronous bitmap in CanvasImageStore (left half cyan, right half magenta)
+      const bitmapCanvas = document.createElement("canvas");
+      bitmapCanvas.width = 160;
+      bitmapCanvas.height = 100;
+      const bctx = bitmapCanvas.getContext("2d");
+      bctx.fillStyle = "#06b6d4";
+      bctx.fillRect(0, 0, 80, 100);
+      bctx.fillStyle = "#ec4899";
+      bctx.fillRect(80, 0, 80, 100);
+
+      const imageStore = createMemoryImageStore([["screen-a-img", bitmapCanvas]]);
+
+      // 2. Async data-URI SVG image for src-based image loading
+      const svgSrc =
+        "data:image/svg+xml;charset=utf-8," +
+        encodeURIComponent(
+          '<svg xmlns="http://www.w3.org/2000/svg" width="160" height="100"><rect width="160" height="100" fill="#22c55e"/></svg>'
+        );
+
+      const documentModel = defineDocument({
+        id: "image-and-routing-bench",
+        assets: [
+          createImageAssetRef("screen-a-img", {
+            mimeType: "image/png",
+            width: 160,
+            height: 100
+          })
+        ],
+        scene: {
+          background: "#0f172a",
+          id: "image-and-routing-scene",
+          layers: [{ id: "map", name: "Screen Map" }],
+          mode: "2d",
+          nodes: [
+            {
+              id: "screen-a",
+              layerId: "map",
+              type: DENOVO_IMAGE_NODE_TYPE,
+              position: [40, 120],
+              props: {
+                assetId: "screen-a-img",
+                width: 140,
+                height: 100,
+                fit: "fill",
+                cornerRadius: 20,
+                stroke: "#38bdf8",
+                strokeWidth: 4
+              }
+            },
+            {
+              id: "blocker-card",
+              layerId: "map",
+              type: "rect",
+              position: [240, 120],
+              size: [140, 100],
+              fill: "#334155",
+              cornerRadius: 12
+            },
+            {
+              id: "screen-c",
+              layerId: "map",
+              type: DENOVO_IMAGE_NODE_TYPE,
+              position: [440, 120],
+              props: {
+                src: svgSrc,
+                width: 140,
+                height: 100,
+                fit: "cover",
+                cornerRadius: 16,
+                stroke: "#a855f7",
+                strokeWidth: 4
+              }
+            },
+            {
+              id: "screen-d",
+              layerId: "map",
+              type: DENOVO_IMAGE_NODE_TYPE,
+              position: [240, 290],
+              props: {
+                assetId: "screen-a-img",
+                width: 140,
+                height: 140,
+                fit: "contain",
+                cornerRadius: 12,
+                placeholder: "#1e293b",
+                stroke: "#64748b",
+                strokeWidth: 2
+              }
+            },
+            define2DEdge({
+              id: "edge-bypass",
+              layerId: "map",
+              type: "edge",
+              sourceId: "screen-a",
+              targetId: "screen-c",
+              sourcePort: "right",
+              targetPort: "left",
+              routing: "orthogonal",
+              avoidObstacles: true,
+              obstaclePadding: 24,
+              stroke: "#f59e0b",
+              strokeWidth: 4,
+              targetArrow: true
+            })
+          ]
+        }
+      });
+
+      function samplePixel(image, rect, cssX, cssY) {
+        const scaleX = image.width / Math.max(1, rect.width);
+        const scaleY = image.height / Math.max(1, rect.height);
+        const px = Math.min(image.width - 1, Math.max(0, Math.round(cssX * scaleX)));
+        const py = Math.min(image.height - 1, Math.max(0, Math.round(cssY * scaleY)));
+        const idx = (py * image.width + px) * 4;
+        return [image.data[idx], image.data[idx + 1], image.data[idx + 2], image.data[idx + 3]];
+      }
+
+      function nearColor(actual, expected, tolerance = 28) {
+        return (
+          Math.abs(actual[0] - expected[0]) <= tolerance &&
+          Math.abs(actual[1] - expected[1]) <= tolerance &&
+          Math.abs(actual[2] - expected[2]) <= tolerance
+        );
+      }
+
+      function countColorInRect(image, rect, minX, minY, maxX, maxY, target, tolerance = 32) {
+        const scaleX = image.width / Math.max(1, rect.width);
+        const scaleY = image.height / Math.max(1, rect.height);
+        const x0 = Math.max(0, Math.floor(minX * scaleX));
+        const x1 = Math.min(image.width - 1, Math.ceil(maxX * scaleX));
+        const y0 = Math.max(0, Math.floor(minY * scaleY));
+        const y1 = Math.min(image.height - 1, Math.ceil(maxY * scaleY));
+        let count = 0;
+        for (let y = y0; y <= y1; y += 1) {
+          for (let x = x0; x <= x1; x += 1) {
+            const idx = (y * image.width + x) * 4;
+            if (
+              Math.abs(image.data[idx] - target[0]) <= tolerance &&
+              Math.abs(image.data[idx + 1] - target[1]) <= tolerance &&
+              Math.abs(image.data[idx + 2] - target[2]) <= tolerance
+            ) {
+              count += 1;
+            }
+          }
+        }
+        return count;
+      }
+
+      const host = document.getElementById("stage");
+      try {
+        const requestedBackend = new URLSearchParams(window.location.search).get(
+          "backend"
+        );
+        const runtime = createCanvas(host, {
+          devicePixelRatio: 1,
+          document: documentModel,
+          imageStore,
+          renderer: requestedBackend === "webgpu" ? "webgpu" : "canvas2d"
+        });
+        await runtime.ready;
+        runtime.render();
+
+        // Wait briefly for the async data-URI SVG image to decode and trigger repaint.
+        let image = await runtime.readPixels();
+        const rect = runtime.canvas.getBoundingClientRect();
+        for (let attempt = 0; attempt < 20; attempt += 1) {
+          const cCenter = samplePixel(image, rect, 510, 170);
+          if (nearColor(cCenter, GREEN)) {
+            break;
+          }
+          await new Promise((resolve) => setTimeout(resolve, 40));
+          runtime.render();
+          image = await runtime.readPixels();
+        }
+
+        const screenALeft = samplePixel(image, rect, 75, 170);
+        const screenARight = samplePixel(image, rect, 145, 170);
+        const screenACutCorner = samplePixel(image, rect, 42, 122);
+        const screenCCenter = samplePixel(image, rect, 510, 170);
+        const blockerCenter = samplePixel(image, rect, 310, 170);
+        const amberInsideBlocker = countColorInRect(
+          image,
+          rect,
+          255,
+          135,
+          365,
+          205,
+          AMBER
+        );
+        const amberInGutter =
+          countColorInRect(image, rect, 220, 60, 400, 118, AMBER) +
+          countColorInRect(image, rect, 220, 222, 400, 285, AMBER);
+
+        const hitScreenA = runtime.hitTest({ point: [100, 170] });
+        const hitBlocker = runtime.hitTest({ point: [310, 170] });
+
+        window.__imageRoutingOverlayImage = image;
+        const stats = runtime.getRenderStats();
+        window.__imageRoutingResult = {
+          backend: host.getAttribute("data-denovo-backend"),
+          drawCalls: stats?.drawCalls ?? 0,
+          screenALeftCyan: nearColor(screenALeft, CYAN),
+          screenARightMagenta: nearColor(screenARight, MAGENTA),
+          screenACutCornerBg: nearColor(screenACutCorner, BG),
+          screenCAsyncGreen: nearColor(screenCCenter, GREEN),
+          blockerCenterSlate: nearColor(blockerCenter, SLATE),
+          zeroAmberInsideBlocker: amberInsideBlocker === 0,
+          amberRoutedInGutter: amberInGutter > 40,
+          hitScreenAOk: hitScreenA.kind === "node" && hitScreenA.nodeId === "screen-a",
+          hitBlockerOk: hitBlocker.kind === "node" && hitBlocker.nodeId === "blocker-card",
+          samples: {
+            screenALeft,
+            screenARight,
+            screenACutCorner,
+            screenCCenter,
+            blockerCenter,
+            amberInsideBlocker,
+            amberInGutter
+          }
+        };
+        host.setAttribute("data-denovo-ready", "true");
+        document.getElementById("status").textContent =
+          `${window.__imageRoutingResult.backend} ready · drawCalls=${window.__imageRoutingResult.drawCalls}`;
+      } catch (error) {
+        window.__imageRoutingError = String(error);
+        host.setAttribute("data-denovo-ready", "true");
+        document.getElementById("status").textContent = String(error);
+      }
+    </script>
+  </body>
+</html>

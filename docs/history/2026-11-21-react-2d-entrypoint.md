@@ -1,28 +1,28 @@
-# Three.js-free @denovo/react-canvas/2d and @denovo/canvas/react/2d entrypoints
+# Three.js-free @de-novo/react-canvas/2d and @de-novo/canvas/react/2d entrypoints
 
 Issue: [#9](https://github.com/de-novo/canvas/issues/9).
 
 ## Summary
 
-- Added `@denovo/react-canvas/2d` (`packages/react/src/2d.tsx`, shared
+- Added `@de-novo/react-canvas/2d` (`packages/react/src/2d.tsx`, shared
   `packages/react/src/selector.ts`) exporting `<Canvas2DView>`,
   `useCanvasSelector`, and `shallowEqual` backed exclusively by
-  `@denovo/canvas/2d` with zero `three`, `@react-three/fiber`,
-  `@react-three/drei`, or `@denovo/canvas-three` imports.
-- Re-exported `@denovo/react-canvas/2d` as `@denovo/canvas/react/2d`
+  `@de-novo/canvas/2d` with zero `three`, `@react-three/fiber`,
+  `@react-three/drei`, or `@de-novo/canvas-three` imports.
+- Re-exported `@de-novo/react-canvas/2d` as `@de-novo/canvas/react/2d`
   (`packages/canvas/src/react-2d.ts`, `packages/canvas/package.json`).
 - Migrated `apps/playground/app/mask-host.tsx` (Next.js `/mask` consumer) to
-  `@denovo/canvas/2d` + `@denovo/react-canvas/2d` (`Canvas2DView`,
+  `@de-novo/canvas/2d` + `@de-novo/react-canvas/2d` (`Canvas2DView`,
   `useCanvasSelector`, `shallowEqual`).
 - Migrated `apps/playground-network` and `apps/playground-diagram` to
-  `@denovo/canvas/2d`, removing the unused Three.js / `three.webgpu` stack
+  `@de-novo/canvas/2d`, removing the unused Three.js / `three.webgpu` stack
   from all 2D showcases (`apps/playground-network` Vite JS bundle dropped from
   1,869.85 kB to 351.96 kB, **-81.2%**; `apps/playground-diagram` stays
   Three.js-free at 340.42 kB).
 
 ## Compatibility And Declarations
 
-Purely additive subpaths (`@denovo/react-canvas/2d`, `@denovo/canvas/react/2d`).
+Purely additive subpaths (`@de-novo/react-canvas/2d`, `@de-novo/canvas/react/2d`).
 No existing exports changed and no migration is required.
 `packages/react/dist/2d.d.ts` and `packages/react/dist/selector.d.ts` contain
 zero explicit `any`. Positive and `@ts-expect-error` negative consumer fixtures
@@ -47,6 +47,6 @@ plus static zero-Three.js / zero-R3F / zero-Drei bundle assertions run in
 ## Unmeasured Scope
 
 - Clean-room `pnpm clean && pnpm build` ordering for the optional
-  `@denovo/canvas/react` / `@denovo/canvas/react/2d` peer re-exports remains a
-  shared monorepo build-order characteristic because `@denovo/react-canvas` is
-  declared as an optional peer of `@denovo/canvas`.
+  `@de-novo/canvas/react` / `@de-novo/canvas/react/2d` peer re-exports remains a
+  shared monorepo build-order characteristic because `@de-novo/react-canvas` is
+  declared as an optional peer of `@de-novo/canvas`.

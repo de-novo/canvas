@@ -38,9 +38,9 @@ Vue, Svelte, or Solid.
     minimap rendering, rAF input burst coalescing, and optional 2D WebGPU with
     GPU-resident vertex/atlas caching.
   - Three.js-free 2D entrypoints across the facade and all four framework
-    adapters (`@denovo/canvas/2d`, `@denovo/canvas/react/2d`,
-    `@denovo/react-canvas/2d`, `@denovo/vue-canvas/2d`,
-    `@denovo/svelte-canvas/2d`, `@denovo/solid-canvas/2d`) keep 3D engine code
+    adapters (`@de-novo/canvas/2d`, `@de-novo/canvas/react/2d`,
+    `@de-novo/react-canvas/2d`, `@de-novo/vue-canvas/2d`,
+    `@de-novo/svelte-canvas/2d`, `@de-novo/solid-canvas/2d`) keep 3D engine code
     completely out of 2D application bundles.
 - **High-performance 3D viewers, editors, and BIM workflows**
   - Built-in 3D nodes: `box`, `sphere`, `mesh` (inline or external geometry
@@ -50,9 +50,9 @@ Vue, Svelte, or Solid.
     otherwise WebGL2), opt-in draw-call instancing (`render.batch: true`) for
     top-level boxes and spheres with BVH raycast picking, distance-based sphere
     LOD, section planes, analytic box/mesh surface placement & measurement,
-    Web Worker geometry conversion (`@denovo/canvas/worker`), chunked scene
+    Web Worker geometry conversion (`@de-novo/canvas/worker`), chunked scene
     streaming (`createSceneChunkLoader`), and optional multi-model IFC
-    federation (`@denovo/canvas-bim`).
+    federation (`@de-novo/canvas-bim`).
 - **Fine-grained framework state subscriptions (zero hover churn)**
   - Headless `subscribeCanvasSelector` + `shallowEqual` plus thin native
     bindings for React (`useCanvasSelector` via `useSyncExternalStore`), Vue
@@ -71,7 +71,7 @@ Vue, Svelte, or Solid.
 
 ## Quick Start
 
-### 1. Lightweight 2D editor (`@denovo/canvas/2d` — zero Three.js)
+### 1. Lightweight 2D editor (`@de-novo/canvas/2d` — zero Three.js)
 
 Give the page a stage with a height and controls:
 
@@ -90,8 +90,8 @@ import {
   createEditor,
   defineDocument,
   setNodeVisible
-} from "@denovo/canvas/2d";
-import "@denovo/canvas/styles.css";
+} from "@de-novo/canvas/2d";
+import "@de-novo/canvas/styles.css";
 
 const documentModel = defineDocument({
   id: "drawing",
@@ -125,7 +125,7 @@ document.querySelector("#undo")!.addEventListener("click", () => editor.undo());
 
 ### 2. React / Next.js 2D view with fine-grained selectors
 
-Use `@denovo/canvas/react/2d` (or `@denovo/react-canvas/2d`) so 2D React apps
+Use `@de-novo/canvas/react/2d` (or `@de-novo/react-canvas/2d`) so 2D React apps
 never bundle Three.js, React Three Fiber, or Drei, and toolbar components skip
 re-renders during high-frequency canvas hover events:
 
@@ -137,9 +137,9 @@ import {
   createEditor,
   defineDocument,
   shallowEqual
-} from "@denovo/canvas/2d";
-import { Canvas2DView, useCanvasSelector } from "@denovo/canvas/react/2d";
-import "@denovo/canvas/styles.css";
+} from "@de-novo/canvas/2d";
+import { Canvas2DView, useCanvasSelector } from "@de-novo/canvas/react/2d";
+import "@de-novo/canvas/styles.css";
 import { useMemo } from "react";
 
 export function Board() {
@@ -194,7 +194,7 @@ export function Board() {
 
 ```ts
 // Vanilla / any runtime
-import { shallowEqual, subscribeCanvasSelector } from "@denovo/canvas/2d";
+import { shallowEqual, subscribeCanvasSelector } from "@de-novo/canvas/2d";
 const stop = subscribeCanvasSelector(
   editor,
   (s) => ({ canUndo: s.history.canUndo, canRedo: s.history.canRedo }),
@@ -202,27 +202,27 @@ const stop = subscribeCanvasSelector(
   { equals: shallowEqual }
 );
 
-// Vue 3 (@denovo/vue-canvas or Three.js-free @denovo/vue-canvas/2d) — auto-disposes with effectScope
-import { useCanvasSelector } from "@denovo/vue-canvas/2d";
+// Vue 3 (@de-novo/vue-canvas or Three.js-free @de-novo/vue-canvas/2d) — auto-disposes with effectScope
+import { useCanvasSelector } from "@de-novo/vue-canvas/2d";
 const undoDepth = useCanvasSelector(editor, (s) => s.history.undoDepth);
 
-// Svelte (@denovo/svelte-canvas or Three.js-free @denovo/svelte-canvas/2d) — standard $store contract
-import { createCanvasSelectorStore } from "@denovo/svelte-canvas/2d";
+// Svelte (@de-novo/svelte-canvas or Three.js-free @de-novo/svelte-canvas/2d) — standard $store contract
+import { createCanvasSelectorStore } from "@de-novo/svelte-canvas/2d";
 const selectedId = createCanvasSelectorStore(editor, (s) => s.selection.primaryId);
 
-// Solid (@denovo/solid-canvas or Three.js-free @denovo/solid-canvas/2d) — auto-disposes with onCleanup
-import { useCanvasSelector } from "@denovo/solid-canvas/2d";
+// Solid (@de-novo/solid-canvas or Three.js-free @de-novo/solid-canvas/2d) — auto-disposes with onCleanup
+import { useCanvasSelector } from "@de-novo/solid-canvas/2d";
 const undoDepthSignal = useCanvasSelector(editor, (s) => s.history.undoDepth);
 ```
 
-### 4. Dynamic 2D + 3D scenes (`@denovo/canvas`)
+### 4. Dynamic 2D + 3D scenes (`@de-novo/canvas`)
 
-Import from the root `@denovo/canvas` entrypoint when your app renders 3D scenes
+Import from the root `@de-novo/canvas` entrypoint when your app renders 3D scenes
 or switches dynamically between 2D and 3D:
 
 ```ts
-import { createCanvas } from "@denovo/canvas";
-import "@denovo/canvas/styles.css";
+import { createCanvas } from "@de-novo/canvas";
+import "@de-novo/canvas/styles.css";
 
 const canvas = createCanvas("#stage", {
   scene: {
@@ -240,9 +240,9 @@ const canvas = createCanvas("#stage", {
 
 ### Working Examples & Live Demo Hub
 
-- [10k 2D Live Benchmark & Smart Snap (`@denovo/canvas/2d`, Three.js 0B)](./apps/playground-flow/src/bench-2d.ts)
-- [Release board (2D cards, connectors, save/reset on `@denovo/canvas/2d`)](./apps/playground-flow/src/main.ts)
-- [Service map (2D graph layouts on `@denovo/canvas/2d`)](./apps/playground-network/src/main.ts)
+- [10k 2D Live Benchmark & Smart Snap (`@de-novo/canvas/2d`, Three.js 0B)](./apps/playground-flow/src/bench-2d.ts)
+- [Release board (2D cards, connectors, save/reset on `@de-novo/canvas/2d`)](./apps/playground-flow/src/main.ts)
+- [Service map (2D graph layouts on `@de-novo/canvas/2d`)](./apps/playground-network/src/main.ts)
 - [Next.js mask editor (React `Canvas2DView` + `useCanvasSelector` + shadcn/Tailwind v4)](./apps/playground/app/mask-host.tsx)
 - [Vanilla 2D/3D authoring workbench](./apps/vanilla/src/main.ts)
 - [3D Warp Field hero showcase](./apps/playground-field/src/main.ts)
@@ -264,7 +264,7 @@ Verified by deterministic repository scripts (`pnpm verify:2d-performance`,
 | 2D rapid wheel burst (20 events / tick) | rAF frame coalescing | 20 events → **1 Canvas2D render** with full accumulated pan delta |
 | React / Vue / Headless selectors | `useCanvasSelector` / `subscribeCanvasSelector` + `shallowEqual` | **0 spurious re-renders** across 100 hover updates |
 | 3D `1k-boxes` / `10k-boxes` / `1k-spheres` | `render.batch: true` instancing + BVH picking (Metal WebGL2) | `drawCalls=1`, `geometries=1`, **8.30 ms p50** (under 16 ms GPU gate) |
-| 2D-only production bundle (`playground-flow`, `playground-network`) | `@denovo/canvas/2d` (zero Three.js / WebGPU) | **1.87 MB → 352–361 kB** (**-80.6% to -81.2%**, 0 B Three.js) |
+| 2D-only production bundle (`playground-flow`, `playground-network`) | `@de-novo/canvas/2d` (zero Three.js / WebGPU) | **1.87 MB → 352–361 kB** (**-80.6% to -81.2%**, 0 B Three.js) |
 
 *(3D hardware GPU timings are measured on macOS Apple Silicon ANGLE Metal; 2D
 Canvas2D culling, HTML diff, rAF coalescing, selector isolation, and all
@@ -285,11 +285,11 @@ properties, a named operation, and the document itself.
                                    |  createCanvas / createEditor
                                    |  editor.apply([ namedOp, ... ])
 +----------------------------------v----------------------------------+
-| @denovo/canvas (full)  |  @denovo/canvas/2d (Three.js-free 2D)      |
+| @de-novo/canvas (full)  |  @de-novo/canvas/2d (Three.js-free 2D)      |
 +-----------------+-----------------------------------+---------------+
                   |                                   |
 +-----------------v----------------+  +---------------v---------------+
-| @denovo/canvas-core              |  | @denovo/canvas-editor         |
+| @de-novo/canvas-core              |  | @de-novo/canvas-editor         |
 | document schema 0.2.0 (JSON)     |  | commands, transactions,       |
 |                                  |  | undo/redo, selection, tools,  |
 | KINDS  =  THE EXTENSION SEAM     |  | subscribeCanvasSelector       |
@@ -304,18 +304,18 @@ properties, a named operation, and the document itself.
                   |  scene JSON
 +-----------------v---------------------------------------------------+
 | RUNTIMES draw the document                                          |
-|   @denovo/canvas-web    Canvas2D / WebGL2 / WebGPU, kind drawers    |
-|   @denovo/canvas-three  Three.js helpers, the official field drawer |
+|   @de-novo/canvas-web    Canvas2D / WebGL2 / WebGPU, kind drawers    |
+|   @de-novo/canvas-three  Three.js helpers, the official field drawer |
 +---------------------------------------------------------------------+
 
 OPTIONAL ENGINES are packages that emit core kinds (not plugins)
-  @denovo/canvas-bim     IFC -> mesh nodes + storey layers + metadata
+  @de-novo/canvas-bim     IFC -> mesh nodes + storey layers + metadata
   diagram                edge / text / html are built-in 0.2.0 kinds
 FRAMEWORK ADAPTERS mount the facade (adapter -> facade, never back)
-  @denovo/react-canvas (incl. ./2d), vue-canvas, svelte-canvas, solid-canvas
+  @de-novo/react-canvas (incl. ./2d), vue-canvas, svelte-canvas, solid-canvas
 SERVER / WORKER
-  @denovo/canvas-server  storage adapters replay canonical commands
-  @denovo/canvas-worker  heavy parsing off the main thread
+  @de-novo/canvas-server  storage adapters replay canonical commands
+  @de-novo/canvas-worker  heavy parsing off the main thread
 ```
 
 Kinds and named operations are the extension seam. `CanvasPlugin` is a
@@ -326,11 +326,11 @@ a visual. Why, and what not to build next:
 ```mermaid
 flowchart TD
   Host["Host app or agent<br/>(CanvasPlugin = host tool/command bundle)"]
-  Facade["@denovo/canvas & @denovo/canvas/2d"]
-  Core["@denovo/canvas-core<br/>document 0.2.0, kinds = the seam,<br/>pluginState = bookkeeping only"]
-  Editor["@denovo/canvas-editor<br/>commands, history, selectors, named ops"]
-  Runtime["@denovo/canvas-web + canvas-three<br/>Canvas2D / WebGL2 / WebGPU drawers"]
-  Bim["@denovo/canvas-bim<br/>emits mesh nodes + layers"]
+  Facade["@de-novo/canvas & @de-novo/canvas/2d"]
+  Core["@de-novo/canvas-core<br/>document 0.2.0, kinds = the seam,<br/>pluginState = bookkeeping only"]
+  Editor["@de-novo/canvas-editor<br/>commands, history, selectors, named ops"]
+  Runtime["@de-novo/canvas-web + canvas-three<br/>Canvas2D / WebGL2 / WebGPU drawers"]
+  Bim["@de-novo/canvas-bim<br/>emits mesh nodes + layers"]
   Adapters["react (+ ./2d) / vue / svelte / solid adapters<br/>mount the facade"]
   Host -->|"createCanvas, editor.apply([...])"| Facade
   Facade --> Core
@@ -345,19 +345,19 @@ flowchart TD
 
 | Package / Subpath | Role |
 | --- | --- |
-| `@denovo/canvas` | Full 2D/3D facade (`createCanvas`, `createEditor`, tools, named operations, selectors, `./styles.css`, `./worker`, `./indexed-db`, `./react-query`, `./web`, `./react`, `./react/2d`). |
-| `@denovo/canvas/2d` | Lightweight 2D-only facade with zero `three`, `three/webgpu`, or `three-mesh-bvh` imports. |
-| `@denovo/canvas-core` | Headless `0.2.0` document/scene/command/storage/plugin schemas and validation. |
-| `@denovo/canvas-editor` | Framework-independent command dispatcher, transactions, undo/redo, tools, named operations, and `subscribeCanvasSelector` / `shallowEqual`. |
-| `@denovo/canvas-web` | Browser 2D (Canvas2D + 2D WebGPU) and 3D (WebGL2 + WebGPU) runtimes, spatial index, overlay virtualization, and `./2d` / `./3d` / `./indexed-db` subpaths. |
-| `@denovo/canvas-three` | Three.js optimization helpers (demand rendering, instancing, BVH raycasting, official field drawer). |
-| `@denovo/react-canvas` | React adapter (`CanvasView`, `CanvasStage3D`, `useCanvasSelector`) plus `./2d` (`Canvas2DView`, `useCanvasSelector` without Three.js/R3F/Drei). |
-| `@denovo/vue-canvas` | Vue 3 adapter (`DenovoCanvas`, `useCanvasSelector`) plus Three.js-free `./2d` (`DenovoCanvas2D`, `useCanvasSelector`). |
-| `@denovo/svelte-canvas` | Svelte adapter (`DenovoCanvas`, `createCanvasSelectorStore`) plus Three.js-free `./2d` (`DenovoCanvas2D`, `createCanvasSelectorStore`). |
-| `@denovo/solid-canvas` | Solid adapter (`DenovoCanvas`, `useCanvasSelector`) plus Three.js-free `./2d` (`DenovoCanvas2D`, `useCanvasSelector`). |
-| `@denovo/canvas-server` | Server-side scene storage adapters and optimistic conflict-checked persistence. |
-| `@denovo/canvas-worker` | Web Worker task queue and off-main-thread geometry conversion. |
-| `@denovo/canvas-bim` | Optional BIM contracts and `./web-ifc` multi-model IFC parser adapter. |
+| `@de-novo/canvas` | Full 2D/3D facade (`createCanvas`, `createEditor`, tools, named operations, selectors, `./styles.css`, `./worker`, `./indexed-db`, `./react-query`, `./web`, `./react`, `./react/2d`). |
+| `@de-novo/canvas/2d` | Lightweight 2D-only facade with zero `three`, `three/webgpu`, or `three-mesh-bvh` imports. |
+| `@de-novo/canvas-core` | Headless `0.2.0` document/scene/command/storage/plugin schemas and validation. |
+| `@de-novo/canvas-editor` | Framework-independent command dispatcher, transactions, undo/redo, tools, named operations, and `subscribeCanvasSelector` / `shallowEqual`. |
+| `@de-novo/canvas-web` | Browser 2D (Canvas2D + 2D WebGPU) and 3D (WebGL2 + WebGPU) runtimes, spatial index, overlay virtualization, and `./2d` / `./3d` / `./indexed-db` subpaths. |
+| `@de-novo/canvas-three` | Three.js optimization helpers (demand rendering, instancing, BVH raycasting, official field drawer). |
+| `@de-novo/react-canvas` | React adapter (`CanvasView`, `CanvasStage3D`, `useCanvasSelector`) plus `./2d` (`Canvas2DView`, `useCanvasSelector` without Three.js/R3F/Drei). |
+| `@de-novo/vue-canvas` | Vue 3 adapter (`DenovoCanvas`, `useCanvasSelector`) plus Three.js-free `./2d` (`DenovoCanvas2D`, `useCanvasSelector`). |
+| `@de-novo/svelte-canvas` | Svelte adapter (`DenovoCanvas`, `createCanvasSelectorStore`) plus Three.js-free `./2d` (`DenovoCanvas2D`, `createCanvasSelectorStore`). |
+| `@de-novo/solid-canvas` | Solid adapter (`DenovoCanvas`, `useCanvasSelector`) plus Three.js-free `./2d` (`DenovoCanvas2D`, `useCanvasSelector`). |
+| `@de-novo/canvas-server` | Server-side scene storage adapters and optimistic conflict-checked persistence. |
+| `@de-novo/canvas-worker` | Web Worker task queue and off-main-thread geometry conversion. |
+| `@de-novo/canvas-bim` | Optional BIM contracts and `./web-ifc` multi-model IFC parser adapter. |
 
 ## Development And Verification
 
@@ -381,9 +381,9 @@ pnpm verify:diagram-rendering
 pnpm verify:region-mask
 
 # Local example dev servers
-pnpm dev --filter @denovo/canvas-flow-example
-pnpm dev --filter @denovo/canvas-vanilla-example
-pnpm dev --filter @denovo/canvas-next-playground
+pnpm dev --filter @de-novo/canvas-flow-example
+pnpm dev --filter @de-novo/canvas-vanilla-example
+pnpm dev --filter @de-novo/canvas-next-playground
 ```
 
 ## License And Governance

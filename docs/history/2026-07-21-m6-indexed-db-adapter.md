@@ -29,7 +29,7 @@ conflict-detection contract as the memory and filesystem adapters, so
     conflict detection, bumps revision, validates, and `put`s the entry.
   - `listDocuments()` returns summaries from all stored entries.
   - `deleteDocument(id)` removes the entry.
-- Published under `@denovo/canvas-web/indexed-db` to keep the browser-only
+- Published under `@de-novo/canvas-web/indexed-db` to keep the browser-only
   IndexedDB API out of Node/server bundles.
 
 ### Package wiring — `packages/web/package.json`
@@ -42,7 +42,7 @@ conflict-detection contract as the memory and filesystem adapters, so
 - Browser apps can now persist documents locally across reloads with the same
   one-liner as the filesystem adapter:
   ```ts
-  import { createIndexedDbDocumentAdapter } from "@denovo/canvas-web/indexed-db";
+  import { createIndexedDbDocumentAdapter } from "@de-novo/canvas-web/indexed-db";
   connectEditorToCanvas(editor, runtime, {
     storage: createIndexedDbDocumentAdapter(),
     storageDebounceMs: 500

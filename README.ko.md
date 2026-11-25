@@ -36,17 +36,17 @@ Vanilla JavaScript, React / Next.js, Vue, Svelte, Solid 어디서나 동일한
     O(1) 캐시 미니맵, rAF 입력 버스트 병합, GPU 상주 버텍스·아틀라스 캐시를
     갖춘 선택적 2D WebGPU 렌더러.
   - 퍼사드와 4대 프레임워크 어댑터 모두 Three.js가 전혀 포함되지 않는 경량 2D
-    엔트리포인트 제공(`@denovo/canvas/2d`, `@denovo/canvas/react/2d`,
-    `@denovo/react-canvas/2d`, `@denovo/vue-canvas/2d`,
-    `@denovo/svelte-canvas/2d`, `@denovo/solid-canvas/2d`).
+    엔트리포인트 제공(`@de-novo/canvas/2d`, `@de-novo/canvas/react/2d`,
+    `@de-novo/react-canvas/2d`, `@de-novo/vue-canvas/2d`,
+    `@de-novo/svelte-canvas/2d`, `@de-novo/solid-canvas/2d`).
 - **고성능 3D 뷰어, 에디터, BIM 워크플로**
   - 내장 3D 노드: `box`, `sphere`, `mesh`(인라인 또는 외부 지오메트리 에셋),
     `instances`, `group`, `measurement`, `annotation`, 공식 `plugin.denovo.field`.
   - 자동 `auto` 백엔드 선택(가능 시 WebGPU 우선, 미지원 시 WebGL2),
     `render.batch: true` 기반 박스·구 인스턴싱 배칭과 BVH 레이캐스트 피킹,
     거리 기반 구 LOD, 단면 평면(section plane), 박스·메시 표면 배치 및 거리 측정,
-    Web Worker 지오메트리 변환(`@denovo/canvas/worker`), 청크 스트리밍
-    (`createSceneChunkLoader`), 멀티 모델 IFC 연합(`@denovo/canvas-bim`).
+    Web Worker 지오메트리 변환(`@de-novo/canvas/worker`), 청크 스트리밍
+    (`createSceneChunkLoader`), 멀티 모델 IFC 연합(`@de-novo/canvas-bim`).
 - **불필요한 리렌더 없는 세분화 프레임워크 상태 구독**
   - 헤드리스 `subscribeCanvasSelector` + `shallowEqual`,
     React(`useCanvasSelector`, `useSyncExternalStore`),
@@ -64,7 +64,7 @@ Vanilla JavaScript, React / Next.js, Vue, Svelte, Solid 어디서나 동일한
 
 ## 빠른 시작
 
-### 1. 경량 2D 에디터 (`@denovo/canvas/2d` — Three.js 0B)
+### 1. 경량 2D 에디터 (`@de-novo/canvas/2d` — Three.js 0B)
 
 ```html
 <div id="stage" style="height: 320px"></div>
@@ -79,8 +79,8 @@ import {
   createEditor,
   defineDocument,
   setNodeVisible
-} from "@denovo/canvas/2d";
-import "@denovo/canvas/styles.css";
+} from "@de-novo/canvas/2d";
+import "@de-novo/canvas/styles.css";
 
 const documentModel = defineDocument({
   id: "drawing",
@@ -114,7 +114,7 @@ document.querySelector("#undo")!.addEventListener("click", () => editor.undo());
 
 ### 2. React / Next.js 2D 뷰 + 세분화 셀렉터
 
-`@denovo/canvas/react/2d` (또는 `@denovo/react-canvas/2d`)를 사용하면 2D React
+`@de-novo/canvas/react/2d` (또는 `@de-novo/react-canvas/2d`)를 사용하면 2D React
 앱 번들에 Three.js, React Three Fiber, Drei가 전혀 포함되지 않으며, 툴바
 컴포넌트가 포인터 호버 폭주에도 리렌더되지 않습니다.
 
@@ -126,9 +126,9 @@ import {
   createEditor,
   defineDocument,
   shallowEqual
-} from "@denovo/canvas/2d";
-import { Canvas2DView, useCanvasSelector } from "@denovo/canvas/react/2d";
-import "@denovo/canvas/styles.css";
+} from "@de-novo/canvas/2d";
+import { Canvas2DView, useCanvasSelector } from "@de-novo/canvas/react/2d";
+import "@de-novo/canvas/styles.css";
 import { useMemo } from "react";
 
 export function Board() {
@@ -181,7 +181,7 @@ export function Board() {
 
 ```ts
 // Vanilla / 프레임워크 무관
-import { shallowEqual, subscribeCanvasSelector } from "@denovo/canvas/2d";
+import { shallowEqual, subscribeCanvasSelector } from "@de-novo/canvas/2d";
 const stop = subscribeCanvasSelector(
   editor,
   (s) => ({ canUndo: s.history.canUndo, canRedo: s.history.canRedo }),
@@ -189,24 +189,24 @@ const stop = subscribeCanvasSelector(
   { equals: shallowEqual }
 );
 
-// Vue 3 (@denovo/vue-canvas 또는 Three.js 미포함 @denovo/vue-canvas/2d)
-import { useCanvasSelector } from "@denovo/vue-canvas/2d";
+// Vue 3 (@de-novo/vue-canvas 또는 Three.js 미포함 @de-novo/vue-canvas/2d)
+import { useCanvasSelector } from "@de-novo/vue-canvas/2d";
 const undoDepth = useCanvasSelector(editor, (s) => s.history.undoDepth);
 
-// Svelte (@denovo/svelte-canvas 또는 Three.js 미포함 @denovo/svelte-canvas/2d)
-import { createCanvasSelectorStore } from "@denovo/svelte-canvas/2d";
+// Svelte (@de-novo/svelte-canvas 또는 Three.js 미포함 @de-novo/svelte-canvas/2d)
+import { createCanvasSelectorStore } from "@de-novo/svelte-canvas/2d";
 const selectedId = createCanvasSelectorStore(editor, (s) => s.selection.primaryId);
 
-// Solid (@denovo/solid-canvas 또는 Three.js 미포함 @denovo/solid-canvas/2d)
-import { useCanvasSelector } from "@denovo/solid-canvas/2d";
+// Solid (@de-novo/solid-canvas 또는 Three.js 미포함 @de-novo/solid-canvas/2d)
+import { useCanvasSelector } from "@de-novo/solid-canvas/2d";
 const undoDepthSignal = useCanvasSelector(editor, (s) => s.history.undoDepth);
 ```
 
-### 4. 동적 2D + 3D 씬 (`@denovo/canvas`)
+### 4. 동적 2D + 3D 씬 (`@de-novo/canvas`)
 
 ```ts
-import { createCanvas } from "@denovo/canvas";
-import "@denovo/canvas/styles.css";
+import { createCanvas } from "@de-novo/canvas";
+import "@de-novo/canvas/styles.css";
 
 const canvas = createCanvas("#stage", {
   scene: {
@@ -224,9 +224,9 @@ const canvas = createCanvas("#stage", {
 
 ### 동작 예제 및 라이브 데모 허브
 
-- [10k 2D 라이브 벤치마크 & 스마트 스냅 (`@denovo/canvas/2d`, Three.js 0B)](./apps/playground-flow/src/bench-2d.ts)
-- [Release Board (2D 카드·커넥터·저장/초기화, `@denovo/canvas/2d`)](./apps/playground-flow/src/main.ts)
-- [Service Map (2D 그래프 레이아웃, `@denovo/canvas/2d`)](./apps/playground-network/src/main.ts)
+- [10k 2D 라이브 벤치마크 & 스마트 스냅 (`@de-novo/canvas/2d`, Three.js 0B)](./apps/playground-flow/src/bench-2d.ts)
+- [Release Board (2D 카드·커넥터·저장/초기화, `@de-novo/canvas/2d`)](./apps/playground-flow/src/main.ts)
+- [Service Map (2D 그래프 레이아웃, `@de-novo/canvas/2d`)](./apps/playground-network/src/main.ts)
 - [Next.js 마스크 에디터 (React `Canvas2DView` + `useCanvasSelector` + shadcn/Tailwind v4)](./apps/playground/app/mask-host.tsx)
 - [Vanilla 2D/3D 저작 워크벤치](./apps/vanilla/src/main.ts)
 - [3D Warp Field 쇼케이스](./apps/playground-field/src/main.ts)
@@ -247,7 +247,7 @@ const canvas = createCanvas("#stage", {
 | 2D 고속 휠 입력 버스트 (20회 / 틱) | rAF 프레임 병합(코얼레싱) | 20회 이벤트 → **Canvas2D 렌더 1회** (누적 이동량 100% 보존) |
 | React / Vue / Headless 셀렉터 | `useCanvasSelector` / `subscribeCanvasSelector` + `shallowEqual` | 100회 호버 갱신 동안 무관 컴포넌트 리렌더 **0회** |
 | 3D `1k-boxes` / `10k-boxes` / `1k-spheres` | `render.batch: true` 인스턴싱 + BVH 피킹 (Metal WebGL2) | `drawCalls=1`, `geometries=1`, **8.30 ms p50** (16 ms GPU 게이트 통과) |
-| 2D 전용 프로덕션 번들 (`playground-flow`, `playground-network`) | `@denovo/canvas/2d` (Three.js / WebGPU 미포함) | **1.87 MB → 352–361 kB** (**-80.6% ~ -81.2%**, Three.js 0 B) |
+| 2D 전용 프로덕션 번들 (`playground-flow`, `playground-network`) | `@de-novo/canvas/2d` (Three.js / WebGPU 미포함) | **1.87 MB → 352–361 kB** (**-80.6% ~ -81.2%**, Three.js 0 B) |
 
 *(3D 하드웨어 GPU 시간은 macOS Apple Silicon ANGLE Metal 기준이며, 2D Canvas2D 컬링·증분 동기화·스마트 스냅·HTML diff·rAF 병합·셀렉터 격리 및 전체 브라우저 쇼케이스 스위트는 GitHub Actions `ubuntu-latest` CI에서도 매 커밋 자동 검증됩니다.)*
 
@@ -255,19 +255,19 @@ const canvas = createCanvas("#stage", {
 
 | 패키지 / 서브패스 | 역할 |
 | --- | --- |
-| `@denovo/canvas` | 통합 2D/3D 퍼사드 (`createCanvas`, `createEditor`, 툴, Named Operations, 셀렉터, `./styles.css`, `./worker`, `./indexed-db`, `./react-query`, `./web`, `./react`, `./react/2d`). |
-| `@denovo/canvas/2d` | `three`, `three/webgpu`, `three-mesh-bvh`가 전혀 없는 경량 2D 전용 퍼사드. |
-| `@denovo/canvas-core` | 프레임워크 독립 `0.2.0` 문서/씬/커맨드/저장소/플러그인 스키마 및 검증. |
-| `@denovo/canvas-editor` | 커맨드 디스패처, 트랜잭션, Undo/Redo, 툴, Named Operations, `subscribeCanvasSelector` / `shallowEqual`. |
-| `@denovo/canvas-web` | 브라우저 2D(Canvas2D + 2D WebGPU) 및 3D(WebGL2 + WebGPU) 런타임, 공간 인덱스, 스마트 스냅, 오버레이 가상화 (`./2d`, `./3d`, `./indexed-db`). |
-| `@denovo/canvas-three` | Three.js 최적화 프리미티브(온디맨드 렌더, 인스턴싱, BVH 레이캐스팅, 공식 필드 드로어). |
-| `@denovo/react-canvas` | React 어댑터 (`CanvasView`, `CanvasStage3D`, `useCanvasSelector`) + Three.js/R3F/Drei 미포함 `./2d` (`Canvas2DView`, `useCanvasSelector`). |
-| `@denovo/vue-canvas` | Vue 3 어댑터 (`DenovoCanvas`, `useCanvasSelector`) + Three.js 미포함 `./2d` (`DenovoCanvas2D`, `useCanvasSelector`). |
-| `@denovo/svelte-canvas` | Svelte 어댑터 (`DenovoCanvas`, `createCanvasSelectorStore`) + Three.js 미포함 `./2d` (`DenovoCanvas2D`, `createCanvasSelectorStore`). |
-| `@denovo/solid-canvas` | Solid 어댑터 (`DenovoCanvas`, `useCanvasSelector`) + Three.js 미포함 `./2d` (`DenovoCanvas2D`, `useCanvasSelector`). |
-| `@denovo/canvas-server` | 서버 측 씬 저장소 어댑터 및 낙관적 충돌 검사 영속성. |
-| `@denovo/canvas-worker` | Web Worker 태스크 큐 및 메인 스레드 외부 지오메트리 변환. |
-| `@denovo/canvas-bim` | 선택적 BIM 계약 및 `./web-ifc` 멀티 모델 IFC 파서 어댑터. |
+| `@de-novo/canvas` | 통합 2D/3D 퍼사드 (`createCanvas`, `createEditor`, 툴, Named Operations, 셀렉터, `./styles.css`, `./worker`, `./indexed-db`, `./react-query`, `./web`, `./react`, `./react/2d`). |
+| `@de-novo/canvas/2d` | `three`, `three/webgpu`, `three-mesh-bvh`가 전혀 없는 경량 2D 전용 퍼사드. |
+| `@de-novo/canvas-core` | 프레임워크 독립 `0.2.0` 문서/씬/커맨드/저장소/플러그인 스키마 및 검증. |
+| `@de-novo/canvas-editor` | 커맨드 디스패처, 트랜잭션, Undo/Redo, 툴, Named Operations, `subscribeCanvasSelector` / `shallowEqual`. |
+| `@de-novo/canvas-web` | 브라우저 2D(Canvas2D + 2D WebGPU) 및 3D(WebGL2 + WebGPU) 런타임, 공간 인덱스, 스마트 스냅, 오버레이 가상화 (`./2d`, `./3d`, `./indexed-db`). |
+| `@de-novo/canvas-three` | Three.js 최적화 프리미티브(온디맨드 렌더, 인스턴싱, BVH 레이캐스팅, 공식 필드 드로어). |
+| `@de-novo/react-canvas` | React 어댑터 (`CanvasView`, `CanvasStage3D`, `useCanvasSelector`) + Three.js/R3F/Drei 미포함 `./2d` (`Canvas2DView`, `useCanvasSelector`). |
+| `@de-novo/vue-canvas` | Vue 3 어댑터 (`DenovoCanvas`, `useCanvasSelector`) + Three.js 미포함 `./2d` (`DenovoCanvas2D`, `useCanvasSelector`). |
+| `@de-novo/svelte-canvas` | Svelte 어댑터 (`DenovoCanvas`, `createCanvasSelectorStore`) + Three.js 미포함 `./2d` (`DenovoCanvas2D`, `createCanvasSelectorStore`). |
+| `@de-novo/solid-canvas` | Solid 어댑터 (`DenovoCanvas`, `useCanvasSelector`) + Three.js 미포함 `./2d` (`DenovoCanvas2D`, `useCanvasSelector`). |
+| `@de-novo/canvas-server` | 서버 측 씬 저장소 어댑터 및 낙관적 충돌 검사 영속성. |
+| `@de-novo/canvas-worker` | Web Worker 태스크 큐 및 메인 스레드 외부 지오메트리 변환. |
+| `@de-novo/canvas-bim` | 선택적 BIM 계약 및 `./web-ifc` 멀티 모델 IFC 파서 어댑터. |
 
 ## 개발 및 검증
 

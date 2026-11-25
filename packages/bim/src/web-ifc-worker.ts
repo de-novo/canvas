@@ -4,21 +4,21 @@
  *
  * ```ts
  * // bim-worker.ts (consumer bundles)
- * import { createBimWorkerHandler } from "@denovo/canvas-bim/web-ifc-worker";
+ * import { createBimWorkerHandler } from "@de-novo/canvas-bim/web-ifc-worker";
  * self.addEventListener("message", createBimWorkerHandler({ wasmBaseUrl: "/wasm/" }));
  * ```
  *
  * The WASM binary is fetched inside the worker, so tessellation — OpenModel,
  * LoadAllGeometry, vertex baking — never touches the main thread.
  *
- * @module @denovo/canvas-bim/web-ifc-worker
+ * @module @de-novo/canvas-bim/web-ifc-worker
  */
 
 import {
   createWorkerHandler,
   type WorkerHandler,
   type WorkerTaskDefinition
-} from "@denovo/canvas-worker";
+} from "@de-novo/canvas-worker";
 import { IfcAPI } from "web-ifc";
 
 import type { BimPropertySet } from "./index.js";

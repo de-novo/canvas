@@ -32,7 +32,7 @@ verifiable in plain Node without a browser.
     summaries (invalid files skipped).
   - `deleteDocument(id)` unlinks the file.
 - Uses `node:fs/promises` and `node:path`, so it is published under a separate
-  `@denovo/canvas-server/filesystem` export to keep browser bundles clean.
+  `@de-novo/canvas-server/filesystem` export to keep browser bundles clean.
 
 ### Package wiring — `packages/server/package.json`, `tsconfig.json`
 
@@ -51,7 +51,7 @@ the right revision, and stale `baseRevision` conflicts against the stored file.
 - Documents now persist across process restarts via plain JSON files.
 - The filesystem adapter reuses the same conflict-detection contract as the
   in-memory adapter, so editor↔storage bridges work unchanged.
-- `@denovo/canvas-server/filesystem` is the first durable, real I/O adapter.
+- `@de-novo/canvas-server/filesystem` is the first durable, real I/O adapter.
 
 ## Verification
 

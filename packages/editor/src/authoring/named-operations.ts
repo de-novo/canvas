@@ -6,16 +6,20 @@ import {
   CanvasLayerSchema,
   defineDocument,
   DENOVO_FIELD_NODE_TYPE,
+  DENOVO_IMAGE_NODE_TYPE,
   DENOVO_SHADE_NODE_TYPE,
   DENOVO_SPARKLINE_NODE_TYPE,
   DenovoFieldPatternSchema,
   DenovoFieldPropsSchema,
+  DenovoImageFitSchema,
+  DenovoImagePropsSchema,
   DenovoShadePatternSchema,
   DenovoShadePropsSchema,
   DenovoSparklinePropsSchema,
   DenovoSparklineStyleSchema,
   NodeIdSchema,
   isDenovoFieldNode,
+  isDenovoImageNode,
   isDenovoShadeNode,
   isDenovoSparklineNode,
   type CanvasCommand,
@@ -25,11 +29,12 @@ import {
   type CanvasNode,
   type CanvasNodeByType,
   type DenovoFieldPattern,
+  type DenovoImageFit,
   type DenovoShadePattern,
   type DenovoSparklineStyle,
   type NodeId,
   type Vector3
-} from "@denovo/canvas-core";
+} from "@de-novo/canvas-core";
 import { createNodeUpdateCommand } from "../commands/builders.js";
 import { CanvasEditorError } from "../errors.js";
 import {
@@ -94,6 +99,11 @@ export type SetSparklineStyleInput = {
 export type SetShadePatternInput = {
   readonly nodeId: NodeId;
   readonly pattern: DenovoShadePattern;
+};
+
+export type SetImageFitInput = {
+  readonly nodeId: NodeId;
+  readonly fit: DenovoImageFit;
 };
 
 export type SetNodeVisibleInput = {
@@ -202,6 +212,7 @@ const SET_LAYER_LOCKED_KEYS = new Set(["layerId", "locked"]);
 const SET_LAYER_NAME_KEYS = new Set(["layerId", "name"]);
 const SET_FIELD_PATTERN_KEYS = new Set(["nodeId", "pattern"]);
 const SET_SHADE_PATTERN_KEYS = new Set(["nodeId", "pattern"]);
+const SET_IMAGE_FIT_KEYS = new Set(["nodeId", "fit"]);
 const SET_SPARKLINE_STYLE_KEYS = new Set(["nodeId", "style"]);
 const SET_NODE_VISIBLE_KEYS = new Set(["nodeId", "visible"]);
 const SET_NODE_LOCKED_KEYS = new Set(["nodeId", "locked"]);
@@ -732,6 +743,113 @@ export function setShadePattern(input: SetShadePatternInput): NamedOperation {
     const command = parseShadePatternUpdateCommand(node.id, nextProps);
     const nextNodes = document.scene.nodes.map((candidate) =>
       candidate.id === node.id ? { ...candidate, props: nextProps } : candidate
+    );
+
+    return {
+      changed: true,
+      commands: [command],
+      document: parseNamedOperationDocument({
+        ...document,
+        scene: {
+          ...document.scene,
+          nodes: nextNodes
+        }
+      })
+    };
+  };
+}
+
+export function setImageFit(input: SetImageFitInput): NamedOperation {
+  const parsed = parseSetImageFitInput(input);
+
+  return (document) => {
+    if (document.scene.mode !== "2d") {
+      throw new CanvasEditorError(
+        "mode-mismatch",
+        "setImageFit requires a 2D document."
+      );
+    }
+
+    const node = document.scene.nodes.find(
+      (candidate) => candidate.id === parsed.nodeId
+    );
+
+    if (!node) {
+      throw new CanvasEditorError(
+        "node-not-found",
+        `Node was not found: ${parsed.nodeId}`
+      );
+    }
+
+    if (!isDenovoImageNode(node)) {
+      throw new CanvasEditorError(
+        "invalid-command",
+        `setImageFit requires ${DENOVO_IMAGE_NODE_TYPE}: ${node.id}`
+      );
+    }
+
+    const layer = document.scene.layers.find(
+      (candidate) => candidate.id === node.layerId
+    );
+
+    if (!layer) {
+      throw new CanvasEditorError(
+        "layer-not-found",
+        `Layer was not found: ${node.layerId}`
+      );
+    }
+
+    if (resolveEffectiveNodeState(document, node.id).locked) {
+      throw new CanvasEditorError(
+        "locked-target",
+        node.locked
+          ? `Image is locked: ${node.id}`
+          : `Layer is locked: ${layer.id}`
+      );
+    }
+
+    const props = DenovoImagePropsSchema.parse(node.props);
+    const currentFit = props.fit ?? "contain";
+
+    if (currentFit === parsed.fit) {
+      return {
+        changed: false,
+        commands: [],
+        document
+      };
+    }
+
+    const nextProps = DenovoImagePropsSchema.parse({
+      ...props,
+      fit: parsed.fit
+    });
+    const nextPropsJson: Record<string, import("@de-novo/canvas-core").JsonValue> = {
+      width: nextProps.width,
+      height: nextProps.height,
+      fit: parsed.fit,
+      ...(nextProps.assetId === undefined ? {} : { assetId: nextProps.assetId }),
+      ...(nextProps.src === undefined ? {} : { src: nextProps.src }),
+      ...(nextProps.cornerRadius === undefined
+        ? {}
+        : {
+            cornerRadius:
+              typeof nextProps.cornerRadius === "number"
+                ? nextProps.cornerRadius
+                : [...nextProps.cornerRadius]
+          }),
+      ...(nextProps.opacity === undefined ? {} : { opacity: nextProps.opacity }),
+      ...(nextProps.stroke === undefined ? {} : { stroke: nextProps.stroke }),
+      ...(nextProps.strokeWidth === undefined
+        ? {}
+        : { strokeWidth: nextProps.strokeWidth }),
+      ...(nextProps.placeholder === undefined
+        ? {}
+        : { placeholder: nextProps.placeholder }),
+      ...(nextProps.alt === undefined ? {} : { alt: nextProps.alt })
+    };
+    const command = parseImageFitUpdateCommand(node.id, nextPropsJson);
+    const nextNodes = document.scene.nodes.map((candidate) =>
+      candidate.id === node.id ? { ...candidate, props: nextPropsJson } : candidate
     );
 
     return {
@@ -2354,6 +2472,78 @@ function parseShadePatternUpdateCommand(
     throw new CanvasEditorError(
       "invalid-command",
       "setShadePattern could not compile to node.update.",
+      { cause, commandType: "node.update" }
+    );
+  }
+}
+
+function parseSetImageFitInput(input: SetImageFitInput): SetImageFitInput {
+  if (!isPlainObject(input)) {
+    throw new CanvasEditorError(
+      "invalid-command",
+      "setImageFit input must be an object."
+    );
+  }
+
+  for (const key of Object.keys(input)) {
+    if (!SET_IMAGE_FIT_KEYS.has(key)) {
+      throw new CanvasEditorError(
+        "invalid-command",
+        `setImageFit does not accept field: ${key}`
+      );
+    }
+  }
+
+  if (!("nodeId" in input) || !("fit" in input)) {
+    throw new CanvasEditorError(
+      "invalid-command",
+      "setImageFit requires nodeId and fit."
+    );
+  }
+
+  let fit: DenovoImageFit;
+
+  try {
+    fit = DenovoImageFitSchema.parse(input.fit);
+  } catch (cause) {
+    throw new CanvasEditorError(
+      "invalid-command",
+      "setImageFit fit must be contain, cover, or fill.",
+      { cause }
+    );
+  }
+
+  let nodeId: NodeId;
+
+  try {
+    nodeId = NodeIdSchema.parse(input.nodeId);
+  } catch (cause) {
+    throw new CanvasEditorError("invalid-id", "Node ID must be non-empty.", {
+      cause
+    });
+  }
+
+  return { nodeId, fit };
+}
+
+function parseImageFitUpdateCommand(
+  nodeId: NodeId,
+  props: Record<string, import("@de-novo/canvas-core").JsonValue>
+): CanvasCommand {
+  try {
+    return freezeValue(
+      CanvasCommandSchema.parse({
+        nodeId,
+        nodeMode: "2d",
+        nodeType: DENOVO_IMAGE_NODE_TYPE,
+        patch: { props },
+        type: "node.update"
+      })
+    );
+  } catch (cause) {
+    throw new CanvasEditorError(
+      "invalid-command",
+      "setImageFit could not compile to node.update.",
       { cause, commandType: "node.update" }
     );
   }

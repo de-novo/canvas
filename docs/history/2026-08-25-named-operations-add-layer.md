@@ -11,7 +11,7 @@ Named authoring slice 11. Document-only helper that compiles to one
 
 ## Changes
 
-- `@denovo/canvas-editor` and `@denovo/canvas` export `addLayer` and
+- `@de-novo/canvas-editor` and `@de-novo/canvas` export `addLayer` and
   `AddLayerInput`.
 - Input is `{ layerId, name, index? }`. Omit `index` to append.
 - Duplicate `layerId` is `layer-already-exists`. Empty name, extra

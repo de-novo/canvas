@@ -167,7 +167,7 @@ function startPlayground(port) {
       "pnpm",
       [
         "--filter",
-        "@denovo/canvas-graph-example",
+        "@de-novo/canvas-graph-example",
         "exec",
         "vite",
         "--host",

@@ -84,7 +84,7 @@ import {
   type SelectionState,
   type SelectionStateInput,
   type Vector3
-} from "@denovo/canvas-core";
+} from "@de-novo/canvas-core";
 import { Cause, Effect, Either, Option } from "effect";
 import {
   freezeValue,
@@ -261,6 +261,7 @@ export {
   removeNode,
   reorderLayer,
   setFieldPattern,
+  setImageFit,
   setShadePattern,
   setSparklineStyle,
   setLayerLocked,
@@ -296,6 +297,7 @@ export type {
   RemoveNodeInput,
   ReorderLayerInput,
   SetFieldPatternInput,
+  SetImageFitInput,
   SetShadePatternInput,
   SetSparklineStyleInput,
   SetLayerLockedInput,

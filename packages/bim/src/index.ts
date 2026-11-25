@@ -2,7 +2,7 @@ import type {
   CanvasDocument,
   CanvasGeometryStore,
   CanvasScene
-} from "@denovo/canvas-core";
+} from "@de-novo/canvas-core";
 
 export type BimModelOrigin = readonly [number, number, number];
 
@@ -135,9 +135,9 @@ export function getBimExtensionManifest(): BimExtensionManifest {
   return {
     recommendedAdapters: ["web-ifc", "xeokit"],
     notes: [
-      "web-ifc (MPL-2.0) is the first-class IFC parser; import it from @denovo/canvas-bim/web-ifc.",
+      "web-ifc (MPL-2.0) is the first-class IFC parser; import it from @de-novo/canvas-bim/web-ifc.",
       "@xeokit/xeokit-sdk is AGPL-3.0 — a separate viewer adapter may follow; core stays license-clean.",
-      "Large parsing work should eventually run in @denovo/canvas-worker."
+      "Large parsing work should eventually run in @de-novo/canvas-worker."
     ]
   };
 }

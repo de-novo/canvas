@@ -12,7 +12,7 @@ import {
   useCanvasAssetUpload,
   useCanvasDocumentEditor,
   canvasQueryKeys
-} from "@denovo/canvas/react-query";
+} from "@de-novo/canvas/react-query";
 
 // This is just a compile-time test to ensure all exports are available
 console.log("TanStack Query hooks imports successful! ✅");

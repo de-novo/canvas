@@ -9,9 +9,9 @@ import {
   setLayerVisible,
   type CanvasDocument,
   type CanvasEditor
-} from "@denovo/canvas";
-import "@denovo/canvas/styles.css";
-import { WebIfcBimAdapter } from "@denovo/canvas-bim/web-ifc";
+} from "@de-novo/canvas";
+import "@de-novo/canvas/styles.css";
+import { WebIfcBimAdapter } from "@de-novo/canvas-bim/web-ifc";
 import "./styles.css";
 
 const FEDERATE_NAME = "copy";

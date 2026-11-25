@@ -13,7 +13,7 @@ spoken line. No new playground.
 
 ## Changes
 
-- `@denovo/canvas-editor` and `@denovo/canvas` export
+- `@de-novo/canvas-editor` and `@de-novo/canvas` export
   `setAnnotationText` and `SetAnnotationTextInput`.
 - Extra fields, a non-string `text`, and an empty string fail at the
   helper. The annotation schema requires `min(1)`.

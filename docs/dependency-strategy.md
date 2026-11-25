@@ -100,23 +100,23 @@ Avoid dependencies for:
 
 Base packages may depend on widely useful libraries:
 
-- `@denovo/canvas-core`: Zod, Zustand vanilla, and Effect for internal
+- `@de-novo/canvas-core`: Zod, Zustand vanilla, and Effect for internal
   functional workflows.
-- `@denovo/canvas-editor`: Effect for serialized command, transaction, history,
+- `@de-novo/canvas-editor`: Effect for serialized command, transaction, history,
   and typed failure workflows.
-- `@denovo/canvas`: Effect for staged plugin setup, atomic editor registry
+- `@de-novo/canvas`: Effect for staged plugin setup, atomic editor registry
   installation, rollback, and lifecycle failure translation.
-- `@denovo/canvas-web`: DOM, Canvas2D, Three.js runtime. IndexedDB
-  `applyCommands` uses `@denovo/canvas-editor`.
-- `@denovo/canvas-three`: Three.js and performance primitives.
-- `@denovo/canvas-server`: memory and filesystem adapters depend on
-  `@denovo/canvas-editor` for `applyCommandsToStoredDocument`. The package
+- `@de-novo/canvas-web`: DOM, Canvas2D, Three.js runtime. IndexedDB
+  `applyCommands` uses `@de-novo/canvas-editor`.
+- `@de-novo/canvas-three`: Three.js and performance primitives.
+- `@de-novo/canvas-server`: memory and filesystem adapters depend on
+  `@de-novo/canvas-editor` for `applyCommandsToStoredDocument`. The package
   stays framework-neutral; it does not depend on DOM or renderer packages.
 
 Specialized packages should be optional:
 
-- React/R3F in `@denovo/react-canvas`;
-- BIM engines in `@denovo/canvas-bim`;
+- React/R3F in `@de-novo/react-canvas`;
+- BIM engines in `@de-novo/canvas-bim`;
 - server framework adapters in separate packages;
 - Vue/Svelte/Solid adapters in separate packages.
 
@@ -160,7 +160,7 @@ Effect may be used behind ordinary public functions and package entrypoints as
 an implementation detail. Public boundaries must translate Effect programs,
 services, scopes, causes, and errors into ordinary TypeScript values, promises,
 and documented domain errors. Explicit Effect-native entrypoints such as
-`@denovo/canvas-core/effect` may additionally expose Effect for advanced
+`@de-novo/canvas-core/effect` may additionally expose Effect for advanced
 consumers, but the default facade must never require consumers to understand or
 provide Effect values.
 
@@ -209,7 +209,7 @@ Denovo should expose advanced access:
 The ideal default API is high-level:
 
 ```ts
-import { createCanvas } from "@denovo/canvas";
+import { createCanvas } from "@de-novo/canvas";
 
 const canvas = createCanvas("#stage", {
   scene
@@ -228,7 +228,7 @@ if ("objects" in canvas.current) {
 React users get an idiomatic adapter:
 
 ```tsx
-import { CanvasView } from "@denovo/canvas/react";
+import { CanvasView } from "@de-novo/canvas/react";
 
 <CanvasView
   scene={scene}
@@ -248,10 +248,10 @@ plugin subpaths in this example are a target distribution shape, not a claim
 that each package is already published:
 
 ```ts
-import { createCanvas } from "@denovo/canvas";
-import { threeAdapter } from "@denovo/canvas/adapters/three";
-import { indexedDbStorage } from "@denovo/canvas/storage/indexeddb";
-import { transformPlugin } from "@denovo/canvas/plugins/transform";
+import { createCanvas } from "@de-novo/canvas";
+import { threeAdapter } from "@de-novo/canvas/adapters/three";
+import { indexedDbStorage } from "@de-novo/canvas/storage/indexeddb";
+import { transformPlugin } from "@de-novo/canvas/plugins/transform";
 
 createCanvas("#stage", {
   renderer: threeAdapter(),
@@ -262,7 +262,7 @@ createCanvas("#stage", {
 ```
 
 Internal packages can remain split, but most users should start from
-`@denovo/canvas`.
+`@de-novo/canvas`.
 
 ## Success Criteria
 

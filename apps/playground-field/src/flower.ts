@@ -4,8 +4,8 @@ import {
   type Canvas3DSceneInput,
   type CanvasDocument,
   type DenovoCanvasRuntime
-} from "@denovo/canvas";
-import "@denovo/canvas/styles.css";
+} from "@de-novo/canvas";
+import "@de-novo/canvas/styles.css";
 
 type PaletteKey = "rose" | "sakura" | "gold" | "orchid";
 

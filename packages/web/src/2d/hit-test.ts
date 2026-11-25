@@ -13,7 +13,7 @@ import {
   type Canvas2DNode,
   type Canvas2DScene,
   type CanvasNodeTransformPreview
-} from "@denovo/canvas-core";
+} from "@de-novo/canvas-core";
 
 import {
   CANVAS_2D_ANCHOR_HIT_RADIUS,
@@ -29,6 +29,7 @@ import {
   getCanvas2DMidpoint,
   isCanvas2DConnectableNode,
   isPointInsideCanvas2DShape,
+  isPointInsideClipRect,
   isPointInsideRectangle,
   resolveCanvas2DConnectionHandlePoint,
   resolveCanvas2DEdgeGeometry,
@@ -45,6 +46,7 @@ import {
   type Canvas2DMatrix
 } from "./matrix";
 import {
+  getCanvas2DAncestors,
   getCanvas2DGroupChildren,
   getCanvas2DLayerRoots,
   isNodeEffectivelyLocked,
@@ -73,6 +75,38 @@ export type Canvas2DNodeHit = {
   readonly subTarget?: string;
 };
 
+function isPointInsideAncestorClips(
+  node: Canvas2DDrawableNode,
+  sceneGraph: Canvas2DSceneGraph,
+  scenePoint: readonly [number, number],
+  preview: CanvasNodeTransformPreview | null
+): boolean {
+  if (node.parentId === null || node.type === "edge") {
+    return true;
+  }
+
+  const ancestors = getCanvas2DAncestors(node, sceneGraph);
+  let world = CANVAS_2D_IDENTITY_MATRIX;
+  for (let i = ancestors.length - 1; i >= 0; i -= 1) {
+    const ancestor = ancestors[i]!;
+    world = multiplyCanvas2DMatrices(
+      world,
+      createCanvas2DTransformMatrix(resolveNodeRenderTransform(ancestor, preview))
+    );
+    if (ancestor.clip !== null) {
+      const inverse = tryInvertCanvas2DMatrix(world);
+      if (!inverse) {
+        return false;
+      }
+      const localPoint = transformCanvas2DPoint(inverse, scenePoint);
+      if (!isPointInsideClipRect(localPoint, ancestor.clip)) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
 export function hitTestSceneGraph(
   context: CanvasRenderingContext2D,
   scene: Canvas2DScene,
@@ -85,6 +119,12 @@ export function hitTestSceneGraph(
     const candidates = spatialIndex.queryPoint(scenePoint, preview, sceneGraph);
     for (let i = 0; i < candidates.length; i += 1) {
       const entry = candidates[i]!;
+      if (
+        entry.hasStyledAncestor &&
+        !isPointInsideAncestorClips(entry.node, sceneGraph, scenePoint, preview)
+      ) {
+        continue;
+      }
       const parentWorldTransform = resolveLiveParentWorldTransform(
         entry,
         sceneGraph,
@@ -157,6 +197,17 @@ export function hitTestCanvas2DTreeNode(
     parentWorldTransform,
     createCanvas2DTransformMatrix(resolveNodeRenderTransform(node, preview))
   );
+
+  if (node.clip !== null) {
+    const inverse = tryInvertCanvas2DMatrix(worldTransform);
+    if (!inverse) {
+      return null;
+    }
+    const localPoint = transformCanvas2DPoint(inverse, scenePoint);
+    if (!isPointInsideClipRect(localPoint, node.clip)) {
+      return null;
+    }
+  }
 
   for (const child of [
     ...getCanvas2DGroupChildren(sceneGraph, node.id)

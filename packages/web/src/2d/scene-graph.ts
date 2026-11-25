@@ -9,7 +9,7 @@ import type {
   Canvas2DNode,
   Canvas2DPluginNode,
   Canvas2DScene
-} from "@denovo/canvas-core";
+} from "@de-novo/canvas-core";
 
 export type Canvas2DShapeNode = Extract<
   Canvas2DNode,

@@ -1,6 +1,6 @@
 {
-  "name": "@denovo/svelte-canvas",
-  "version": "0.1.0",
+  "name": "@de-novo/svelte-canvas",
+  "version": "0.2.0",
   "license": "Apache-2.0",
   "description": "Svelte adapter for Denovo Canvas.",
   "type": "module",
@@ -33,13 +33,13 @@
     "typecheck": "tsc --noEmit"
   },
   "peerDependencies": {
-    "@denovo/canvas": "workspace:*",
-    "@denovo/canvas-core": "workspace:*",
+    "@de-novo/canvas": "workspace:*",
+    "@de-novo/canvas-core": "workspace:*",
     "svelte": ">=4.0.0"
   },
   "devDependencies": {
-    "@denovo/canvas": "workspace:*",
-    "@denovo/canvas-core": "workspace:*",
+    "@de-novo/canvas": "workspace:*",
+    "@de-novo/canvas-core": "workspace:*",
     "svelte": "^5.19.0"
   },
   "homepage": "https://github.com/de-novo/canvas#readme",

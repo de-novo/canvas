@@ -1,4 +1,4 @@
-import { defineDocument, type CanvasDocument } from "@denovo/canvas/2d";
+import { defineDocument, type CanvasDocument } from "@de-novo/canvas/2d";
 
 import { encodeNetworkService, type NetworkService } from "./cards";
 

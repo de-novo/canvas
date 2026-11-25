@@ -22,8 +22,8 @@ port resolution.
 
 ## Verification
 
-- `pnpm --filter @denovo/canvas-web build`: passed
-- `pnpm --filter @denovo/canvas-editor build`: passed
+- `pnpm --filter @de-novo/canvas-web build`: passed
+- `pnpm --filter @de-novo/canvas-editor build`: passed
 - `pnpm verify:hit-testing`: ok, including stale top/bottom ports
   retargeting to a facing right/left pair
 - `pnpm verify:editor-core`: ok

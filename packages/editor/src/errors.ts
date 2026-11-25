@@ -1,4 +1,4 @@
-import type { CanvasPluginCommandType } from "@denovo/canvas-core";
+import type { CanvasPluginCommandType } from "@de-novo/canvas-core";
 
 export type CanvasEditorErrorCode =
   | "command-handler-failed"

@@ -42,7 +42,7 @@ await check("official-sparkline-points-follow-style", () => {
   assert.equal(core.isDenovoSparklineType("plugin.denovo.sparkline"), true);
 });
 
-const server = await startApp("@denovo/canvas-vanilla-example", 5193);
+const server = await startApp("@de-novo/canvas-vanilla-example", 5193);
 try {
   await check("official-sparkline-drawer-paints-not-marker", async () => {
     const browser = await launchPixelChromium();

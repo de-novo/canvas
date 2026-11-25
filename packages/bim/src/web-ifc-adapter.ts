@@ -4,20 +4,20 @@
  * building storey, with element provenance stored on `node.metadata`.
  *
  * Tessellation runs on the importing thread here; for large models prefer
- * `createWorkerBimAdapter` from `@denovo/canvas-bim/web-ifc-worker`, which
+ * `createWorkerBimAdapter` from `@de-novo/canvas-bim/web-ifc-worker`, which
  * runs the same parse core inside a worker.
  *
- * Importable from `@denovo/canvas-bim/web-ifc` only — the contract entry
- * (`@denovo/canvas-bim`) stays free of the `web-ifc` dependency.
+ * Importable from `@de-novo/canvas-bim/web-ifc` only — the contract entry
+ * (`@de-novo/canvas-bim`) stays free of the `web-ifc` dependency.
  *
- * @module @denovo/canvas-bim/web-ifc
+ * @module @de-novo/canvas-bim/web-ifc
  */
 
 import {
   createMemoryGeometryStore,
   type CanvasGeometryStore,
   type CanvasScene
-} from "@denovo/canvas-core";
+} from "@de-novo/canvas-core";
 import { IfcAPI } from "web-ifc";
 
 import type { BimImportResult } from "./index.js";

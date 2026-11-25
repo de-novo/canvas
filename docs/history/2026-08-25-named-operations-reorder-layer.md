@@ -11,7 +11,7 @@ Named authoring slice 12. Document-only helper that compiles to one
 
 ## Changes
 
-- `@denovo/canvas-editor` and `@denovo/canvas` export `reorderLayer`
+- `@de-novo/canvas-editor` and `@de-novo/canvas` export `reorderLayer`
   and `ReorderLayerInput`.
 - Input is `{ layerId, index }`. `index` is required.
 - Already at that index returns `{ changed: false, commands: [] }`.
