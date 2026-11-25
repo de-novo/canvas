@@ -15,7 +15,7 @@
     "@de-novo/canvas-core": "workspace:*",
     "@de-novo/canvas-web": "workspace:*",
     "@de-novo/solid-canvas": "workspace:*",
-    "solid-js": "^1.9.3"
+    "solid-js": "^2.0.0"
   },
   "devDependencies": {
     "typescript": "^7.0.2",
